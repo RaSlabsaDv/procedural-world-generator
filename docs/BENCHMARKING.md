@@ -1,6 +1,6 @@
 # Benchmarking Protocol
 
-This is a proposed protocol for the baseline experiment, not a description of an implemented runner or collected results. Module boundaries are defined in the [architecture](ARCHITECTURE.md), and implementation order is defined in the [roadmap](IMPLEMENTATION_PLAN.md).
+This is a protocol for the baseline experiment. The WASM and API heightmap hosts now implement the transport, validation boundary, build identity, and `computeMs` boundary described here, but no benchmark runner or campaign results are implemented or reported yet. Module boundaries are defined in the [architecture](ARCHITECTURE.md), and implementation order is defined in the [roadmap](IMPLEMENTATION_PLAN.md).
 
 ## 1. What we compare
 
@@ -25,13 +25,17 @@ Freeze the code version (`coreBuildId`, preferably a commit, plus a separate app
 
 | Field | Start → finish | Meaning |
 | --- | --- | --- |
-| `computeMs` | After validation, immediately before calling the generator → completed Core result | Result allocation and mathematical generation, including runtime pauses within this boundary |
+| `computeMs` | After host parsing and Core preparation, immediately before `GenerateValidated` → completed Core result | Result allocation and mathematical generation, including runtime pauses within this boundary |
 | `requestMs` | Before calling the adapter with prepared parameters → decoded result in typed arrays and validated contract | Complete Local or Remote operation after the WASM runtime is ready |
 | `initMs` | Before WASM initialization → exports ready | Download and initialization under the recorded cache state; excluded from warm `requestMs` |
 | `actionToDataMs` | User action → usable map data | UI waiting, preparation, any required initialization, and the request; excludes equivalence checking and rendering |
 | `renderCpuMs` | Before visualization preparation → completion of synchronous CPU work | Geometry, colors, scene updates, and command submission, if included in the defined boundary |
 
-In C#, use a monotonic timer around the same generator call. Validation, JSON serialization, interop, map comparison, and rendering are excluded from `computeMs`. For `heightmap+biomes`, the timer also covers classification and biome ID allocation in both hosts. The timer belongs in thin host code; Core does not depend on browser or HTTP telemetry.
+In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. For `heightmap+biomes`, the timer also covers classification and biome ID allocation in both hosts. The timer belongs in thin host code; Core does not depend on browser or HTTP telemetry.
+
+The current hosts implement this boundary with `Stopwatch`: after `HeightMapTransport` has parsed the request and `HeightMapValidator.Prepare` has produced a `ValidatedHeightMapRequest`, each host starts its timer and calls `HeightMapGenerator.GenerateValidated`. This keeps invalid requests from being timed and avoids revalidating in the generator. The JSON transport and strict error envelope are part of the baseline `json-v1` overhead and are included in `requestMs`, not `computeMs`.
+
+`coreBuildId` is generated at build time from repository HEAD, checking `global.json`, `src/core`, and `src/hosts` for modifications. It has a `-dirty` suffix for modifications and `unversioned` as an invalid fallback when Git is unavailable, the revision is invalid, or either Git command fails. Failed Git diagnostics must not become build identity. It must not be replaced by an assembly `ModuleVersionId`, which can change without a source change. Both hosts return this value in `GenerationResponse`; a pair with different build IDs or algorithm versions is incompatible.
 
 In the browser, use the monotonic Performance API. `requestMs` includes request serialization, host-side validation, computation, result serialization/transfer, JSON decoding, normalization to `Float32Array`, and response contract validation. Comparing the two maps takes place outside this boundary. For Remote, completion means that the entire response body has been read, not merely that headers have arrived.
 

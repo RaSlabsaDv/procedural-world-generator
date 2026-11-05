@@ -26,5 +26,7 @@ async function initialize() {
         add: (left, right) => exports.WorldGeneratorInterop.Add(left, right),
         generateSamplesJson: (seed, count) =>
             exports.WorldGeneratorInterop.GenerateSamplesJson(seed, count),
+        generateHeightMapJson: (requestJson) =>
+            exports.WorldGeneratorInterop.GenerateHeightMapJson(requestJson),
     };
 }

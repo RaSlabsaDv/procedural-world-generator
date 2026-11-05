@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 now provides the canonical heightmap request/result contracts, request validation, a shared host-owned `GenerationResponse` envelope, and the deterministic `value-noise-fbm-v1` Core generator; host heightmap endpoints, the 2D MVP, and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
+**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 now provides the canonical heightmap request/result contracts, canonical validation, a shared host-owned `GenerationResponse` envelope, the deterministic `value-noise-fbm-v1` Core generator, and matching WASM/API heightmap endpoints with strict JSON, shared errors, build identity, and computation timing. The 2D MVP and Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
 
 ## 1. Components and dependencies
 
@@ -21,13 +21,13 @@ flowchart TD
 
 The arrows to Core represent dependencies on the same C# source project. The browser and server run separate instances of the execution environment.
 
-Proposed structure after bootstrapping:
+Current project structure:
 
 ```text
 src/
   client/          Angular, adapters, UI, visualization, runner
   core/            WorldGenerator.Core: models, validation, algorithms
-  hosts/           GenerationResponse: shared host transport source
+  hosts/           shared transport, JSON, build identity, GenerationResponse
   wasm/            WorldGenerator.Wasm: JS exports, runtime startup
   api/             WorldGenerator.Api: HTTP endpoints
 tests/
@@ -53,7 +53,7 @@ Core has no dependencies on HTTP, JSON, the DOM, Three.js, or timers. TypeScript
 
 ## 2. Contract v1
 
-The request and result contracts and the Core generator are implemented in `WorldGenerator.Core`; host heightmap integration and the 2D MVP are the next Phase 2 steps. Tests establish the contract before measurements begin.
+The request and result contracts and the Core generator are implemented in `WorldGenerator.Core`. Host integration is implemented through the WASM export `GenerateHeightMapJson` and the API endpoint `POST /api/v1/heightmaps`; the 2D MVP is the next Phase 2 step. Tests establish the contract before measurements begin.
 
 ```json
 {
@@ -80,6 +80,8 @@ These are initial limits, not a verified memory or performance budget. The PoC o
 
 `HeightMapRequest` is an immutable positional record whose constructor requires every field. `HeightMapLimits` exposes the named v1 constants (including `SupportedAlgorithmVersion = "value-noise-fbm-v1"`). `HeightMapValidator.Validate` returns every applicable structured `ValidationError` without rounding, clamping, or substituting defaults; `IsValid` is a convenience wrapper. A null request produces one `request.required` error rather than an exception. Errors are ordered deterministically by request field: `width`, `height`, cell count, `noiseScale`, `octaves`, `heightMultiplier`, `algorithmVersion`.
 
+`HeightMapValidator.Prepare` wraps validation in a `HeightMapPreparation` result. A valid preparation contains a `ValidatedHeightMapRequest`, an immutable snapshot with an internal constructor and no public mutation path, so a host can validate once and generate without revalidating mutable input. Generation APIs are `Generate(HeightMapRequest?)`, which validates and preserves the existing exception contract, and `GenerateValidated(ValidatedHeightMapRequest)`, which performs generation only. Hosts must use `Prepare`/`GenerateValidated` so validation is authoritative and not included in generation timing.
+
 | Error code | Meaning |
 | --- | --- |
 | `request.required` | The request object is null |
@@ -89,7 +91,7 @@ These are initial limits, not a verified memory or performance budget. The PoC o
 | `cell_count.exceeded` | `width × height` exceeds 262144, using overflow-safe arithmetic |
 | `algorithm_version.unsupported` | The version is nonempty but not exactly `value-noise-fbm-v1` |
 
-Hosts must call this validator rather than duplicate the limits or comparison rules. Transport parsing and detection of missing wire fields remain host concerns and must not turn omitted fields into valid default values. `HeightMapResult` contains `width`, `height`, `values` (`float[]`), and `algorithmVersion`.
+Hosts must call this validator rather than duplicate the limits or comparison rules. Transport parsing and detection of missing wire fields remain host concerns and must not turn omitted fields into valid default values. The shared host path parses a nullable wire request, reports missing fields in canonical order, then calls Core `Prepare`; it does not create a `HeightMapRequest` with substituted defaults. `HeightMapResult` contains `width`, `height`, `values` (`float[]`), and `algorithmVersion`.
 
 ```text
 HeightMapResult:
@@ -99,22 +101,28 @@ HeightMapResult:
 
 GenerationResponse:
   result: HeightMapResult
-  computeMs: double             # generator time only, measured in this host
-  coreBuildId: string           # shared Core revision for WASM and API
+  computeMs: double             # GenerateValidated time only, measured in this host
+  coreBuildId: string           # build-time Git revision shared by WASM and API
   workload: "heightmap"         # scope of the measured computation
 ```
 
 Data is flattened as `values[y * width + x]`, with `x` increasing within each row. The length equals `width × height`, and all values are finite. Core has already scaled the heights; the renderer must not apply the multiplier a second time.
 
-`GenerationResponse` is a host transport envelope, not a Core model: it belongs outside `WorldGenerator.Core` because it carries host measurement and build metadata. It is implemented as `src/hosts/GenerationResponse.cs`, a host-owned source file linked into both `WorldGenerator.Wasm` and `WorldGenerator.Api`; no separate project or package is required. The positional record contains `Result`, `ComputeMs`, and `CoreBuildId`, while `Workload` is a getter-only property fixed to `"heightmap"`. The WASM host registers the envelope in its JSON source-generation context, and both hosts serialize the camelCase names `result`, `computeMs`, `coreBuildId`, and `workload`. `computeMs` measures generation after validation and excludes serialization, interop, transport, and rendering. `coreBuildId` identifies the shared Core revision used by each host, not the host build. `workload` is metadata describing the measured computation, not a user-controlled generation parameter.
+`GenerationResponse` is a host transport envelope, not a Core model: it belongs outside `WorldGenerator.Core` because it carries host measurement and build metadata. It is implemented as `src/hosts/GenerationResponse.cs`, a host-owned source file linked into both `WorldGenerator.Wasm` and `WorldGenerator.Api`; no separate project or package is required. The positional record contains `Result`, `ComputeMs`, and `CoreBuildId`, while `Workload` is a getter-only property fixed to `"heightmap"`. The WASM host registers the envelope in its JSON source-generation context, and both hosts serialize the camelCase names `result`, `computeMs`, `coreBuildId`, and `workload`. `computeMs` measures generation after parsing and preparation and excludes serialization, interop, transport, and rendering. `coreBuildId` identifies the shared Core revision used by each host, not the host build. `workload` is metadata describing the measured computation, not a user-controlled generation parameter.
+
+Shared transport behavior lives in `src/hosts`: `HeightMapWireRequest` distinguishes missing fields from zero values, `HeightMapTransport` parses and prepares the request, and `HostJson` applies the same strict JSON options to both hosts. JSON is camelCase, case-sensitive, rejects unknown members, numeric strings, comments, trailing commas, and non-finite numbers. The API uses `DefaultJsonTypeInfoResolver` for internal requests; the WASM host uses the source-generated `HostJsonContext`. Transport failures use the shared `{ "error", "fields" }` envelope: `invalid_json` means malformed or incompatible JSON, and `validation` contains canonical field errors. `error` is a category and `fields` maps request field names to details. API failures return HTTP 400 and successful or failed generation responses use `Cache-Control: no-store`.
+
+`CoreBuildId` is generated at build time by `src/hosts/HostBuildIdentity.targets` from repository HEAD, checking `global.json`, `src/core`, and `src/hosts` for modifications. The normal value is `git:<commit-abbreviation>` (at least 12 hexadecimal characters), with a `-dirty` suffix when those inputs are modified. Both Git commands must succeed, and the revision must match the SHA format. Missing Git, a missing repository, an invalid revision, or a failed status check produces `unversioned`, which is not valid benchmark identity. Git diagnostics are never used as identity or dirty-state data after a failed command. An explicit `CoreBuildId` MSBuild property overrides auto-detection; `CoreBuildIdGitExecutable` optionally selects the Git executable. The build ID is deliberately not an assembly `ModuleVersionId`.
+
+Transport overflow such as `1e400` or `-1e400` in either double field returns `invalid_json` before Core preparation. A finite representable number outside the parameter limits still returns `validation`. Direct Core callers retain canonical non-finite validation.
 
 In phase 3B, the result gains a `biomeIds` array in the same order: `byte[]` in C#, a JSON array of integer codes at the boundary, and `Uint8Array` in the client. Classification belongs to Core and is included in `computeMs` in both modes; `workload` becomes `heightmap+biomes`. The codes, thresholds, and a new version of the extended contract/algorithm must be defined by that phase. The final campaign uses this same workload in both modes.
 
-All request fields are required. Invalid values are neither rounded nor replaced with defaults. The UI provides guidance, but Core performs the same authoritative validation in both modes. Both hosts reject unexpected fields and invalid types at the transport boundary. Missing numeric fields must not silently become C# zeros.
+All request fields are required. Invalid values are neither rounded nor replaced with defaults. The UI provides guidance, but Core performs the same authoritative validation in both modes. Both hosts reject unexpected fields and invalid types at the transport boundary. Missing numeric fields must not silently become C# zeros, and zero is accepted only where the canonical range permits it, such as `heightMultiplier`. The native API and WASM export tests verify that both hosts produce the same error categories and field errors.
 
 ## 3. Generator and determinism
 
-`HeightMapGenerator.Generate` implements `value-noise-fbm-v1` synchronously on one thread and returns independent storage for each call. It calls `HeightMapValidator.Validate` before allocating output and throws `ArgumentNullException` for a null request or `ArgumentException` with parameter name `request` for invalid input. Host timing must account for this: `Generate` includes validation, so a stopwatch around that call does not measure generation alone. Future host integration will start its `computeMs` timer after host-side validation and immediately before generator work.
+`HeightMapGenerator.Generate` implements `value-noise-fbm-v1` synchronously on one thread and returns independent storage for each call. It validates before allocating output and throws `ArgumentNullException` for a null request or `ArgumentException` with parameter name `request` for invalid input. `GenerateValidated` accepts only an already prepared request and performs the generator work without validation. This preserves the public exception contract while allowing hosts to start `computeMs` after transport parsing and Core preparation and immediately before `GenerateValidated`; a timer around validating `Generate` would include validation and is not the measurement boundary.
 
 The algorithm is fixed as follows:
 
@@ -193,8 +201,9 @@ Angular and WASM assets are updated as one version. Activate a new version betwe
 | Decision | Acceptance condition |
 | --- | --- |
 | Toolchain versions | Supported stable .NET SDK, matching WASM tooling/template, compatible Angular/Node/TypeScript; exact versions in project files and project documentation |
-| Local execution | A scalar and an array work from Angular through the standalone host; repeated calls reuse the existing runtime |
+| Local execution | Scalar, array, and heightmap JSON work through the standalone host; repeated calls reuse the existing runtime |
 | Packaging | Release publish output loads from static hosting without dev-server dependencies |
+| Heightmap hosts | Published WASM and API use the same strict JSON contract, error categories, build ID, and deterministic result |
 | Baseline | JSON transfers batched data correctly; startup overhead and computation are measured separately |
 
 Check Angular compatibility with Node/TypeScript against the [official table](https://angular.dev/reference/versions). Do not add dependencies for workers, AOT, persistence, or adaptive selection without a separate request. Phases and verification criteria are in the [roadmap](IMPLEMENTATION_PLAN.md).

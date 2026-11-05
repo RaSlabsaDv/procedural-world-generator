@@ -68,6 +68,21 @@ public static class HeightMapValidator
     /// </summary>
     public static bool IsValid(HeightMapRequest? request) => Validate(request).Count == 0;
 
+    /// <summary>
+    /// Validates a request and returns either an immutable validated snapshot or the
+    /// canonical validation errors.
+    /// </summary>
+    public static HeightMapPreparation Prepare(HeightMapRequest? request)
+    {
+        var errors = Validate(request);
+
+        return errors.Count == 0
+            ? new HeightMapPreparation(
+                new ValidatedHeightMapRequest(request!),
+                Array.Empty<ValidationError>())
+            : new HeightMapPreparation(null, errors);
+    }
+
     private static void ValidateIntegerRange(
         List<ValidationError> errors,
         string field,

@@ -1,0 +1,78 @@
+<Project>
+  <PropertyGroup>
+    <_CoreBuildIdRepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../..'))</_CoreBuildIdRepoRoot>
+    <CoreBuildIdGitExecutable Condition="'$(CoreBuildIdGitExecutable)' == ''">git</CoreBuildIdGitExecutable>
+  </PropertyGroup>
+
+  <Target Name="GenerateCoreBuildId" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_CoreBuildIdValue>$(CoreBuildId)</_CoreBuildIdValue>
+      <_CoreBuildIdRevision></_CoreBuildIdRevision>
+      <_CoreBuildIdRevisionExitCode>-1</_CoreBuildIdRevisionExitCode>
+      <_CoreBuildIdStatusExitCode>-1</_CoreBuildIdStatusExitCode>
+      <_CoreBuildIdRevisionValid>false</_CoreBuildIdRevisionValid>
+    </PropertyGroup>
+    <ItemGroup>
+      <_CoreBuildIdRevisionOutput Remove="@(_CoreBuildIdRevisionOutput)" />
+      <_CoreBuildIdStatus Remove="@(_CoreBuildIdStatus)" />
+    </ItemGroup>
+
+    <Exec
+      Command="&quot;$(CoreBuildIdGitExecutable)&quot; -C &quot;$(_CoreBuildIdRepoRoot)&quot; rev-parse --short=12 HEAD"
+      ConsoleToMSBuild="true"
+      StandardOutputImportance="Low"
+      StandardErrorImportance="Low"
+      IgnoreExitCode="true"
+      IgnoreStandardErrorWarningFormat="true"
+      ContinueOnError="true"
+      Condition="'$(_CoreBuildIdValue)' == ''">
+      <Output TaskParameter="ConsoleOutput" ItemName="_CoreBuildIdRevisionOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="_CoreBuildIdRevisionExitCode" />
+    </Exec>
+
+    <PropertyGroup Condition="'$(_CoreBuildIdValue)' == '' And '$(_CoreBuildIdRevisionExitCode)' == '0'">
+      <_CoreBuildIdRevision>@(_CoreBuildIdRevisionOutput)</_CoreBuildIdRevision>
+      <_CoreBuildIdRevision>$([System.String]::Copy('$(_CoreBuildIdRevision)').Trim())</_CoreBuildIdRevision>
+      <_CoreBuildIdRevisionValid>$([System.Text.RegularExpressions.Regex]::IsMatch('$(_CoreBuildIdRevision)', '\A[0-9a-f]{12,64}\z'))</_CoreBuildIdRevisionValid>
+      <_CoreBuildIdValue Condition="'$(_CoreBuildIdRevisionValid)' == 'true'">git:$(_CoreBuildIdRevision)</_CoreBuildIdValue>
+    </PropertyGroup>
+
+    <Exec
+      Command="&quot;$(CoreBuildIdGitExecutable)&quot; -C &quot;$(_CoreBuildIdRepoRoot)&quot; status --porcelain --untracked-files=normal -- global.json src/core src/hosts"
+      ConsoleToMSBuild="true"
+      StandardOutputImportance="Low"
+      StandardErrorImportance="Low"
+      IgnoreExitCode="true"
+      IgnoreStandardErrorWarningFormat="true"
+      ContinueOnError="true"
+      Condition="'$(_CoreBuildIdRevisionValid)' == 'true'">
+      <Output TaskParameter="ConsoleOutput" ItemName="_CoreBuildIdStatus" />
+      <Output TaskParameter="ExitCode" PropertyName="_CoreBuildIdStatusExitCode" />
+    </Exec>
+
+    <PropertyGroup Condition="'$(_CoreBuildIdRevisionValid)' == 'true' And '$(_CoreBuildIdStatusExitCode)' == '0' And '@(_CoreBuildIdStatus)' != ''">
+      <_CoreBuildIdValue>$(_CoreBuildIdValue)-dirty</_CoreBuildIdValue>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(_CoreBuildIdValue)' == '' Or ('$(_CoreBuildIdRevisionValid)' == 'true' And '$(_CoreBuildIdStatusExitCode)' != '0')">
+      <_CoreBuildIdValue>unversioned</_CoreBuildIdValue>
+    </PropertyGroup>
+
+    <PropertyGroup>
+      <_CoreBuildIdFile>$(IntermediateOutputPath)CoreBuildId.g.cs</_CoreBuildIdFile>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+
+    <WriteLinesToFile
+      File="$(_CoreBuildIdFile)"
+      Lines="namespace WorldGenerator.Hosts%3B%0A%0Apublic static partial class CoreBuildId%0A%7B%0A    private const string ValueCore = &quot;$(_CoreBuildIdValue)&quot;%3B%0A%7D%0A"
+      Overwrite="true"
+      WriteOnlyWhenDifferent="true" />
+
+    <ItemGroup>
+      <Compile Include="$(_CoreBuildIdFile)" />
+      <FileWrites Include="$(_CoreBuildIdFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

@@ -12,5 +12,12 @@
 
   <ItemGroup>
     <Compile Include="../hosts/GenerationResponse.cs" Link="GenerationResponse.cs" />
+    <Compile Include="../hosts/ErrorResponse.cs" Link="ErrorResponse.cs" />
+    <Compile Include="../hosts/HeightMapWireRequest.cs" Link="HeightMapWireRequest.cs" />
+    <Compile Include="../hosts/HeightMapTransport.cs" Link="HeightMapTransport.cs" />
+    <Compile Include="../hosts/HostJson.cs" Link="HostJson.cs" />
+    <Compile Include="../hosts/CoreBuildId.cs" Link="CoreBuildId.cs" />
   </ItemGroup>
+
+  <Import Project="../hosts/HostBuildIdentity.targets" />
 </Project>

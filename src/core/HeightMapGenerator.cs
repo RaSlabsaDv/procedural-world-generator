@@ -14,17 +14,33 @@ public static class HeightMapGenerator
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var errors = HeightMapValidator.Validate(request);
-        if (errors.Count > 0)
+        var preparation = HeightMapValidator.Prepare(request);
+        if (!preparation.IsValid)
         {
             var details = string.Join(
                 "; ",
-                errors.Select(error => $"{error.Field}: {error.Code}"));
+                preparation.Errors.Select(error => $"{error.Field}: {error.Code}"));
             throw new ArgumentException(
                 $"The heightmap request is invalid: {details}",
                 nameof(request));
         }
 
+        return GenerateValidated(preparation.ValidatedRequest!);
+    }
+
+    /// <summary>
+    /// Generates a heightmap from a request that has already passed canonical validation.
+    /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is null.</exception>
+    public static HeightMapResult GenerateValidated(ValidatedHeightMapRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return GenerateCore(request.Request);
+    }
+
+    private static HeightMapResult GenerateCore(HeightMapRequest request)
+    {
         var values = new float[request.Width * request.Height];
         var seed = unchecked((uint)request.Seed);
 

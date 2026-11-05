@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.AspNetCore.StaticFiles;
 using WorldGenerator.Core;
+using WorldGenerator.Hosts;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -12,11 +12,13 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
-    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    HostJson.Configure(options.SerializerOptions);
 });
 
 var app = builder.Build();
+
+var hostJsonOptions = HostJson.CreateOptions(new DefaultJsonTypeInfoResolver());
+var heightMapRequestTypeInfo = HostJson.GetTypeInfo<HeightMapWireRequest>(hostJsonOptions);
 
 var contentTypeProvider = new FileExtensionContentTypeProvider();
 contentTypeProvider.Mappings[".dat"] = "application/octet-stream";
@@ -90,6 +92,31 @@ app.MapPost("/api/v1/probe/samples", (SamplesRequest request) =>
     return Results.Ok(new SamplesResponse(values, computeMs));
 });
 
+app.MapPost("/api/v1/heightmaps", async (HttpContext context) =>
+{
+    context.Response.Headers["Cache-Control"] = "no-store";
+
+    var preparation = await HeightMapTransport.ParseAndPrepareAsync(
+        context.Request.Body,
+        heightMapRequestTypeInfo,
+        context.RequestAborted);
+
+    if (!preparation.IsValid)
+    {
+        return Results.Json(
+            preparation.Error!,
+            hostJsonOptions,
+            statusCode: StatusCodes.Status400BadRequest);
+    }
+
+    var started = Stopwatch.GetTimestamp();
+    var result = HeightMapGenerator.GenerateValidated(preparation.ValidatedRequest!);
+    var computeMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+
+    var response = new GenerationResponse(result, computeMs, CoreBuildId.Value);
+    return Results.Json(response, hostJsonOptions);
+});
+
 app.MapFallbackToFile("index.html");
 
 app.Run();
@@ -101,8 +128,6 @@ public sealed record SamplesRequest(int? Seed, int? Count);
 public sealed record AddResponse(int Sum);
 
 public sealed record SamplesResponse(float[] Values, double ComputeMs);
-
-public sealed record ErrorResponse(string Error, IReadOnlyDictionary<string, string>? Fields);
 
 public sealed record HealthResponse(string Status);
 

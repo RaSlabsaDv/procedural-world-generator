@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using WorldGenerator.Core;
+using WorldGenerator.Hosts;
 using Xunit;
 
 namespace WorldGenerator.Api.Tests;

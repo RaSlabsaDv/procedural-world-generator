@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 export interface WorldGeneratorRuntime {
   add(left: number, right: number): number;
   generateSamplesJson(seed: number, count: number): string;
+  generateHeightMapJson(requestJson: string): string;
 }
 
 export interface RuntimeInfo {

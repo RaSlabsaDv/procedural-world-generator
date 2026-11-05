@@ -1,3 +1,4 @@
+using System.Reflection;
 using Xunit;
 
 namespace WorldGenerator.Core.Tests;
@@ -161,6 +162,98 @@ public sealed class HeightMapGeneratorTests
             () => HeightMapGenerator.Generate(request));
 
         Assert.Equal("request", exception.ParamName);
+    }
+
+
+    [Fact]
+    public void Generate_AndGenerateValidated_ProduceIdenticalFullOutputs()
+    {
+        var request = GoldenRequest();
+        var preparation = HeightMapValidator.Prepare(request);
+
+        Assert.True(preparation.IsValid);
+
+        var validating = HeightMapGenerator.Generate(request);
+        var prevalidated = HeightMapGenerator.GenerateValidated(
+            preparation.ValidatedRequest!);
+
+        Assert.Equal(validating.Width, prevalidated.Width);
+        Assert.Equal(validating.Height, prevalidated.Height);
+        Assert.Equal(validating.AlgorithmVersion, prevalidated.AlgorithmVersion);
+        Assert.Equal(validating.Values, prevalidated.Values);
+    }
+
+    [Fact]
+    public void GenerateValidated_UsesTheValidatedSnapshot()
+    {
+        var request = GoldenRequest();
+        var preparation = HeightMapValidator.Prepare(request);
+        var expected = HeightMapGenerator.Generate(request);
+
+        request = request with { Seed = 99, HeightMultiplier = 1.0 };
+
+        var result = HeightMapGenerator.GenerateValidated(
+            preparation.ValidatedRequest!);
+
+        Assert.Equal(expected.Values, result.Values);
+    }
+
+    [Fact]
+    public void GenerateValidated_RejectsNullRequest()
+    {
+        var exception = Assert.Throws<ArgumentNullException>(
+            () => HeightMapGenerator.GenerateValidated(null!));
+
+        Assert.Equal("request", exception.ParamName);
+    }
+
+    [Fact]
+    public void Prepare_ReturnsValidatedSnapshotForValidRequest()
+    {
+        var preparation = HeightMapValidator.Prepare(GoldenRequest());
+
+        Assert.True(preparation.IsValid);
+        Assert.NotNull(preparation.ValidatedRequest);
+        Assert.Empty(preparation.Errors);
+    }
+
+    [Fact]
+    public void Prepare_ReturnsCanonicalErrorForNullRequest()
+    {
+        var preparation = HeightMapValidator.Prepare(null);
+
+        Assert.False(preparation.IsValid);
+        Assert.Null(preparation.ValidatedRequest);
+
+        var error = Assert.Single(preparation.Errors);
+        Assert.Equal(HeightMapValidationErrorCodes.RequestRequired, error.Code);
+        Assert.Equal("request", error.Field);
+    }
+
+    [Theory]
+    [MemberData(nameof(InvalidRequests))]
+    public void Prepare_ReturnsErrorsForInvalidRequests(HeightMapRequest request)
+    {
+        var preparation = HeightMapValidator.Prepare(request);
+
+        Assert.False(preparation.IsValid);
+        Assert.Null(preparation.ValidatedRequest);
+        Assert.NotEmpty(preparation.Errors);
+    }
+
+    [Fact]
+    public void ValidatedHeightMapRequest_ExposesNoPublicMutationPath()
+    {
+        var type = typeof(ValidatedHeightMapRequest);
+
+        Assert.True(type.IsSealed);
+        Assert.Empty(type.GetConstructors(BindingFlags.Public | BindingFlags.Instance));
+        Assert.DoesNotContain(
+            type.GetProperties(BindingFlags.Public | BindingFlags.Instance),
+            property => property.SetMethod is not null);
+        Assert.DoesNotContain(
+            type.GetFields(BindingFlags.Public | BindingFlags.Instance),
+            field => !field.IsInitOnly);
     }
 
     [Fact]
