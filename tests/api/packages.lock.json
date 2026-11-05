@@ -406,6 +406,12 @@
       },
       "worldgenerator.core": {
         "type": "Project"
+      },
+      "worldgenerator.wasm": {
+        "type": "Project",
+        "dependencies": {
+          "WorldGenerator.Core": "[1.0.0, )"
+        }
       }
     }
   }

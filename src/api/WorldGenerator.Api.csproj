@@ -8,4 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="../core/WorldGenerator.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../hosts/GenerationResponse.cs" Link="GenerationResponse.cs" />
+  </ItemGroup>
 </Project>

@@ -21,5 +21,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/api/WorldGenerator.Api.csproj" />
     <ProjectReference Include="../../src/core/WorldGenerator.Core.csproj" />
+    <ProjectReference Include="../../src/wasm/WorldGenerator.Wasm.csproj">
+      <Aliases>wasm</Aliases>
+    </ProjectReference>
   </ItemGroup>
 </Project>

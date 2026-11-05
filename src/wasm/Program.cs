@@ -3,6 +3,7 @@ using System.Runtime.InteropServices.JavaScript;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using WorldGenerator.Core;
+using WorldGenerator.Hosts;
 
 public static partial class WorldGeneratorInterop
 {
@@ -29,4 +30,5 @@ public sealed record SampleResponse(float[] Values, double ComputeMs);
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(SampleResponse))]
+[JsonSerializable(typeof(GenerationResponse))]
 internal sealed partial class HostJsonContext : JsonSerializerContext;

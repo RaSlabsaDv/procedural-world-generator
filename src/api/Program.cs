@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.StaticFiles;
 using WorldGenerator.Core;
@@ -12,6 +13,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 });
 
 var app = builder.Build();
