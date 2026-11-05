@@ -1,0 +1,34 @@
+<main>
+  <h1>WorldGenerator WASM PoC</h1>
+  <p>Calls the shared C# computation probe through the standalone .NET WebAssembly host.</p>
+
+  <button type="button" (click)="runChecks()" [disabled]="state() === 'running'">
+    {{ state() === 'running' ? 'Running...' : 'Run checks' }}
+  </button>
+
+  <p class="status">
+    Runtime initializations: {{ init().initCount }}
+    @if (init().initMs !== null) {
+      ({{ init().initMs!.toFixed(1) }} ms)
+    }
+    · Core calls: {{ calls() }}
+    @if (requestMs() !== null) {
+      · Check sequence: {{ requestMs()!.toFixed(1) }} ms
+    }
+  </p>
+
+  @if (error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+
+  @if (checks().length > 0) {
+    <ul class="checks">
+      @for (check of checks(); track check.name) {
+        <li [class.failed]="!check.passed">
+          <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
+          {{ check.name }} — {{ check.detail }}
+        </li>
+      }
+    </ul>
+  }
+</main>

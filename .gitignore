@@ -480,3 +480,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Generated WASM publish assets copied into the Angular public directory
+src/client/public/wasm/
