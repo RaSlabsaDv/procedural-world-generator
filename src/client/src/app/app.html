@@ -1,34 +1,59 @@
 <main>
-  <h1>WorldGenerator WASM PoC</h1>
-  <p>Calls the shared C# computation probe through the standalone .NET WebAssembly host.</p>
+  <h1>WorldGenerator PoC</h1>
+  <p>Runs the same shared C# probe through local WebAssembly and the remote ASP.NET Core API.</p>
 
-  <button type="button" (click)="runChecks()" [disabled]="state() === 'running'">
-    {{ state() === 'running' ? 'Running...' : 'Run checks' }}
-  </button>
+  <div class="actions">
+    <button type="button" (click)="runLocalChecks()" [disabled]="localState() === 'running'">
+      {{ localState() === 'running' ? 'Running...' : 'Run local checks' }}
+    </button>
+    <button type="button" (click)="runRemoteChecks()" [disabled]="remoteState() === 'running'">
+      {{ remoteState() === 'running' ? 'Running...' : 'Run remote checks' }}
+    </button>
+  </div>
 
   <p class="status">
-    Runtime initializations: {{ init().initCount }}
+    WASM runtime initializations: {{ init().initCount }}
     @if (init().initMs !== null) {
       ({{ init().initMs!.toFixed(1) }} ms)
     }
-    · Core calls: {{ calls() }}
-    @if (requestMs() !== null) {
-      · Check sequence: {{ requestMs()!.toFixed(1) }} ms
-    }
+    · WASM calls: {{ localCalls() }} · Remote API calls: {{ remoteCalls() }}
   </p>
 
-  @if (error(); as message) {
-    <p class="error" role="alert">{{ message }}</p>
-  }
+  <section>
+    <h2>Local WebAssembly</h2>
 
-  @if (checks().length > 0) {
-    <ul class="checks">
-      @for (check of checks(); track check.name) {
-        <li [class.failed]="!check.passed">
-          <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
-          {{ check.name }} — {{ check.detail }}
-        </li>
-      }
-    </ul>
-  }
+    @if (localError(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+
+    @if (localChecks().length > 0) {
+      <ul class="checks">
+        @for (check of localChecks(); track check.name) {
+          <li [class.failed]="!check.passed">
+            <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
+            {{ check.name }} — {{ check.detail }}
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section>
+    <h2>Remote ASP.NET Core API</h2>
+
+    @if (remoteError(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+
+    @if (remoteChecks().length > 0) {
+      <ul class="checks">
+        @for (check of remoteChecks(); track check.name) {
+          <li [class.failed]="!check.passed">
+            <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
+            {{ check.name }} — {{ check.detail }}
+          </li>
+        }
+      </ul>
+    }
+  </section>
 </main>
