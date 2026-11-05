@@ -1,9 +1,11 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/api/WorldGenerator.Api.csproj" />
     <Project Path="src/core/WorldGenerator.Core.csproj" />
     <Project Path="src/wasm/WorldGenerator.Wasm.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/api/WorldGenerator.Api.Tests.csproj" />
     <Project Path="tests/core/WorldGenerator.Core.Tests.csproj" />
   </Folder>
 </Solution>
