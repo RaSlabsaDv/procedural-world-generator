@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WorldGenerator WASM host</title>
+</head>
+<body>
+  <p>This host is loaded by the Angular application.</p>
+  <script type="module">
+    import { getWorldGenerator } from './world-generator-host.js';
+
+    const runtime = await getWorldGenerator();
+    console.log('Add(20, 22) =', runtime.add(20, 22));
+    console.log('GenerateSamplesJson(42, 5) =', runtime.generateSamplesJson(42, 5));
+  </script>
+</body>
+</html>
