@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/core/WorldGenerator.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/core/WorldGenerator.Core.Tests.csproj" />
+  </Folder>
+</Solution>
