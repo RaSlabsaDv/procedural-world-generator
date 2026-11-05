@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0–1 are complete. The shared C# library, scalar/bulk-array probe, solution, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. Scalar and bulk-array results, runtime reuse, API error handling, and a single-origin production build are verified. Phase 2 (contract, generator, and 2D MVP) is next. See [development instructions](DEVELOPMENT.md) for the current commands. This plan follows the [Project Brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md), and [measurement protocol](BENCHMARKING.md).
+**Status:** Phases 0–1 are complete. The shared C# library, scalar/bulk-array probe, solution, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. Scalar and bulk-array results, runtime reuse, API error handling, and a single-origin production build are verified. Phase 2 Step 1 now provides the v1 heightmap request/result contracts and canonical validation; the generator, host heightmap endpoints, and 2D MVP remain next. See [development instructions](DEVELOPMENT.md) for the current commands. This plan follows the [Project Brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md), and [measurement protocol](BENCHMARKING.md).
 
 Phases are completed based on verified outcomes. Calendar estimates should follow the PoC, once the cost of WASM integration is clearer. Timing boundaries are introduced early; the full Race and experiments follow visualization and PWA support, as required by AGENTS.md. Keep `README.md` empty for now and record setup instructions in `docs/`.
 
@@ -41,6 +41,8 @@ Phases 3A and 3B are independent after Phase 2. For one developer, start with 3A
 ## Phase 2 — Contract, generator, and 2D MVP
 
 **Work:** Implement the v1 contract, identical validation, value-noise/fBm in the core, and shared size limits. Fix the hash implementation and formulas, reference outputs, and numerical tolerance. Replace the test array with a real heightmap; add parameter controls, mode selection, a 2D preview, and real timings. Cross-runtime comparison at this stage is a test, not the full Race UI.
+
+Step 1 is complete: `HeightMapRequest`, `HeightMapLimits`, `HeightMapValidator`/`ValidationError`, and `HeightMapResult` are implemented in Core with boundary, non-finite, null, ordering, and extreme-dimension tests. The `GenerationResponse` envelope remains documented for host integration.
 
 **Done when:**
 
@@ -86,6 +88,6 @@ Adaptive Mode, AOT, Web Workers, binary transport, richer biomes/erosion, preset
 
 ## Next implementation task
 
-> Start Phase 2: implement the v1 heightmap contract, shared parameter validation, and deterministic 2D value-noise/fBm generation in `WorldGenerator.Core`. Add reference fixtures and tests, expose the heightmap through both hosts, and replace the probe page with parameter controls, a minimal 2D preview, local/remote correctness checks, and loading/error states. Do not add the Architecture Race, performance comparison view, Three.js, or service workers yet. Leave README.md empty for now.
+> Continue Phase 2: implement deterministic 2D value-noise/fBm generation in `WorldGenerator.Core` against the implemented v1 request/result contracts and `HeightMapValidator`. Add reference fixtures and tests, expose the heightmap through both hosts, and replace the probe page with parameter controls, a minimal 2D preview, local/remote correctness checks, and loading/error states. Do not add the Architecture Race, performance comparison view, Three.js, or service workers yet. Leave README.md empty for now.
 
 Work on one acceptance criterion at a time, update documentation alongside decisions, and distinguish verified results from assumptions. Add new dependencies only when the relevant phase begins.

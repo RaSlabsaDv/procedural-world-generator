@@ -8,11 +8,11 @@ The interoperability PoC is implemented for both execution paths:
 - `src/wasm/WorldGenerator.Wasm.csproj`: a standalone browser WebAssembly host that references Core and exposes `[JSExport]` methods.
 - `src/api/WorldGenerator.Api.csproj`: an ASP.NET Core minimal API that references the same Core project.
 - `src/client`: a minimal standalone Angular application that runs scalar and bulk-array checks through WASM and the API.
-- `tests/core/WorldGenerator.Core.Tests.csproj`: xUnit tests for the scalar and bulk-array contracts.
+- `tests/core/WorldGenerator.Core.Tests.csproj`: xUnit tests for the probe and heightmap contracts, including validation boundaries.
 - `tests/api/WorldGenerator.Api.Tests.csproj`: HTTP contract tests for the API endpoints and error responses.
 - `ProceduralWorldGenerator.slnx`: the solution containing the .NET projects.
 
-The app does not contain an Architecture Race or a performance comparison view. `README.md` remains empty. Terrain generation, Three.js, and PWA support belong to later phases.
+The app does not contain an Architecture Race or a performance comparison view. `README.md` remains empty. Phase 2 Step 1 adds the heightmap contracts and canonical validation; generation, host heightmap endpoints, Three.js, and PWA support belong to later steps.
 
 ## Prerequisites and commands
 
@@ -93,8 +93,38 @@ Verified in the current environment:
 - Angular CLI 22.2.6, Node.js 24.20.0, npm 11.19.0.
 - Release WASM publish and the single-origin production bundle load from `http://localhost:8090/` without a development server.
 - All local and remote page checks pass. Both maximum-array digests equal `cbd49d9128202d264bddde63406dd224d2a0d4f0d841bed3697a1f17ff424dd8`.
-- Native build has zero warnings; all 22 Core tests and all 7 API tests pass; both Angular unit tests pass.
+- Native build has zero warnings; all 60 Core tests and all 7 API tests pass; both Angular unit tests pass.
 - A blocked `/api` request produces the expected remote availability error.
+
+## Heightmap contracts and validation
+
+`WorldGenerator.Core` now defines the canonical v1 request, limits, validation errors, and result contract. Generation itself is not implemented yet.
+
+```csharp
+using WorldGenerator.Core;
+
+var request = new HeightMapRequest(
+    Seed: 42,
+    Width: 256,
+    Height: 256,
+    NoiseScale: 0.03,
+    Octaves: 4,
+    HeightMultiplier: 30.0,
+    AlgorithmVersion: HeightMapLimits.SupportedAlgorithmVersion);
+
+IReadOnlyList<ValidationError> errors = HeightMapValidator.Validate(request);
+bool valid = HeightMapValidator.IsValid(request);
+```
+
+| Type | Contract |
+| --- | --- |
+| `HeightMapRequest` | Immutable positional record; every constructor parameter is required and all Int32 seeds are valid |
+| `HeightMapLimits` | Named v1 constants for dimensions, cell count, noise scale, octaves, height multiplier, and supported algorithm version |
+| `HeightMapValidator.Validate` | Returns all applicable `ValidationError` values in deterministic field order; a null request returns `request.required` |
+| `ValidationError` | Immutable record with `Code`, `Field`, and English `Message` |
+| `HeightMapResult` | Result contract with `Width`, `Height`, `Values`, and `AlgorithmVersion`; values are row-major finite float32 heights after the height multiplier |
+
+Validation error codes are `request.required`, `field.required`, `value.out_of_range`, `value.not_finite`, `cell_count.exceeded`, and `algorithm_version.unsupported`. The validator checks the algorithm version with ordinal, case-sensitive equality and computes `width * height` with `long` arithmetic. Invalid values are reported, never rounded, clamped, or replaced with defaults; hosts must consume this validator instead of duplicating its rules. A `GenerationResponse` envelope (`result`, `computeMs`, `coreBuildId`, `workload`) is documented in the [architecture](ARCHITECTURE.md) and will be implemented in the host integration step.
 
 ## Computation probe
 
@@ -128,6 +158,6 @@ This probe supplies test data for calls and bulk transfer. It is not the terrain
 
 ## Next integration step
 
-Implement the Phase 2 heightmap contract and generator in `WorldGenerator.Core`: validation, 2D value-noise/fBm, deterministic reference outputs, and a shared batched result for both hosts. Then replace the probe with the real heightmap workload in the Angular local/remote checks and add the minimal 2D preview.
+Implement the Phase 2 heightmap generator in `WorldGenerator.Core` against the now-implemented request/result contracts and validator: 2D value-noise/fBm, deterministic reference outputs, and a shared batched result for both hosts. Then expose the heightmap through both hosts and replace the probe with the real workload in the Angular local/remote checks, adding a minimal 2D preview.
 
 Keep mathematical algorithms in Core, keep transport and timers in the thin hosts, and preserve identical parameters and validation for both execution paths. Do not add the Architecture Race or a performance comparison view yet. See the [architecture](ARCHITECTURE.md), [roadmap](IMPLEMENTATION_PLAN.md), and [measurement protocol](BENCHMARKING.md).

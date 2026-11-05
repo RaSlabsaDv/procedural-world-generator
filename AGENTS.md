@@ -34,6 +34,11 @@ Read `docs/PROJECT_BRIEF.md` before implementing new features or making architec
 5. Explain architectural changes before introducing new dependencies.
 6. Do not implement optional features unless explicitly requested.
 
+## Code Conventions
+
+- Prefer compact positional C# records for immutable data contracts when every field is required and has no defaults.
+- Use property-based records only when a contract needs optional or defaulted members.
+
 ## Priorities
 
 1. Establish Angular-to-C# WebAssembly interoperability.

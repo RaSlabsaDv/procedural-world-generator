@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. The terrain generator and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
+**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 Step 1 now provides the canonical heightmap request/result contracts and request validation; the terrain generator, host heightmap endpoints, and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
 
 ## 1. Components and dependencies
 
@@ -52,7 +52,7 @@ Core has no dependencies on HTTP, JSON, the DOM, Three.js, or timers. TypeScript
 
 ## 2. Contract v1
 
-Proposed for implementation during the heightmap phase; tests establish the contract before measurements begin.
+The request and result contracts are implemented in `WorldGenerator.Core`; host integration and generation are the next Phase 2 steps. Tests establish the contract before measurements begin.
 
 ```json
 {
@@ -73,9 +73,22 @@ Proposed for implementation during the heightmap phase; tests establish the cont
 | `noiseScale` | Finite number from 0.0001 to 1; sampling frequency per cell |
 | `octaves` | Integer from 1 to 8 |
 | `heightMultiplier` | Finite number from 0 to 1000; height scale in world units |
-| `algorithmVersion` | Exact supported version; an unknown version is an error |
+| `algorithmVersion` | Exactly `value-noise-fbm-v1`, compared with ordinal, case-sensitive equality |
 
 These are initial limits, not a verified memory or performance budget. The PoC or profiling may require lowering them equally for both modes. Raising the limits is a separate decision made before a new measurement campaign.
+
+`HeightMapRequest` is an immutable positional record whose constructor requires every field. `HeightMapLimits` exposes the named v1 constants (including `SupportedAlgorithmVersion = "value-noise-fbm-v1"`). `HeightMapValidator.Validate` returns every applicable structured `ValidationError` without rounding, clamping, or substituting defaults; `IsValid` is a convenience wrapper. A null request produces one `request.required` error rather than an exception. Errors are ordered deterministically by request field: `width`, `height`, cell count, `noiseScale`, `octaves`, `heightMultiplier`, `algorithmVersion`.
+
+| Error code | Meaning |
+| --- | --- |
+| `request.required` | The request object is null |
+| `field.required` | A required field is null or empty (currently the algorithm version) |
+| `value.out_of_range` | A finite value is outside its inclusive range |
+| `value.not_finite` | A floating-point value is NaN or an infinity |
+| `cell_count.exceeded` | `width × height` exceeds 262144, using overflow-safe arithmetic |
+| `algorithm_version.unsupported` | The version is nonempty but not exactly `value-noise-fbm-v1` |
+
+Hosts must call this validator rather than duplicate the limits or comparison rules. Transport parsing and detection of missing wire fields remain host concerns and must not turn omitted fields into valid default values. `HeightMapResult` contains `width`, `height`, `values` (`float[]`), and `algorithmVersion`.
 
 ```text
 HeightMapResult:
@@ -91,6 +104,8 @@ GenerationResponse:
 ```
 
 Data is flattened as `values[y * width + x]`, with `x` increasing within each row. The length equals `width × height`, and all values are finite. Core has already scaled the heights; the renderer must not apply the multiplier a second time.
+
+`GenerationResponse` is a host transport envelope, not a Core model: it belongs outside `WorldGenerator.Core` because it carries host measurement and build metadata. No shared transport layer exists yet, so its implementation is deferred to the host integration step rather than added to Core or a new project. `computeMs` measures generation after validation and excludes serialization, interop, transport, and rendering. `coreBuildId` identifies the shared Core revision used by each host. `workload` is metadata describing the measured computation, not a user-controlled generation parameter.
 
 In phase 3B, the result gains a `biomeIds` array in the same order: `byte[]` in C#, a JSON array of integer codes at the boundary, and `Uint8Array` in the client. Classification belongs to Core and is included in `computeMs` in both modes; `workload` becomes `heightmap+biomes`. The codes, thresholds, and a new version of the extended contract/algorithm must be defined by that phase. The final campaign uses this same workload in both modes.
 
