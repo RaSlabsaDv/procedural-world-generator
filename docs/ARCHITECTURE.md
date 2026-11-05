@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 Step 1 now provides the canonical heightmap request/result contracts, request validation, and a shared host-owned `GenerationResponse` envelope; the terrain generator, host heightmap endpoints, and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
+**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 now provides the canonical heightmap request/result contracts, request validation, a shared host-owned `GenerationResponse` envelope, and the deterministic `value-noise-fbm-v1` Core generator; host heightmap endpoints, the 2D MVP, and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
 
 ## 1. Components and dependencies
 
@@ -53,7 +53,7 @@ Core has no dependencies on HTTP, JSON, the DOM, Three.js, or timers. TypeScript
 
 ## 2. Contract v1
 
-The request and result contracts are implemented in `WorldGenerator.Core`; host integration and generation are the next Phase 2 steps. Tests establish the contract before measurements begin.
+The request and result contracts and the Core generator are implemented in `WorldGenerator.Core`; host heightmap integration and the 2D MVP are the next Phase 2 steps. Tests establish the contract before measurements begin.
 
 ```json
 {
@@ -114,13 +114,32 @@ All request fields are required. Invalid values are neither rounded nor replaced
 
 ## 3. Generator and determinism
 
-Initial implementation: 2D value noise with smooth interpolation, combined across fBm octaves. The parameters `lacunarity = 2` and `persistence = 0.5` are fixed by the algorithm version, without additional UI controls.
+`HeightMapGenerator.Generate` implements `value-noise-fbm-v1` synchronously on one thread and returns independent storage for each call. It calls `HeightMapValidator.Validate` before allocating output and throws `ArgumentNullException` for a null request or `ArgumentException` with parameter name `request` for invalid input. Host timing must account for this: `Generate` includes validation, so a stopwatch around that call does not measure generation alone. Future host integration will start its `computeMs` timer after host-side validation and immediately before generator work.
 
-- Sampling coordinates are `(x * noiseScale, y * noiseScale)`; increasing the dimensions expands the map area.
-- Choose and document a specific integer hash for noise lattice points, including its seed handling, constants, and explicit `uint` wraparound arithmetic. Do not rely on `GetHashCode()` or an unspecified `Random` implementation.
-- Normalize the octave sum to `[0, 1]` using the sum of amplitudes, then multiply by `heightMultiplier`. Do not normalize using the minimum and maximum of the individual map.
-- Fix the operation order; use `double` for intermediate values and `float` for final heights. The baseline is single-threaded in both hosts.
-- Before completing the generator phase, document the exact hash, interpolation, and rounding rules, and add reference tests, including a negative seed, zero height, and a rectangular map.
+The algorithm is fixed as follows:
+
+- Reinterpret the signed seed as `uint` using an unchecked conversion and use the same seed for every octave.
+- Start with frequency `1.0` and amplitude `1.0`; use `lacunarity = 2` and `persistence = 0.5`. Process octaves in ascending order.
+- For each cell in row-major order, sample `sampleX = x * noiseScale * frequency` and `sampleY = y * noiseScale * frequency`.
+- Select the lattice cell with `Math.Floor` for both coordinates. For each fractional coordinate `t`, apply quintic smoothing: `t * t * t * (t * (t * 6 - 15) + 10)`.
+- Interpolate with `Lerp(a, b, t) = a + (b - a) * t`, along x first and then along y.
+- Hash integer lattice coordinates with explicit `uint` wraparound arithmetic:
+
+```csharp
+var hash = unchecked((uint)x * 0x8DA6B343u);
+hash = unchecked(hash + (uint)y * 0xD8163841u);
+hash = unchecked(hash + seed * 0xCB1AB31Fu);
+hash ^= hash >> 16;
+hash = unchecked(hash * 0x7FEB352Du);
+hash ^= hash >> 15;
+hash = unchecked(hash * 0x846CA68Bu);
+hash ^= hash >> 16;
+return hash * (1.0 / 4_294_967_296.0);
+```
+
+- For each octave, accumulate `noise * amplitude` and the amplitude sum. Then multiply frequency by `2` and amplitude by `0.5` for the next octave.
+- Normalize with `Math.Clamp(sum / amplitudeSum, 0.0, 1.0)` and return `(float)(normalized * heightMultiplier)`. Do not normalize using the generated map's minimum and maximum.
+- Use `double` for intermediates and an explicit cast to `float` for final heights.
 
 Numerical tolerance and full-array comparison are described in the [measurement protocol](BENCHMARKING.md). Changes to formulas or biome rules require a new version; build changes are recorded separately using `coreBuildId`.
 
