@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** the shared `WorldGenerator.Core` computation probe, native tests, standalone WASM host, and minimal Angular local path are implemented. The Release WASM bundle has been loaded from a static production build, and scalar, bulk-array, runtime-reuse, and publishing checks pass. The ASP.NET Core API and terrain generator remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
+**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. The terrain generator and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
 
 ## 1. Components and dependencies
 

@@ -2,15 +2,17 @@
 
 ## Current implementation
 
-The local WebAssembly path of the interoperability PoC is implemented:
+The interoperability PoC is implemented for both execution paths:
 
 - `src/core/WorldGenerator.Core.csproj`: a pure C# class library targeting `net10.0`, with no external package dependencies.
 - `src/wasm/WorldGenerator.Wasm.csproj`: a standalone browser WebAssembly host that references Core and exposes `[JSExport]` methods.
-- `src/client`: a minimal standalone Angular application that loads the published host and runs scalar and bulk-array checks.
+- `src/api/WorldGenerator.Api.csproj`: an ASP.NET Core minimal API that references the same Core project.
+- `src/client`: a minimal standalone Angular application that runs scalar and bulk-array checks through WASM and the API.
 - `tests/core/WorldGenerator.Core.Tests.csproj`: xUnit tests for the scalar and bulk-array contracts.
+- `tests/api/WorldGenerator.Api.Tests.csproj`: HTTP contract tests for the API endpoints and error responses.
 - `ProceduralWorldGenerator.slnx`: the solution containing the .NET projects.
 
-The ASP.NET Core API is not implemented yet. `README.md` remains empty. Terrain generation, Three.js, and PWA support belong to later phases.
+The app does not contain an Architecture Race or a performance comparison view. `README.md` remains empty. Terrain generation, Three.js, and PWA support belong to later phases.
 
 ## Prerequisites and commands
 
@@ -36,7 +38,7 @@ dotnet build ProceduralWorldGenerator.slnx --configuration Release --no-restore
 dotnet test ProceduralWorldGenerator.slnx --configuration Release --no-build --no-restore
 ```
 
-The test project's `packages.lock.json` records its resolved dependencies. When intentionally changing package references, regenerate the lockfile with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review the changes.
+The test projects' `packages.lock.json` files record their resolved dependencies. When intentionally changing package references, regenerate the lockfiles with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review the changes.
 
 ## WASM host and Angular PoC
 
@@ -49,29 +51,50 @@ The WASM host contains two exports:
 
 `src/wasm/wwwroot/world-generator-host.js` imports `_framework/dotnet.js`, initializes the runtime once, memoizes the exports, and exposes the init duration and initialization count. The Angular service keeps one host module and runtime per page.
 
-`scripts/publish-wasm.sh` runs a Release publish, then copies `_framework` and the host loader into `src/client/public/wasm/`. That directory is generated and ignored by Git. The client's `prebuild` script invokes the publish script, so the complete production build is:
+`scripts/publish-wasm.sh` runs a Release publish, then copies `_framework` and the host loader into `src/client/public/wasm/`. That directory is generated and ignored by Git. The client's `prebuild` script invokes the publish script.
+
+## API and production deployment
+
+The API exposes the same probe operations as the WASM host:
+
+| Endpoint | Request | Success response |
+| --- | --- | --- |
+| `POST /api/v1/probe/add` | `{ "left": 20, "right": 22 }` | `{ "sum": 42 }` |
+| `POST /api/v1/probe/samples` | `{ "seed": 42, "count": 5 }` | `{ "values": [...], "computeMs": number }` |
+| `GET /api/health` | none | `{ "status": "ok" }` |
+
+Both probe endpoints use `WorldGenerator.Core`. Missing fields, unexpected fields, invalid counts, and integer overflow return `400` with an error code; unexpected failures return `500`. `computeMs` measures only the Core call in the host and is not displayed as an in-app comparison.
+
+For development, start the API and Angular separately; the Angular proxy forwards `/api` to port 5180:
+
+```sh
+dotnet run --project src/api
+```
 
 ```sh
 cd src/client
 npm ci
-npm run build
+npm run build:wasm
+npm start
 ```
 
-`npm run build:wasm` performs only the WASM publish and copy step. To serve the production output without the Angular development server:
+For a single-origin production bundle, `scripts/publish-app.sh` builds Angular (including the WASM assets), publishes the API, and copies the Angular output into the API's `wwwroot`:
 
 ```sh
-python3 -m http.server 8080 --directory src/client/dist/client/browser
+./scripts/publish-app.sh
+dotnet artifacts/app/WorldGenerator.Api.dll --urls http://localhost:8080
 ```
 
-Open `http://localhost:8080/` and select **Run checks**. The page verifies the scalar result, the five-value fixture, an empty array, the maximum 262,144-value array, a repeated call, and runtime reuse. The maximum array is also hashed as little-endian float32 data and compared with the native fixture value.
+Open `http://localhost:8080/` and select **Run local checks** and **Run remote checks**. Both paths verify the scalar result, the five-value fixture, an empty array, the maximum 262,144-value array, and a repeated call. Both maximum-array results are hashed as little-endian float32 data and compared with the native fixture value. The local section also checks runtime reuse; the remote section checks the API's invalid-input response. If the API is unreachable, the remote section reports a clear availability error.
 
 Verified in the current environment:
 
 - .NET SDK 10.0.401 with `wasm-tools` workload `10.0.114/10.0.100`.
 - Angular CLI 22.2.6, Node.js 24.20.0, npm 11.19.0.
-- Release WASM publish and static production build load from `/wasm/` on `http://localhost:8080/` with no development server.
-- All six page checks pass; the runtime initializes once across two full check sequences (10 Core calls).
-- Native build has zero warnings and all 22 xUnit tests pass; the Angular unit tests pass.
+- Release WASM publish and the single-origin production bundle load from `http://localhost:8090/` without a development server.
+- All local and remote page checks pass. Both maximum-array digests equal `cbd49d9128202d264bddde63406dd224d2a0d4f0d841bed3697a1f17ff424dd8`.
+- Native build has zero warnings; all 22 Core tests and all 7 API tests pass; both Angular unit tests pass.
+- A blocked `/api` request produces the expected remote availability error.
 
 ## Computation probe
 
@@ -105,6 +128,6 @@ This probe supplies test data for calls and bulk transfer. It is not the terrain
 
 ## Next integration step
 
-Add the ASP.NET Core API project referencing the same `WorldGenerator.Core`, with one batched JSON endpoint that mirrors the WASM host contract. Then verify that both hosts return the same scalar and every array element for zero, small, and maximum counts, and document the exact commands.
+Implement the Phase 2 heightmap contract and generator in `WorldGenerator.Core`: validation, 2D value-noise/fBm, deterministic reference outputs, and a shared batched result for both hosts. Then replace the probe with the real heightmap workload in the Angular local/remote checks and add the minimal 2D preview.
 
-Keep `[JSExport]`, JSON serialization, runtime initialization, and timing in the thin hosts; Core remains free of browser, HTTP, and JSON dependencies. See the [architecture](ARCHITECTURE.md), [roadmap](IMPLEMENTATION_PLAN.md), and Microsoft's [standalone .NET browser interop guidance](https://learn.microsoft.com/en-us/aspnet/core/client-side/dotnet-interop/wasm-browser-app?view=aspnetcore-10.0).
+Keep mathematical algorithms in Core, keep transport and timers in the thin hosts, and preserve identical parameters and validation for both execution paths. Do not add the Architecture Race or a performance comparison view yet. See the [architecture](ARCHITECTURE.md), [roadmap](IMPLEMENTATION_PLAN.md), and [measurement protocol](BENCHMARKING.md).

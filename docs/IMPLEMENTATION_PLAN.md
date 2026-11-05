@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0–1 are in progress. The shared C# library, scalar/bulk-array probe, solution, native tests, standalone WASM host, and minimal Angular local path are implemented. The scalar, bulk-array, runtime-reuse, and production-publishing checks pass for the WASM path. The ASP.NET Core API and the API-side parity checks remain pending. See [development instructions](DEVELOPMENT.md) for the current commands. This plan follows the [Project Brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md), and [measurement protocol](BENCHMARKING.md).
+**Status:** Phases 0–1 are complete. The shared C# library, scalar/bulk-array probe, solution, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. Scalar and bulk-array results, runtime reuse, API error handling, and a single-origin production build are verified. Phase 2 (contract, generator, and 2D MVP) is next. See [development instructions](DEVELOPMENT.md) for the current commands. This plan follows the [Project Brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md), and [measurement protocol](BENCHMARKING.md).
 
 Phases are completed based on verified outcomes. Calendar estimates should follow the PoC, once the cost of WASM integration is clearer. Timing boundaries are introduced early; the full Race and experiments follow visualization and PWA support, as required by AGENTS.md. Keep `README.md` empty for now and record setup instructions in `docs/`.
 
@@ -86,6 +86,6 @@ Adaptive Mode, AOT, Web Workers, binary transport, richer biomes/erosion, preset
 
 ## Next implementation task
 
-> Add the ASP.NET Core API project referencing `WorldGenerator.Core`, expose the batched JSON probe endpoint, and verify that Local and Remote return identical scalar and array results, including zero and maximum counts. Add the minimal Angular remote adapter and API error state, then update the exact Linux commands and observed results in `docs/`. Leave README.md empty for now. Terrain, Three.js, service workers, and optimizations belong to later phases.
+> Start Phase 2: implement the v1 heightmap contract, shared parameter validation, and deterministic 2D value-noise/fBm generation in `WorldGenerator.Core`. Add reference fixtures and tests, expose the heightmap through both hosts, and replace the probe page with parameter controls, a minimal 2D preview, local/remote correctness checks, and loading/error states. Do not add the Architecture Race, performance comparison view, Three.js, or service workers yet. Leave README.md empty for now.
 
 Work on one acceptance criterion at a time, update documentation alongside decisions, and distinguish verified results from assumptions. Add new dependencies only when the relevant phase begins.
