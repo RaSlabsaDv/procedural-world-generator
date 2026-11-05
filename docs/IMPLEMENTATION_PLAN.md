@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0–1 are complete. The shared C# library, scalar/bulk-array probe, solution, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. Scalar and bulk-array results, runtime reuse, API error handling, and a single-origin production build are verified. Phase 2 Step 1 now provides the v1 heightmap request/result contracts and canonical validation; the generator, host heightmap endpoints, and 2D MVP remain next. See [development instructions](DEVELOPMENT.md) for the current commands. This plan follows the [Project Brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md), and [measurement protocol](BENCHMARKING.md).
+**Status:** Phases 0–1 are complete. The shared C# library, scalar/bulk-array probe, solution, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. Scalar and bulk-array results, runtime reuse, API error handling, and a single-origin production build are verified. Phase 2 Step 1 now provides the v1 heightmap request/result contracts, canonical validation, and shared host transport envelope; the generator, host heightmap endpoints, and 2D MVP remain next. See [development instructions](DEVELOPMENT.md) for the current commands. This plan follows the [Project Brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md), and [measurement protocol](BENCHMARKING.md).
 
 Phases are completed based on verified outcomes. Calendar estimates should follow the PoC, once the cost of WASM integration is clearer. Timing boundaries are introduced early; the full Race and experiments follow visualization and PWA support, as required by AGENTS.md. Keep `README.md` empty for now and record setup instructions in `docs/`.
 
@@ -42,7 +42,7 @@ Phases 3A and 3B are independent after Phase 2. For one developer, start with 3A
 
 **Work:** Implement the v1 contract, identical validation, value-noise/fBm in the core, and shared size limits. Fix the hash implementation and formulas, reference outputs, and numerical tolerance. Replace the test array with a real heightmap; add parameter controls, mode selection, a 2D preview, and real timings. Cross-runtime comparison at this stage is a test, not the full Race UI.
 
-Step 1 is complete: `HeightMapRequest`, `HeightMapLimits`, `HeightMapValidator`/`ValidationError`, and `HeightMapResult` are implemented in Core with boundary, non-finite, null, ordering, and extreme-dimension tests. The `GenerationResponse` envelope remains documented for host integration.
+Step 1 is complete: `HeightMapRequest`, `HeightMapLimits`, `HeightMapValidator`/`ValidationError`, and `HeightMapResult` are implemented in Core with boundary, non-finite, null, ordering, and extreme-dimension tests. The `GenerationResponse` envelope is implemented as shared host-owned source linked into both hosts; heightmap generation and host endpoints remain next.
 
 **Done when:**
 

@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 Step 1 now provides the canonical heightmap request/result contracts and request validation; the terrain generator, host heightmap endpoints, and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
+**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 Step 1 now provides the canonical heightmap request/result contracts, request validation, and a shared host-owned `GenerationResponse` envelope; the terrain generator, host heightmap endpoints, and the Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
 
 ## 1. Components and dependencies
 
@@ -27,11 +27,12 @@ Proposed structure after bootstrapping:
 src/
   client/          Angular, adapters, UI, visualization, runner
   core/            WorldGenerator.Core: models, validation, algorithms
+  hosts/           GenerationResponse: shared host transport source
   wasm/            WorldGenerator.Wasm: JS exports, runtime startup
   api/             WorldGenerator.Api: HTTP endpoints
 tests/
   core/            determinism, validation, reference outputs
-  api/             HTTP contract and errors
+  api/             HTTP and host serialization contracts
   browser/         WASM/API parity, production and offline smoke tests
 scripts/           only the necessary build/packaging scripts
 docs/
@@ -105,7 +106,7 @@ GenerationResponse:
 
 Data is flattened as `values[y * width + x]`, with `x` increasing within each row. The length equals `width × height`, and all values are finite. Core has already scaled the heights; the renderer must not apply the multiplier a second time.
 
-`GenerationResponse` is a host transport envelope, not a Core model: it belongs outside `WorldGenerator.Core` because it carries host measurement and build metadata. No shared transport layer exists yet, so its implementation is deferred to the host integration step rather than added to Core or a new project. `computeMs` measures generation after validation and excludes serialization, interop, transport, and rendering. `coreBuildId` identifies the shared Core revision used by each host. `workload` is metadata describing the measured computation, not a user-controlled generation parameter.
+`GenerationResponse` is a host transport envelope, not a Core model: it belongs outside `WorldGenerator.Core` because it carries host measurement and build metadata. It is implemented as `src/hosts/GenerationResponse.cs`, a host-owned source file linked into both `WorldGenerator.Wasm` and `WorldGenerator.Api`; no separate project or package is required. The positional record contains `Result`, `ComputeMs`, and `CoreBuildId`, while `Workload` is a getter-only property fixed to `"heightmap"`. The WASM host registers the envelope in its JSON source-generation context, and both hosts serialize the camelCase names `result`, `computeMs`, `coreBuildId`, and `workload`. `computeMs` measures generation after validation and excludes serialization, interop, transport, and rendering. `coreBuildId` identifies the shared Core revision used by each host, not the host build. `workload` is metadata describing the measured computation, not a user-controlled generation parameter.
 
 In phase 3B, the result gains a `biomeIds` array in the same order: `byte[]` in C#, a JSON array of integer codes at the boundary, and `Uint8Array` in the client. Classification belongs to Core and is included in `computeMs` in both modes; `workload` becomes `heightmap+biomes`. The codes, thresholds, and a new version of the extended contract/algorithm must be defined by that phase. The final campaign uses this same workload in both modes.
 
