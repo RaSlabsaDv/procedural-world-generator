@@ -29,7 +29,7 @@ internal static class ValueNoise
 
     private static double Lerp(double a, double b, double t) => a + (b - a) * t;
 
-    private static double LatticeValue(int x, int y, uint seed)
+    internal static double LatticeValue(int x, int y, uint seed)
     {
         var hash = unchecked((uint)x * 0x8DA6B343u);
         hash = unchecked(hash + (uint)y * 0xD8163841u);

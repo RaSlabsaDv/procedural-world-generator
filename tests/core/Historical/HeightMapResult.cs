@@ -1,4 +1,4 @@
-namespace WorldGenerator.Core;
+namespace WorldGenerator.Core.Tests.Historical;
 
 /// <summary>
 /// Canonical result contract for heightmap generation.

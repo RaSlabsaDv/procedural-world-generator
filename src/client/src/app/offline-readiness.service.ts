@@ -8,6 +8,7 @@ import {
   TerrainRequest,
   HeightMapRequest,
 } from './terrain.models';
+import { SIMULATION_PARAMETERS } from './terrain-parameters';
 import { OperationLock } from './operation-lock.service';
 import { WasmHostService } from './wasm-host.service';
 
@@ -25,6 +26,10 @@ const READINESS_REQUEST: HeightMapRequest = Object.freeze({
 
 const READINESS_TERRAIN: TerrainRequest = Object.freeze({
   heightMap: READINESS_REQUEST,
+  plainsCoverage: SIMULATION_PARAMETERS.plainsCoverage.defaultValue,
+  mountainCoverage: SIMULATION_PARAMETERS.mountainCoverage.defaultValue,
+  globalMoisture: SIMULATION_PARAMETERS.globalMoisture.defaultValue,
+  seaLevel: SIMULATION_PARAMETERS.seaLevel.defaultValue,
   mountainStrength: 0.55,
   warpStrength: 2,
   iterations: 0,

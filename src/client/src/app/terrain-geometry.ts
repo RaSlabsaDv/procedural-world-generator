@@ -2,9 +2,11 @@ import { BufferAttribute, BufferGeometry, Color } from 'three';
 import { TerrainResponse } from './terrain.models';
 
 // Presentation only: numeric biome IDs are supplied by Core; no classification here.
-export const BIOME_PALETTE = [0x286caa, 0x9cb85a, 0x34714b, 0xb8b5ac] as const;
+export const BIOME_PALETTE = [0x37768b, 0xa7b976, 0x56835c, 0xc1ac78, 0xa6a397] as const;
 
-export function terrainGeometry(result: TerrainResponse['result']): BufferGeometry {
+export function terrainGeometry(
+  result: Pick<TerrainResponse['result'], 'width' | 'height' | 'values' | 'biomes'>,
+): BufferGeometry {
   const { width, height, values, biomes } = result;
   const positions = new Float32Array(values.length * 3);
   const colors = new Float32Array(values.length * 3);

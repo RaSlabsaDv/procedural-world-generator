@@ -1,4 +1,5 @@
 using Xunit;
+using WorldGenerator.Core.Tests.Historical;
 
 namespace WorldGenerator.Core.Tests;
 
@@ -35,9 +36,9 @@ public sealed class BiomeTests
     public void Generation_ReturnsIndependentDeterministicBiomesFromStoredHeights(double multiplier)
     {
         var request = new TerrainRequest(new(int.MinValue, 17, 9, 0.37, 4, multiplier,
-            HeightMapLimits.SupportedAlgorithmVersion), .55, 2, 2, .05, .1, TerrainLimits.AlgorithmVersion);
-        var a = TerrainGenerator.Generate(request).HeightMap;
-        var b = TerrainGenerator.GenerateValidated(TerrainValidator.Prepare(request).ValidatedRequest!).HeightMap;
+            HeightMapLimits.SupportedAlgorithmVersion), .55, 2, 2, .05, .1, .45, .3, .65, .16, TerrainLimits.AlgorithmVersion);
+        var a = HistoricalTerrainV1.Generate(request).HeightMap;
+        var b = HistoricalTerrainV1.GenerateValidated(TerrainValidator.Prepare(request).ValidatedRequest!).HeightMap;
         Assert.Equal(HeightMapResult.CurrentVersion, a.ResultVersion);
         Assert.Equal(a.Values.Length, a.Biomes.Length);
         Assert.Equal(a.Values, b.Values);

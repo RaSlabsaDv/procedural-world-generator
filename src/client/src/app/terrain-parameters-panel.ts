@@ -50,6 +50,10 @@ export class TerrainParametersPanel {
           map('height'),
           map('heightMultiplier'),
           simulation('mountainStrength'),
+          simulation('plainsCoverage'),
+          simulation('mountainCoverage'),
+          simulation('seaLevel'),
+          simulation('globalMoisture'),
         ],
       },
       {

@@ -55,6 +55,32 @@ export const MAP_PARAMETERS = {
 } as const satisfies Record<keyof Omit<HeightMapRequest, 'algorithmVersion'>, ParameterDefinition>;
 
 export const SIMULATION_PARAMETERS = {
+  plainsCoverage: {
+    label: 'Plains coverage',
+    defaultValue: 0.45,
+    step: '0.05',
+    description: 'Tendency toward broad low-relief areas. Plains + mountains must be at most 1.',
+  },
+  mountainCoverage: {
+    label: 'Mountain coverage',
+    defaultValue: 0.3,
+    step: '0.05',
+    description:
+      'Where ranges occur, independently of their strength. Remaining regions become hills.',
+  },
+  globalMoisture: {
+    label: 'Global moisture',
+    defaultValue: 0.65,
+    step: '0.05',
+    description:
+      'Regional humidity baseline for grasslands and forests; distinct from erosion rainfall.',
+  },
+  seaLevel: {
+    label: 'Sea level',
+    defaultValue: 0.16,
+    step: '0.01',
+    description: 'Fraction of the height bound. Only boundary-connected low terrain is ocean.',
+  },
   mountainStrength: {
     label: 'Mountain strength',
     defaultValue: 0.55,

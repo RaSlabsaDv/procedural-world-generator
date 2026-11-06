@@ -7,11 +7,19 @@ public sealed record TerrainRequest(
     int Iterations,
     double Rainfall,
     double Evaporation,
+    double PlainsCoverage,
+    double MountainCoverage,
+    double GlobalMoisture,
+    double SeaLevel,
     string AlgorithmVersion);
 
 public static class TerrainLimits
 {
-    public const string AlgorithmVersion = "warped-ridged-hydraulic-v1";
+    public const string AlgorithmVersion = "diverse-landscape-v2";
+    public const int MaxTrees = 16384;
+    public const string ResultVersion = "landscape-ecology-v2";
+    public const string Workload = "landscape-ecology-hydraulic-v2";
+    public const string ExecutionProfile = "landscape-worker-json-v2";
     public const string SimulationVersion = "hydraulic-grid-v1";
     public const int MaxIterations = 2048;
     public const long MaxCellIterations = 33_554_432;
@@ -37,6 +45,12 @@ public static class TerrainValidator
             return new(null, [new("request.required", "request", "A terrain request is required.")]);
         var errors = HeightMapValidator.Validate(request.HeightMap)
             .Select(error => error with { Field = "heightMap." + error.Field }).ToList();
+        Range("plainsCoverage", request.PlainsCoverage, 0, 1);
+        Range("mountainCoverage", request.MountainCoverage, 0, 1);
+        Range("globalMoisture", request.GlobalMoisture, 0, 1);
+        Range("seaLevel", request.SeaLevel, 0, 1);
+        if (double.IsFinite(request.PlainsCoverage) && double.IsFinite(request.MountainCoverage) && request.PlainsCoverage + request.MountainCoverage > 1)
+            errors.Add(new("coverage.exceeded", "mountainCoverage", "Plains and mountain coverage must sum to at most 1."));
         Range("mountainStrength", request.MountainStrength, 0, 1);
         Range("warpStrength", request.WarpStrength, 0, TerrainLimits.MaxWarpStrength);
         if (request.Iterations < 0 || request.Iterations > TerrainLimits.MaxIterations)

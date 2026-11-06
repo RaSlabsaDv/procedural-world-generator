@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `hydraulic-worker-json-v1`, algorithm `warped-ridged-hydraulic-v1`, result `heightmap-biomes-v1`, simulation `hydraulic-grid-v1`, workload `terrain-hydraulic-v1`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v2`, algorithm `diverse-landscape-v2`, result `landscape-ecology-v2`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v2`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -33,7 +33,7 @@ Freeze the code version (`coreBuildId`, preferably a commit, plus a separate app
 
 The Angular PWA displays host `computeMs`, browser `requestMs`, and the existing loader's one-time `initMs`. The current loader measures worker creation through WASM readiness; worker-side `runtimeMs` reports runtime startup. Importing the loader module precedes both. This is not a complete cold page-load measurement. Offline preparation verifies the cached version and eagerly initializes Local under the shared operation lock before interactive generation. Record this startup/preparation cost and cache state separately; the displayed first interactive Local request is not a cold-runtime measurement. The sequential UI equivalence check performs no repeated trials and excludes comparison and rendering from `requestMs`. Matching dirty or unversioned identities do not establish build compatibility even when numerical values match.
 
-In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. Core time includes composition, simulation allocation/steps, summaries, final conversion and biomes. The timer belongs in thin host code; Core has no HTTP or browser telemetry. Hosts parse through `TerrainTransport` and prepare through `TerrainValidator.Prepare`, then time `TerrainGenerator.GenerateValidated`. Worker messaging and JSON remain adapter overhead in `requestMs`.
+In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. Core time includes composition, simulation allocation/steps, summaries, final conversion, ocean/environment fields, biomes, vegetation density and capped candidate selection. Tree geometry and instance-matrix construction are renderer CPU work, outside Core/request timings. The timer belongs in thin host code; Core has no HTTP or browser telemetry. Hosts parse through `TerrainTransport` and prepare through `TerrainValidator.Prepare`, then time `TerrainGenerator.GenerateValidated`. Worker messaging and JSON remain adapter overhead in `requestMs`.
 
 `coreBuildId` is generated at build time from repository HEAD, checking `global.json`, `src/core`, and `src/hosts` for modifications. It has a `-dirty` suffix for modifications and `unversioned` as an invalid fallback when Git is unavailable, the revision is invalid, or either Git command fails. Failed Git diagnostics must not become build identity. It must not be replaced by an assembly `ModuleVersionId`, which can change without a source change. Both hosts return this value in `TerrainGenerationResponse`; a pair with different build IDs or algorithm versions is incompatible.
 
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree cell indices. Compare every moisture, temperature, slope and density element and every tree transform with the same documented tolerance; compare tree counts and indices exactly. Preserve the execution profile and never pool v1/v2 timings.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -64,15 +64,15 @@ A pair with a correctness failure remains in the raw data with an error status; 
 
 Initial proposal for the pilot:
 
-| Parameter          | Values                                                                                                                                             |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Square map size    | `128×128`, `256×256`, `512×512`                                                                                                                    |
-| Seed               | `42`, `2026`, `-7`                                                                                                                                 |
-| Iterations         | `0`, `32`, `128` (respect the cell-iteration cap)                                                                                                  |
-| Other parameters   | `octaves = 4`, `noiseScale = 0.03`, `heightMultiplier = 30`, `mountainStrength = 0.55`, `warpStrength = 2`, `rainfall = 0.05`, `evaporation = 0.1` |
-| Network conditions | Two fixed profiles                                                                                                                                 |
-| Warm-up            | 3 runs per mode for each combination of size, seed, and profile                                                                                    |
-| Main sample        | 30 runs per mode for each such combination                                                                                                         |
+| Parameter          | Values                                                                                                                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Square map size    | `128×128`, `256×256`, `512×512`                                                                                                                                                                                                                    |
+| Seed               | `42`, `2026`, `-7`                                                                                                                                                                                                                                 |
+| Iterations         | `0`, `32`, `128` (respect the cell-iteration cap)                                                                                                                                                                                                  |
+| Other parameters   | `octaves = 4`, `noiseScale = 0.03`, `heightMultiplier = 30`, `mountainStrength = 0.55`, `warpStrength = 2`, `rainfall = 0.05`, `evaporation = 0.1`, `plainsCoverage = 0.45`, `mountainCoverage = 0.30`, `globalMoisture = 0.65`, `seaLevel = 0.16` |
+| Network conditions | Two fixed profiles                                                                                                                                                                                                                                 |
+| Warm-up            | 3 runs per mode for each combination of size, seed, and profile                                                                                                                                                                                    |
+| Main sample        | 30 runs per mode for each such combination                                                                                                                                                                                                         |
 
 Use the pilot to verify safe sizes and sufficient warm-up. If parameters need to change, do so before the main campaign and record the reason. These numbers are a starting plan, not a guarantee of statistical adequacy.
 
@@ -97,7 +97,7 @@ For each environment, record:
 - API address/topology without secrets; HTTP version, compression, and network profile.
 - Browser cache, service worker, WASM runtime, and server process states.
 
-For payloads, distinguish the number of values, logical float32 size (`width * height * 4` bytes), JSON size in UTF-8, and actual transferred bytes. Compression and transport overhead affect the last quantity. If the tool cannot reliably report transferred bytes, record `null` instead of substituting the logical size.
+For payloads, distinguish the number of values, logical float32 size per field (`width * height * 4` bytes; five grid float fields in v2, plus categories and tree records), JSON size in UTF-8, and actual transferred bytes. Compression and transport overhead affect the last quantity. If the tool cannot reliably report transferred bytes, record `null` instead of substituting the logical size.
 
 ## 7. Cold-start scenarios
 
@@ -143,6 +143,6 @@ The interactive Three.js card reports CPU scene setup and first render submissio
 
 ## Hydraulic workload scaling and worker execution
 
-The hydraulic profile is specified in [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md). Use map size and iteration count as independent axes, including a zero-step composition reference. Iterations add genuine simulation work without enlarging final-only geometry or returning simulation history. No convergence shortcut or no-op repetition is used.
+The hydraulic profile is specified in [LANDSCAPE_V2.md](LANDSCAPE_V2.md). Use map size and iteration count as independent axes, including a zero-step composition reference. Environment fields and bounded vegetation selection are included even at zero steps. Iterations add genuine simulation work without enlarging final-only geometry or returning simulation history. No convergence shortcut or no-op repetition is used.
 
 Offline preparation normally initializes the worker/runtime before interactive generation. Record startup, cache state, worker protocol and execution model separately. `requestMs` includes string serialization, RPC or HTTP, parsing, normalization and validation. C# `computeMs` excludes those costs. The browser smoke matrix through 512x512x128 established scalable work and active main-thread heartbeats, not controlled comparative performance. Raw evidence is generated at ignored `artifacts/hydraulic-verification.json`; the work cap is 33,554,432 cell-iterations and steps are also limited to 2048.

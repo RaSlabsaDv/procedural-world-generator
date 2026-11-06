@@ -24,6 +24,7 @@ import {
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TerrainRun } from './terrain.models';
+import { terrainForest } from './terrain-forest';
 import { terrainGeometry } from './terrain-geometry';
 
 export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
@@ -145,6 +146,7 @@ export class TerrainPreview {
       let controls: OrbitControls | undefined;
       let camera: PerspectiveCamera | undefined;
       let observer: ResizeObserver | undefined;
+      let forest: ReturnType<typeof terrainForest> | undefined;
       let mesh: Mesh<ReturnType<typeof terrainGeometry>, MeshLambertMaterial> | undefined;
       const contextLost = (event: Event) => {
         event.preventDefault();
@@ -164,6 +166,7 @@ export class TerrainPreview {
             target: controls.target.toArray() as [number, number, number],
           };
         controls?.dispose();
+        forest?.dispose();
         mesh?.geometry.dispose();
         mesh?.material.dispose();
         renderer?.dispose();
@@ -183,8 +186,10 @@ export class TerrainPreview {
             new MeshLambertMaterial({ vertexColors: true }),
           );
           scene.add(mesh);
-          scene.add(new AmbientLight(0xffffff, 2));
-          const sunlight = new DirectionalLight(0xffffff, 3);
+          forest = terrainForest(run.response.result);
+          scene.add(forest.trunks, forest.crowns);
+          scene.add(new AmbientLight(0xffffff, 1.6));
+          const sunlight = new DirectionalLight(0xffffff, 1.8);
           sunlight.position.set(-1, 2, 1);
           scene.add(sunlight);
           // Bound the view by the request, not by sampled min/max: both modes share the same scale.
@@ -218,7 +223,7 @@ export class TerrainPreview {
             render();
           };
           const distance =
-            span * 0.8 * Math.max(1, container.clientHeight / Math.max(container.clientWidth, 1));
+            span * 1.05 * Math.max(1, container.clientHeight / Math.max(container.clientWidth, 1));
           camera.position.set(distance, targetHeight + distance, distance);
           controls.update();
           controls.saveState();

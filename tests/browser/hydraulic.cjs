@@ -66,12 +66,16 @@ const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
             octaves: 5,
             algorithmVersion: "value-noise-fbm-v1",
           },
+          plainsCoverage: 0.45,
+          mountainCoverage: 0.3,
+          globalMoisture: 0.65,
+          seaLevel: 0.16,
           mountainStrength: 0.55,
           warpStrength: 2,
           iterations,
           rainfall: 0.05,
           evaporation: 0.1,
-          algorithmVersion: "warped-ridged-hydraulic-v1",
+          algorithmVersion: "diverse-landscape-v2",
         };
         let ticks = 0,
           lastTick = performance.now(),
@@ -100,7 +104,7 @@ const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
           })
         ).json();
         if (
-          local.workload !== "terrain-hydraulic-v1" ||
+          local.workload !== "landscape-ecology-hydraulic-v2" ||
           remote.workload !== local.workload ||
           local.coreBuildId !== remote.coreBuildId ||
           local.simulationVersion !== "hydraulic-grid-v1" ||

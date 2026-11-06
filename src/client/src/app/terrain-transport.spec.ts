@@ -24,6 +24,10 @@ const map = Object.freeze({
 });
 const terrain: TerrainRequest = Object.freeze({
   heightMap: map,
+  plainsCoverage: 0.45,
+  mountainCoverage: 0.3,
+  globalMoisture: 0.65,
+  seaLevel: 0.16,
   mountainStrength: 0.55,
   warpStrength: 2,
   iterations: 2,
@@ -37,6 +41,11 @@ function wire() {
       width: 3,
       height: 2,
       values: [9.2, 6.8, 8.3, 6.7, 12.3, 15.7],
+      moisture: Array(6).fill(0.6),
+      temperature: Array(6).fill(0.7),
+      slope: Array(6).fill(0),
+      vegetationDensity: Array(6).fill(0),
+      trees: [],
       biomes: [1, 0, 1, 0, 1, 2],
       algorithmVersion: TERRAIN_ALGORITHM,
       resultVersion: RESULT_VERSION,
@@ -44,6 +53,7 @@ function wire() {
     parameters: terrain,
     simulationVersion: SIMULATION_VERSION,
     workload: TERRAIN_WORKLOAD,
+    executionProfile: 'landscape-worker-json-v2',
     computeMs: 2,
     coreBuildId: 'test',
     simulation: {

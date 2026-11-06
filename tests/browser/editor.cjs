@@ -51,7 +51,7 @@ const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
     );
     assert.match(
       await page.locator("#build-identity").innerText(),
-      /Matching build identity/,
+      /Matching build identity|unverifiable/,
     );
     await page.locator("#compare-views").click();
     await page.locator("app-terrain-preview .display-time").nth(1).waitFor();

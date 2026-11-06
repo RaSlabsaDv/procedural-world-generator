@@ -1,4 +1,4 @@
-namespace WorldGenerator.Core;
+namespace WorldGenerator.Core.Tests.Historical;
 
 /// <summary>Stable numeric IDs for heightmap-biomes-v1. Colors belong to the renderer.</summary>
 public enum BiomeId

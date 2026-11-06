@@ -6,7 +6,7 @@ public sealed class TerrainTests
 {
     internal static TerrainRequest Request(int iterations = 8) => new(
         new(42, 5, 3, .37, 3, 30, HeightMapLimits.SupportedAlgorithmVersion),
-        .55, 2, iterations, .05, .1, TerrainLimits.AlgorithmVersion);
+        .55, 2, iterations, .05, .1, .45, .3, .65, .16, TerrainLimits.AlgorithmVersion);
 
     [Theory]
     [InlineData(0)]
@@ -18,7 +18,7 @@ public sealed class TerrainTests
             : [9.203316688537598f, 6.8050031661987305f, 8.295624732971191f, 6.664665699005127f, 12.31420612335205f, 15.740657806396484f];
         var request = Request(steps);
         request = request with { HeightMap = request.HeightMap with { Width = 3, Height = 2 } };
-        Assert.Equal(expected, TerrainGenerator.Generate(request).HeightMap.Values);
+        Assert.Equal(expected, Historical.HistoricalTerrainV1.Generate(request).HeightMap.Values);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class TerrainTests
         if (multiplier == 0)
         {
             Assert.All(result.HeightMap.Values, v => Assert.Equal(0, v));
-            Assert.All(result.HeightMap.Biomes, v => Assert.Equal(BiomeId.Water, v));
+            Assert.All(result.HeightMap.Biomes, v => Assert.Equal(LandscapeBiome.Ocean, v));
         }
         Balance(result.Simulation);
     }

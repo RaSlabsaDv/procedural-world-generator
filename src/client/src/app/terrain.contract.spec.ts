@@ -63,7 +63,7 @@ describe('heightmap contract', () => {
     { resultVersion: 'other' },
     { biomes: undefined },
     { biomes: [0] },
-    { biomes: [0, 0, 1, 2, 2, 4] },
+    { biomes: [0, 0, 1, 2, 2, 5] },
     { biomes: [0, 0, 1, 2, 2, -1] },
     { biomes: [0, 0, 1, 2, 2, 1.5] },
     { biomes: 'AAAAAA==' },

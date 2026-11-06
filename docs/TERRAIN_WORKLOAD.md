@@ -1,6 +1,6 @@
 # Terrain hydraulic workload v1
 
-This is the sole supported generator. Its v1 arithmetic is frozen for this implementation. Reproduction commands and environment-specific smoke evidence are in [DEVELOPMENT.md](DEVELOPMENT.md).
+This is the historical v1 workload specification. The current public generator is specified in [LANDSCAPE_V2.md](LANDSCAPE_V2.md). V1 reference equations and literal fixtures remain in tests; it is not exposed as another editor mode. Its arithmetic is frozen. Reproduction commands and environment-specific smoke evidence are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Contract and limits
 

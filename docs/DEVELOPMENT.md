@@ -6,7 +6,7 @@ The application exposes one generator, **Rich terrain + hydraulic erosion**, wit
 
 ## Frontend structure
 
-`App` owns draft and generation state and orchestration. The editor has grouped controls on the left, one primary 3D viewport in the center, and measurements on the right; panels stack on narrow screens. `TerrainParametersPanel` renders typed forms and emits Local/Remote/Verify actions; `TerrainResultsPanel` presents comparison, snapshots, timings and deferred 3D; `PwaStatusPanel` owns readiness/update actions using the shared lock. The mathematical core and transport contracts are unchanged.
+`App` owns draft and generation state and orchestration. The editor has grouped controls on the left, one primary 3D viewport in the center, and measurements on the right; panels stack on narrow screens. `TerrainParametersPanel` renders typed forms and emits Local/Remote/Verify actions; `TerrainResultsPanel` presents comparison, snapshots, timings and deferred 3D; `PwaStatusPanel` owns readiness/update actions using the shared lock. The editor uses the versioned ecology contract described below.
 
 Edit parameter labels, tooltips, input steps and initial values in `terrain-parameters.ts`. Slider extents are UI guidance in the same module; numeric controls preserve exact entry and Core validates ranges. This is presentation metadata, not a second validator. Core remains authoritative for ranges and work budgets. Blank/non-finite values are rejected before dispatch without default substitution. Field errors support nested `heightMap.*` paths and are associated with inputs for accessibility.
 
@@ -24,6 +24,7 @@ npm --prefix src/client test -- --watch=false
 python3 -m unittest discover -s tests/build -v
 node --test tests/build/worker-rpc.test.mjs
 python3 tests/reference/terrain_reference.py
+python3 tests/reference/landscape_reference.py
 ```
 
 If MSBuild worker nodes fail in the local environment, retry the native build with `--disable-build-servers -m:1`, and use `-m:1` for tests. When intentionally changing package references, regenerate NuGet lockfiles with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review them.
@@ -62,9 +63,9 @@ Defaults: seed 42, 128×128, noise scale 0.03, four octaves, height 30, mountain
 
 Use **Generate Local**, **Generate Remote**, or **Verify equivalence**. Verification runs both locations sequentially with the same frozen request, compares all heights and biome IDs, and reports build compatibility separately. Dirty/unversioned builds remain unverifiable even when outputs agree. Missing or invalid inputs show structured errors; Remote unavailability does not silently invoke Local.
 
-Drag to orbit, scroll/pinch to zoom, right-drag to pan. Heights and biome IDs come from Core. Water is currently a height-based color band, not a flat lake/ocean overlay. A WebGL error leaves numeric results available. No 2D fallback exists. Heavy requests run in the worker; the UI does not offer simulated progress or cancellation.
+Drag to orbit, scroll/pinch to zoom, right-drag to pan. Heights and biome IDs come from Core. Ocean is boundary-connected terrain below the explicit relative sea level; low interior valleys remain dry. Forests contain Core-placed instanced trees. No flat lake/ocean overlay is added. A WebGL error leaves numeric results available. No 2D fallback exists. Heavy requests run in the worker; the UI does not offer simulated progress or cancellation.
 
-Core limits and exact arithmetic are specified in [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md). The work budget is 33,554,432 cell-iterations; at 512×512, at most 128 iterations are allowed. Model units are illustrative and are not geological years.
+Current limits and exact arithmetic are specified in [LANDSCAPE_V2.md](LANDSCAPE_V2.md). [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md) and the test-only Historical sources preserve v1 fixtures. The work budget is 33,554,432 cell-iterations; at 512×512, at most 128 iterations are allowed. Model units are illustrative and are not geological years.
 
 ## Editor interactions
 
@@ -96,17 +97,21 @@ PWA readiness is compact in the header. Expand it for detail; failures and avail
   "iterations": 64,
   "rainfall": 0.05,
   "evaporation": 0.1,
-  "algorithmVersion": "warped-ridged-hydraulic-v1"
+  "plainsCoverage": 0.45,
+  "mountainCoverage": 0.3,
+  "globalMoisture": 0.65,
+  "seaLevel": 0.16,
+  "algorithmVersion": "diverse-landscape-v2"
 }
 ```
 
 Every member is required; missing numeric values are not defaulted. The nested heightmap settings are a composition contract, not an independent public generator. Strict JSON rejects unexpected fields, wrong case/types and non-finite overflow. Both hosts share preparation and `{ "error", "fields" }` failures. API validation/JSON failures return 400; terrain responses use `Cache-Control: no-store`. Health is `GET /api/health`. Removed generation/probe routes return 404.
 
-Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = terrain-hydraulic-v1` and `simulationVersion = hydraulic-grid-v1`. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
+Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v2` and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v2`. Result `landscape-ecology-v2` includes moisture, temperature, slope, vegetationDensity and bounded tree records; all arrays/transforms participate in equivalence checks. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
 
 The WASM proxy creates one module worker with one runtime per document. Always await `generateTerrainJson`. `getRuntimeInfo()` reports initialization count, worker+runtime initialization time, runtime-only time, execution and protocol. Initialization is excluded from Core timing. Startup/crash rejects pending work; a later attempt can retry. Application destruction terminates the worker.
 
-`computeMs` includes composition, all simulation steps, summaries, float32 conversion and biome classification. Request-to-data timing includes transport/JSON/normalization and ends before comparison or display. Three.js CPU setup/first submission is separate, not GPU timing. No controlled benchmark results are claimed.
+`computeMs` includes composition, all simulation steps, summaries, float32 conversion environment, biomes and bounded vegetation decisions. Three.js CPU setup includes instanced tree construction; no GPU-time claim is made. Request-to-data timing includes transport/JSON/normalization and ends before comparison or display. Three.js CPU setup/first submission is separate, not GPU timing. No controlled benchmark results are claimed.
 
 ## PWA readiness and safe updates
 
@@ -133,11 +138,17 @@ Use an external `playwright-core` installation and Chromium against the publishe
 PWG_PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core \
 PWG_BROWSER_EXECUTABLE=/absolute/path/to/chromium \
 PWG_BASE_URL=http://127.0.0.1:8080 \
-node tests/browser/hydraulic.cjs
+node tests/browser/landscape.cjs
 ```
 
-Use the same environment with `node tests/browser/editor.cjs` for the editor (real equivalence, single/comparison views, slider synchronization, draft actions, retained maps after errors, desktop/narrow layout and offline 3D), and `node tests/browser/pwa.cjs` for offline and safe-update regression. The hydraulic script covers complete WASM/API arrays and conservation summaries, size/iteration extremes through 512×512×128, worker responsiveness, 3D, offline generation and Remote failure. The PWA script tests offline reload/new tab, recovery, deferred reload and the updated terrain bundle. It temporarily modifies only generated deployment assets and restores them in `finally`; do not run it concurrently with publishing.
+Use the same environment with `node tests/browser/editor.cjs` for the editor (real equivalence, single/comparison views, slider synchronization, draft actions, retained maps after errors, desktop/narrow layout and offline 3D), and `node tests/browser/pwa.cjs` for offline and safe-update regression. The landscape script covers complete WASM/API environment arrays, categorical IDs, tree transforms and conservation summaries; its matrix includes extreme seeds, zero height, representative landscapes and 512×512×128. It records serialized bytes, reserved WASM memory, heartbeat and screenshots. Editor and PWA scripts cover interaction, offline generation and safe updates. The PWA script tests offline reload/new tab, recovery, deferred reload and the updated terrain bundle. It temporarily modifies only generated deployment assets and restores them in `finally`; do not run it concurrently with publishing.
 
 Evidence is written under ignored `artifacts/`. Software WebGL smoke timings are not controlled comparative performance evidence. Reserved WASM linear memory is not live managed memory or total browser RAM. Maximum settings are a desktop smoke workload, not a mobile guarantee.
 
 Next implementation: bounded evolution capture and Three.js playback for this generator, following [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+
+## Diverse terrain controls and forests
+
+Plains coverage and Mountain coverage are regional tendencies, not exact percentages per seed. Their sum cannot exceed 1; the remainder favors hills. Mountain strength controls relief in mountain regions independently of their coverage. Global moisture affects vegetation, independently of erosion rainfall. Sea level is a fraction of the height bound; only four-connected low samples reaching a boundary become ocean.
+
+Core uses illustrative grid/world units and a normalized temperature proxy. There are no calibrated weather, lakes, rivers, seasons or marine erosion. Trees occupy eligible forest quads and follow the exact rendered triangles. Core caps output at 16384 instances using independent hash priorities, avoiding a row-major cut-off. All returned trees are rendered with two shared instanced meshes per viewport. Density and forest coverage are retained independently of this output cap. Request/serialization/rendering costs should be measured separately from Core work. Native historical v1 fixtures remain unchanged in tests/core/Historical and the independent v1 Python reference; the public endpoint accepts v2 only.

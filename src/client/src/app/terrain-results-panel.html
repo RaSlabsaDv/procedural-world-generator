@@ -83,9 +83,13 @@
       <p id="numeric-match">
         {{
           check.numericMatch
-            ? 'All heights match within tolerance.'
-            : 'Height differences exceed tolerance.'
+            ? 'All heights match within tolerance, including environment and vegetation.'
+            : 'Numeric data differences exceed tolerance.'
         }}
+      </p>
+      <p>
+        Environment mismatches: {{ check.environmentMismatchCount }} · Vegetation mismatches:
+        {{ check.vegetationMismatchCount }}
       </p>
       <p id="biome-match">
         {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
@@ -106,7 +110,7 @@
         }
       </p>
       <p>
-        Maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Mean error:
+        Height maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Height mean error:
         {{ check.meanAbsoluteError.toExponential(3) }} · Outside tolerance:
         {{ check.mismatchCount }}
       </p>
@@ -117,6 +121,7 @@
     @let run = entry.run;
     <section class="measurement" [attr.aria-label]="entry.name + ' measurements'">
       <h3>{{ entry.name }}</h3>
+      <p class="tree-count">Trees: {{ run.response.result.trees.length }}</p>
       <p class="result-state">
         {{ matchesDraft(run) ? 'Matches current draft' : 'Captured settings differ from draft' }}
       </p>
@@ -140,7 +145,9 @@
         <p class="simulation-snapshot">
           Iterations {{ run.terrain.iterations }} · Rainfall {{ run.terrain.rainfall }} ·
           Evaporation {{ run.terrain.evaporation }} · Mountains {{ run.terrain.mountainStrength }} ·
-          Warp {{ run.terrain.warpStrength }}
+          Warp {{ run.terrain.warpStrength }} · Plains {{ run.terrain.plainsCoverage }} · Mountain
+          coverage {{ run.terrain.mountainCoverage }} · Moisture {{ run.terrain.globalMoisture }} ·
+          Sea level {{ run.terrain.seaLevel }}
         </p>
       </details>
       <details>
@@ -160,7 +167,11 @@
           {{ run.response.result.resultVersion }}<br />Simulation:
           {{ run.response.simulationVersion }}<br />Workload: {{ run.response.workload }}
         </p>
-        <p>Completed {{ run.response.simulation.cellIterations }} cell-iterations.</p>
+        <p>
+          Completed {{ run.response.simulation.cellIterations }} cell-iterations. Trees:
+          {{ run.response.result.trees.length }} / {{ maxTrees }}. Profile:
+          {{ run.response.executionProfile }}
+        </p>
         <dl class="simulation-totals">
           @for (item of summary(run); track item[0]) {
             <div>

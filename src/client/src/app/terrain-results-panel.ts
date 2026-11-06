@@ -1,6 +1,6 @@
 import { Component, computed, effect, input, signal, untracked } from '@angular/core';
 import { TerrainComparison } from './terrain.contract';
-import { TerrainRequest, TerrainRun } from './terrain.models';
+import { TerrainRequest, TerrainRun, MAX_TREES } from './terrain.models';
 import { sameTerrainParameters } from './terrain-parameters';
 import { TerrainPreview } from './terrain-preview';
 
@@ -18,6 +18,7 @@ interface Entry {
   styleUrls: ['./panel.css', './terrain-results-panel.css'],
 })
 export class TerrainResultsPanel {
+  protected readonly maxTrees = MAX_TREES;
   readonly local = input<TerrainRun | null>(null);
   readonly remote = input<TerrainRun | null>(null);
   readonly comparison = input<TerrainComparison | null>(null);
