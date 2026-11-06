@@ -1,8 +1,12 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import { BufferGeometry, MeshLambertMaterial } from 'three';
+import { BufferGeometry, MeshLambertMaterial, Texture } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { TerrainPreview, TERRAIN_RENDERER_FACTORY } from './terrain-preview';
+import {
+  TerrainPreview,
+  TERRAIN_RENDERER_FACTORY,
+  TERRAIN_SURFACES_FACTORY,
+} from './terrain-preview';
 import { testTerrain, testWire } from '../testing/terrain-test-fixture';
 import { TerrainRun } from '../data/terrain.models';
 
@@ -48,6 +52,14 @@ function run(): TerrainRun {
   };
 }
 
+// Image promises are intentionally outside Angular's PendingTasks. Drain their microtasks
+// before awaiting the signal-driven DOM update, without resolving controlled pending loads.
+async function settlePreview(fixture: ComponentFixture<TerrainPreview>) {
+  await fixture.whenStable();
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  await fixture.whenStable();
+}
+
 describe('terrain preview lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,6 +74,18 @@ describe('terrain preview lifecycle', () => {
     TestBed.configureTestingModule({
       imports: [TerrainPreview],
       providers: [
+        {
+          provide: TERRAIN_SURFACES_FACTORY,
+          useValue: () => ({
+            ready: Promise.resolve({
+              grass: new Texture(),
+              soil: new Texture(),
+              rock: new Texture(),
+              snow: new Texture(),
+            }),
+            dispose: vi.fn(),
+          }),
+        },
         {
           provide: TERRAIN_RENDERER_FACTORY,
           useValue: () => {
@@ -89,11 +113,11 @@ describe('terrain preview lifecycle', () => {
     const controls = vi.spyOn(OrbitControls.prototype, 'dispose');
     const fixture = TestBed.createComponent(TerrainPreview);
     fixture.componentRef.setInput('run', run());
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(state.render).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('CPU');
     fixture.componentRef.setInput('run', run());
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(geometry).toHaveBeenCalledTimes(1);
     expect(material).toHaveBeenCalledTimes(1);
     expect(controls).toHaveBeenCalledTimes(1);
@@ -111,10 +135,10 @@ describe('terrain preview lifecycle', () => {
     const fixture = TestBed.createComponent(TerrainPreview);
     fixture.componentRef.setInput('run', run());
     fixture.componentRef.setInput('paused', true);
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(state.render).not.toHaveBeenCalled();
     fixture.componentRef.setInput('paused', false);
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(state.render).toHaveBeenCalled();
     expect(geometry).not.toHaveBeenCalled();
   });
@@ -123,14 +147,188 @@ describe('terrain preview lifecycle', () => {
     state.fail = true;
     const fixture = TestBed.createComponent(TerrainPreview);
     fixture.componentRef.setInput('run', run());
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('No WebGL');
     expect(fixture.nativeElement.textContent).toContain('Numerical results remain available');
   });
+  it('discards obsolete setups and shares one texture owner across result replacements', async () => {
+    let resolve!: (value: Record<'grass' | 'soil' | 'rock' | 'snow', Texture>) => void;
+    const owner = {
+      ready: new Promise<Record<'grass' | 'soil' | 'rock' | 'snow', Texture>>((yes) => {
+        resolve = yes;
+      }),
+      dispose: vi.fn(),
+    };
+    const create = vi.fn(() => owner);
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, { useValue: create });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(state.render).not.toHaveBeenCalled();
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    resolve({
+      grass: new Texture(),
+      soil: new Texture(),
+      rock: new Texture(),
+      snow: new Texture(),
+    });
+    await settlePreview(fixture);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(state.render).toHaveBeenCalledTimes(1);
+    expect(state.dispose).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+    expect(owner.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('defers scene preparation while paused and excludes texture/pause wait from CPU timing', async () => {
+    let clock = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => clock);
+    let resolve!: (value: Record<'grass' | 'soil' | 'rock' | 'snow', Texture>) => void;
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, {
+      useValue: () => ({
+        ready: new Promise<Record<'grass' | 'soil' | 'rock' | 'snow', Texture>>((yes) => {
+          resolve = yes;
+        }),
+        dispose: vi.fn(),
+      }),
+    });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    fixture.componentRef.setInput('paused', true);
+    await settlePreview(fixture);
+    clock = 1000;
+    resolve({
+      grass: new Texture(),
+      soil: new Texture(),
+      rock: new Texture(),
+      snow: new Texture(),
+    });
+    await settlePreview(fixture);
+    expect(
+      (fixture.componentInstance as unknown as { controls: unknown }).controls,
+    ).toBeUndefined();
+    expect(state.render).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.display-time')).toBeNull();
+    clock = 2000;
+    fixture.componentRef.setInput('paused', false);
+    await settlePreview(fixture);
+    expect(state.render).toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.texture-time').textContent).toContain('1000.00');
+    expect(fixture.nativeElement.querySelector('.display-time').textContent).toContain('0.00');
+  });
+
+  it('does not build a scene when assets finish after the preview is destroyed', async () => {
+    let resolve!: (value: Record<'grass' | 'soil' | 'rock' | 'snow', Texture>) => void;
+    const owner = {
+      ready: new Promise<Record<'grass' | 'soil' | 'rock' | 'snow', Texture>>((yes) => {
+        resolve = yes;
+      }),
+      dispose: vi.fn(),
+    };
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, { useValue: () => owner });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    fixture.destroy();
+    resolve({
+      grass: new Texture(),
+      soil: new Texture(),
+      rock: new Texture(),
+      snow: new Texture(),
+    });
+    await Promise.resolve();
+    expect(state.render).not.toHaveBeenCalled();
+    expect(owner.dispose).toHaveBeenCalledTimes(1);
+    expect(state.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('retains numeric results and emits no display success on texture load failure', async () => {
+    let reject!: (error: Error) => void;
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, {
+      useValue: () => ({
+        ready: new Promise<never>((_, no) => {
+          reject = no;
+        }),
+        dispose: vi.fn(),
+      }),
+    });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    reject(new Error('Surface asset decode failed'));
+    await Promise.resolve();
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'Surface asset decode failed',
+    );
+    expect(fixture.nativeElement.textContent).toContain('Numerical results remain available');
+    expect(fixture.nativeElement.querySelector('.display-time')).toBeNull();
+    expect(state.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a failed asset owner for the next result', async () => {
+    let reject!: (error: Error) => void;
+    const failed = {
+      ready: new Promise<never>((_, no) => {
+        reject = no;
+      }),
+      dispose: vi.fn(),
+    };
+    const recovered = {
+      ready: Promise.resolve({
+        grass: new Texture(),
+        soil: new Texture(),
+        rock: new Texture(),
+        snow: new Texture(),
+      }),
+      dispose: vi.fn(),
+    };
+    const create = vi.fn().mockReturnValueOnce(failed).mockReturnValueOnce(recovered);
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, { useValue: create });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    reject(new Error('Temporary decode failure'));
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.querySelector('[role=alert]')).not.toBeNull();
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(failed.dispose).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.querySelector('[role=alert]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.display-time')).not.toBeNull();
+  });
+
+  it('reports shader failure and releases the renderer without emitting display success', async () => {
+    const debug = { onShaderError: () => {} };
+    const dispose = vi.fn();
+    TestBed.overrideProvider(TERRAIN_RENDERER_FACTORY, {
+      useValue: () => ({
+        debug,
+        setPixelRatio() {},
+        setSize() {},
+        render() {
+          debug.onShaderError();
+        },
+        dispose,
+        forceContextLoss() {},
+      }),
+    });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'Surface shader compilation failed',
+    );
+    expect(fixture.nativeElement.querySelector('.display-time')).toBeNull();
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
   it('preserves the camera on same-scale replacement and resets it on request', async () => {
     const fixture = TestBed.createComponent(TerrainPreview);
     fixture.componentRef.setInput('run', run());
-    await fixture.whenStable();
+    await settlePreview(fixture);
     const component = fixture.componentInstance as unknown as { controls: OrbitControls };
     const controls = component.controls;
     const initial = controls.object.position.clone();
@@ -138,16 +336,16 @@ describe('terrain preview lifecycle', () => {
     controls.target.set(2, 3, 4);
     controls.update();
     fixture.componentRef.setInput('run', run());
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(component.controls.object.position.distanceTo(controls.object.position)).toBeLessThan(
       1e-10,
     );
     expect(component.controls.target.distanceTo(controls.target)).toBeLessThan(1e-10);
     (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(component.controls.object.position.distanceTo(initial)).toBeLessThan(1e-10);
     fixture.componentRef.setInput('paused', true);
-    await fixture.whenStable();
+    await settlePreview(fixture);
     expect(component.controls.enabled).toBe(false);
     expect((fixture.nativeElement.querySelector('button') as HTMLButtonElement).disabled).toBe(
       true,

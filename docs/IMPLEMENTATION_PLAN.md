@@ -28,19 +28,23 @@ Unused Angular routing and the duplicate hydraulic browser script were removed. 
 
 V3 specifies required globalWarmth, vegetationDensity and landformRegionScale controls; broadleaf/conifer forests, sparse savanna, tundra and static highland snow; and Core-owned tree kinds. Strict host/client contracts reject missing fields and invalid categories. Density does not change biome coverage, and the existing hydraulic kernel, ocean connectivity and resource caps are preserved. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for precedence, arithmetic and timing. Historical v2 sources and fixtures remain test-only. Production browser evidence covers category/field parity, heavy limits and offline operation.
 
-## Next: landscape detail — planned
+## Landscape detail — Stage 1 implemented
 
-Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. These are planned changes, not implemented features.
+Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. Stage 1 is implemented and verified; stages 2–7 remain planned.
 
 Before each stage, capture representative normal/cold/warm views with fixed requests and camera framing. Define its resource limits and acceptance checks before implementation. Preserve the historical v3 specification and fixtures when introducing a new semantic contract. Keep README empty and documentation in English.
 
-### 1. Surface materials
+### 1. Surface materials — complete
 
 Implementation instructions: [SURFACE_MATERIALS_PROMPT.md](SURFACE_MATERIALS_PROMPT.md).
 
 Add reusable grass, soil, sand, rock and snow textures, with consistent world-space tiling across seeds, map sizes and both execution modes. Use small, locally bundled assets with documented provenance/licenses. Choose an approach compatible with the current Three.js terrain material before adding dependencies. Keep heights and Core biome IDs unchanged in this stage; sand becomes a visible coastal surface once stage 7 supplies coastal data.
 
 Acceptance: textures resolve at overview and close-up distances without per-map stretching, work after an offline reload, and share resources within a viewport. Record texture/download/GPU resource budgets; release owned resources on replacement and destruction. Visualization costs remain outside Core time.
+
+Implemented with four active original 256x256 detail textures and reserved sand, fixed four-unit triplanar sampling, existing biome tint, one terrain draw call and no Core/contract changes. Preview ownership covers async failure/retry, stale completion, pause and destruction; all five assets participate in complete-version offline verification. Actual encoded assets total 271377 bytes; estimated active RGBA+mip storage is about 1.33 MiB per viewport. See DEVELOPMENT.md for ownership and measurement boundaries.
+
+Verification: 119 Angular tests, 115 Core and 37 API tests, four Python packaging/asset tests, worker RPC test, Release/production builds, and materials/landscape/editor/PWA Chromium scenarios pass. The landscape matrix has zero observed Local/Remote numeric error through 512x512x128. Materials evidence covers before/after rectangular normal/cold/warm previews, real shader compilation, four detail GPU textures per viewport, one terrain draw call, independent comparison-view cleanup, 16384 trees and offline generation. Raw evidence/screenshots live under ignored artifacts/. Stage 2 is the next implementation target.
 
 ### 2. Smooth surface transitions
 

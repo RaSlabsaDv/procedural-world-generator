@@ -1,6 +1,6 @@
 # Implementation prompt — Stage 1: surface materials
 
-Status: ready for implementation. This document is an instruction for future work; it does not mark Stage 1 complete.
+Status: Stage 1 implemented and verified. The original implementation instructions below are retained for traceability; completion evidence and the next stage are recorded in IMPLEMENTATION_PLAN.md.
 
 ## Objective
 

@@ -2,7 +2,7 @@
 
 ## Supported application
 
-The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. The next planned work is staged surface, lighting and landscape detailing; evolution capture/playback remains a later extension. README is intentionally empty.
+The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Stage 1 surface materials are implemented; surface transitions, lighting and further landscape detailing remain planned. Evolution capture/playback remains a later extension. README is intentionally empty.
 
 ## Frontend structure
 
@@ -149,7 +149,7 @@ Use the same environment with `node tests/browser/editor.cjs` for the editor (re
 
 Evidence is written under ignored `artifacts/`. Software WebGL smoke timings are not controlled comparative performance evidence. Reserved WASM linear memory is not live managed memory or total browser RAM. Maximum settings are a desktop smoke workload, not a mobile guarantee.
 
-Next implementation: surface materials, smooth transitions and lighting, followed by forests, rocks, local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
+Next implementation: Core-owned smooth surface transitions (Stage 2), then lighting, forests, rocks, local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
 
 ## Diverse terrain controls and forests
 
@@ -190,3 +190,74 @@ Vegetation density (0..1, default 1) changes candidate density without changing 
 The Climate & vegetation group contains warmth, moisture and density. Region scale is in Terrain. Captured parameters include all three fields; the expandable biome legend uses the same presentation colors as the terrain mesh. Core supplies Broadleaf, Conifer and Savanna tree kinds; the renderer uses rounded, conical and flat crowns without generating placements. Snow is a static terrain classification. A single seed need not show every biome. There is no added hydrology, dynamic snow, season model or repeated-trial runner.
 
 Frozen v1/v2 references remain test-only, including tests/reference/landscape_reference.py. The independent climate_reference.py computes the literal v3 composition/climate fixture without importing production code. Never update historical expectations to make current changes pass.
+
+## Surface detail materials (Stage 1)
+
+The preview uses the existing Lambert lighting and biome tint with a small isolated
+`terrain-surfaces.ts` shader extension (`terrain-detail-triplanar-v1`). Grass, soil,
+rock and snow are grayscale linear detail maps, not sRGB albedo. Sampling remaps
+intensity to 0.7..1.3 and multiplies the tint. Ocean has zero detail contribution;
+sand is packaged for the later coastal stage and is not assigned to a current biome.
+The complete biome-to-family mapping is presentation metadata, with no new climate,
+slope or shoreline classification. Existing per-vertex color interpolation remains;
+Core surface coverage weights and improved ecological transitions are Stage 2.
+
+Textures repeat every four grid/world units, anchored to uncentered grid coordinates.
+The renderer reconstructs these from centered positions using the map dimensions;
+noiseScale, seed and map extents do not change repeat distance. Three orthogonal
+projections, weighted by the existing normal, limit steep-slope stretching. This
+projection blend is rendering math. There is no displacement or alteration of Core
+heights, indices, biome categories or tree records. The only new geometry attribute
+is four one-hot bytes per vertex (zero for Ocean), at most 1048576 bytes at 512x512.
+It records the display family; it is not a generated ecological field.
+
+Each preview owns one set of four decoded Texture objects, reused across successive
+results. Two comparison views own independent sets. There is one terrain material
+and draw call per viewport, plus the existing maximum of six vegetation meshes.
+Result replacement releases the old geometry/material/renderer and reuses the decoded
+images; the installed renderer releases its GPU uploads. Final destruction disposes
+the texture owner. Partial/late loads are released after failure/destruction, obsolete
+setups are ignored, and a failed load is retried by the next result. Closing one view
+does not dispose the other's textures. Shader failures are detected before display
+success is emitted and retain numerical results with a presentation error.
+
+There is no untextured success placeholder. Asset loading/decode wait is displayed
+separately from CPU setup. The CPU metric sums synchronous setup before/after waiting
+and the first textured render submission; it excludes asset wait and paused time and
+is not GPU completion. If assets finish during computation, scene preparation and
+submission wait until the shared operation is unpaused. Core computeMs, requestMs and
+all v3 generation identities remain unchanged.
+
+All five PNGs are original, reproducible with `python3 scripts/generate-terrain-textures.py`
+using the Python standard library. See `src/client/public/textures/terrain/ASSETS.md`
+for CC0 provenance, patterns and reproduction. Each image is 256x256. Total encoded
+asset bytes are 271377 (about 265 KiB), below the 2 MiB budget. Conservative RGBA8
+storage including a full mip chain is approximately 1398101 bytes for four active
+textures per viewport, or 2796203 bytes for two views; even all five would use about
+1747627 bytes, below the 8 MiB per-view budget. These are texel-storage estimates,
+not measured total GPU memory. Browser software rendering is not a device guarantee.
+
+The service-worker prefetch group includes all five PNGs, including reserved sand.
+The generated offline catalog hashes them and readiness verifies them with the rest
+of the matching deployment. No runtime CDN or separate cross-version texture cache
+is used. Production publication currently includes 38 required catalog assets.
+
+Run `node tests/browser/materials.cjs` with the same PWG_* configuration as the other
+browser scripts. It checks real PNG upload/shader compilation, fixed-request normal,
+cold and warm rectangular views, one/two-view ownership, repeated replacement, the
+512x512/16384-tree case, narrow layout and offline new-seed rendering. Test-only WebGL
+instrumentation records detail texture counts and draw calls without adding product
+telemetry. Evidence is written to `artifacts/materials-verification.json` and
+`materials-after-{normal,cold,warm}-{overview,close}.png`. Baseline captures use the
+same 129x97 requests and camera framing, with a -650 wheel delta for close views,
+and are retained as `materials-before-*` artifacts. Full Local/Remote field parity
+remains covered by landscape.cjs; editor.cjs and pwa.cjs cover interactions, offline
+reload/new tab and safe version updates including the complete texture catalog.
+
+Stage 1 verification: 119 Angular tests, 115 Core tests, 37 API tests, four Python
+packaging/asset tests and the Node worker RPC test pass. Production materials,
+landscape, editor and PWA scenarios pass in Chromium 153.0.8010.52, with no page
+errors. Observed texture uploads stay at four per view across replacements and
+eight for two views; closing a view releases its detail uploads. Terrain uses one
+draw call and the observed maximum including vegetation is seven. These checks
+verify bounded resources and correctness, not comparative runtime performance.

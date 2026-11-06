@@ -13,6 +13,7 @@
           "/manifest.webmanifest",
           "/icons/**",
           "/*.css$",
+          "/textures/terrain/*.png$",
           "/*.js$",
           "/offline-assets.*.json$",
           "/wasm/**",

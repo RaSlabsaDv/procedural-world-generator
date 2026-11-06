@@ -54,6 +54,12 @@ Biome IDs are Ocean=0, Grassland=1, BroadleafForest=2, DryGrassland=3, Rock=4, C
 
 Three.js builds a mesh directly from Core heights and colors it from Core biome IDs. Both views use the same request scale. Orbit, zoom and pan remain. Rendering pauses while an operation holds the shared lock. Tree positions are computed by Core on the exact terrain triangles. Two shared low-poly instanced meshes per nonempty category render all returned trees, at most six meshes per viewport, without renderer-side placement or ecological decisions. The cap is 16384 computed trees; density remains available over all samples. Geometry, instanced meshes, materials, controls, observers and renderer resources are disposed on replacement/destruction. WebGL failures show a presentation error while numerical results remain available. No 2D fallback is included.
 
+## Surface material boundary
+
+Stage 1 uses local periodic grass, soil, rock and snow detail maps, with reserved sand packaged for later coasts. A Lambert shader extension applies fixed-scale triplanar sampling and retains biome tint. Only existing IDs select texture families; projection normals do not classify ecology. Four presentation bytes per vertex preserve the original height buffers and triangles. Core and all v3 contracts/identities remain unchanged. Core-owned coverage weights and ecological transition rules are still planned.
+
+Each preview owns its texture set across result replacements and releases it on destruction. Async completion guards prevent obsolete scenes, and loading failures release partial assets and permit retry on the next result. Scene setup/submission defers while generation is paused. Asset wait is reported separately; CPU setup/first textured submission excludes that wait and does not claim GPU completion. All five source PNGs are in the complete versioned offline cache. See DEVELOPMENT.md for budgets, provenance and lifecycle verification.
+
 ## Timing, worker and build identity
 
 One module worker owns one .NET runtime per document. All callers share initialization and the RPC proxy (`worker-rpc-v1`), with correlation IDs and rejection of pending requests on worker failure. A later attempt may initialize again. Worker startup and runtime initialization are separate from `computeMs`; promises alone would not move computation off the UI thread.

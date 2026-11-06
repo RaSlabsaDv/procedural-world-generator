@@ -85,8 +85,11 @@ class PwaManifestTests(unittest.TestCase):
             output = Path(temp)
             framework = output / "wasm/_framework"
             framework.mkdir(parents=True)
+            (output / "textures/terrain").mkdir(parents=True)
             files = {
                 "index.html": '<html><head></head><body><script src="main.js"></script></body></html>',
+                "textures/terrain/grass.png": "texture fixture",
+                "textures/terrain/sand.png": "reserved texture fixture",
                 "main.js": 'console.log("app");', "chunk-terrain.js": "deferred visualization", "styles.css": "",
                 "wasm/world-generator-host.js": "export const host = true;",
                 "wasm/_framework/dotnet.js": "runtime",
@@ -101,6 +104,9 @@ class PwaManifestTests(unittest.TestCase):
             catalog_path = next(output.glob("offline-assets.*.json"))
             catalog = json.loads(catalog_path.read_text())
             manifest = json.loads((output / "ngsw.json").read_text())
+            self.assertIn('/textures/terrain/grass.png', catalog['assets'])
+            self.assertIn('/textures/terrain/sand.png', catalog['assets'])
+            self.assertIn('/textures/terrain/grass.png', manifest['assetGroups'][0]['urls'])
             self.assertIn('/chunk-terrain.js', catalog['assets'])
             self.assertIn('/chunk-terrain.js', manifest['assetGroups'][0]['urls'])
             self.assertIn('/' + catalog_path.name, manifest['hashTable'])
