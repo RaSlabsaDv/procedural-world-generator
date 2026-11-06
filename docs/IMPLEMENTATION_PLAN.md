@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0–2 are complete. The shared Core generator, validated timing boundary, strict WASM/API hosts, and Angular heightmap MVP are implemented. The UI includes parameter controls, Local/Remote generation, sequential full-array equivalence checks, real timings, structured errors, and Canvas 2D previews. Production browser checks cover golden, rectangular, zero-height, and maximum-size maps, runtime reuse, unavailable API, and mismatched build identity. See [development instructions](DEVELOPMENT.md) for commands and evidence. PWA/offline and 3D/biomes remain next; Architecture Race and controlled benchmarks follow later.
+**Status:** Phases 0–3A are complete. Core generation, the WASM/API hosts, and the Angular heightmap MVP are implemented. PWA support now verifies version-specific cached assets and Local execution, supports production offline reload/new-tab generation, and applies updates by safe reload between operations. Publishing uses clean staged WASM output with rollback. Actual browser evidence and reproduction commands are in [DEVELOPMENT.md](DEVELOPMENT.md). Phase 3B (Three.js and simple biomes) is next; Architecture Race and controlled benchmarks follow later.
 
 Phases are completed based on verified outcomes. Calendar estimates should follow the PoC, once the cost of WASM integration is clearer. Timing boundaries are introduced early; the full Race and experiments follow visualization and PWA support, as required by AGENTS.md. Keep `README.md` empty for now and record setup instructions in `docs/`.
 
@@ -58,6 +58,8 @@ Step 1 is complete: `HeightMapRequest`, `HeightMapLimits`, `HeightMapValidator`/
 
 **Done when:** After online preparation, the production build reloads offline, opens in a new tab, and generates a map with a new seed. Remote reports a clear error. A reproduction procedure includes cache reset steps; asset updates are verified without mixing versions. Merely using an already loaded page does not count as an offline check.
 
+**Verified:** Angular service worker and manifest, a single complete prefetch group, exact asset-catalog/hash checks, a shared operation lock, safe update reloads, and staged publishing are implemented. Production Chromium tests passed online preparation, offline reload with a new seed, a new offline tab with another seed, Remote failure without cached results/fallback, network recovery, deferred update reload, and offline operation of the new version. Build regression tests cover stale-asset removal and preservation of the previous outputs after failures.
+
 ## Phase 3B — 3D and simple biomes
 
 **Work:** Add Three.js, a mesh built from the generated heights, a camera, zoom, and lighting. Add deterministic height-based biome IDs in the core and a palette in the renderer. Fix thresholds, rules for zero height, and the version of the extended result. If necessary, reduce the shared resolution limit after checking memory use and UI behavior.
@@ -88,6 +90,6 @@ Adaptive Mode, AOT, Web Workers, binary transport, richer biomes/erosion, preset
 
 ## Next implementation task
 
-> Start Phase 3A when requested: add Angular PWA/service-worker support and explicit caching for the full WASM asset bundle. Verify production offline reload, a new Local generation, and a clear Remote availability error. Preserve the heightmap UI and existing diagnostics. Keep README.md empty.
+> Start Phase 3B when requested: add Three.js visualization of the existing heightmap and deterministic biome IDs in Core. Preserve PWA/offline behavior, probe diagnostics, identical execution-mode inputs, and separate compute/render timing. Version the extended workload and contracts before measuring it. Keep README.md empty.
 
 Work on one acceptance criterion at a time, update documentation alongside decisions, and distinguish verified results from assumptions. Add new dependencies only when the relevant phase begins.

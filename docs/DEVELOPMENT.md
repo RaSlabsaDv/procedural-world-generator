@@ -13,7 +13,7 @@ The interoperability PoC is implemented for both execution paths:
 - `tests/api/WorldGenerator.Api.Tests.csproj`: HTTP and native WASM-export contract tests for the API endpoints, heightmap success/error JSON, build identity, and the shared host serialization contract.
 - `ProceduralWorldGenerator.slnx`: the solution containing the .NET projects.
 
-Phase 2 is complete, including the Angular heightmap UI and 2D MVP. Architecture Race, Three.js, and PWA support remain later phases. `README.md` remains empty.
+Phases 2 and 3A are complete, including the Angular heightmap UI, 2D MVP, and verified PWA/offline support. Architecture Race and Three.js remain later phases. `README.md` remains empty.
 
 ## Prerequisites and commands
 
@@ -53,7 +53,7 @@ The WASM host contains three exports:
 
 `src/wasm/wwwroot/world-generator-host.js` imports `_framework/dotnet.js`, initializes the runtime once, memoizes the exports, and exposes the init duration and initialization count. The Angular service keeps one host module and runtime per page.
 
-`scripts/publish-wasm.sh` performs an explicit locked restore with Release configuration, then Release publish with `--no-restore`. It checks the expected loader files before replacing the generated `src/client/public/wasm/` assets. That directory is ignored by Git. The client's `prebuild` hook invokes this script. `publish-app.sh` likewise restores the API in locked mode before publishing without restore. Host lockfiles pin NuGet dependencies; the SDK and installed workload remain separate toolchain prerequisites.
+`scripts/publish-wasm.sh` performs an explicit locked restore with Release configuration, then Release publish with `--no-restore` into a clean temporary directory. It validates the loader and required runtime files, stages the client bundle, and promotes both directories with rollback. Failed restore, publish, validation, or promotion preserves the previous outputs; repeated publishing does not accumulate stale hashes. Temporary files are removed on exit. That directory is ignored by Git. The client's `prebuild` hook invokes this script. After `ng build`, `scripts/finalize-pwa.mjs` emits the versioned offline asset catalog, embeds its URL in the index, and regenerates Angular’s service-worker manifest. `publish-app.sh` likewise restores the API in locked mode before publishing without restore. Host lockfiles pin NuGet dependencies; the SDK and installed workload remain separate toolchain prerequisites.
 
 ## API and production deployment
 
@@ -96,7 +96,7 @@ Verified in the current environment:
 - Angular CLI 22.2.6, Node.js 24.20.0, npm 11.19.0.
 - Release WASM publish and the single-origin production bundle load from `http://localhost:8090/` without a development server.
 - All local and remote page checks pass. Both maximum-array digests equal `cbd49d9128202d264bddde63406dd224d2a0d4f0d841bed3697a1f17ff424dd8`.
-- Native build has zero warnings; all 98 Core tests and all 78 API/host tests pass, including build-identity fallback and double-overflow regressions. All 43 Angular tests pass, covering response validation, adapters, comparison, pixel mapping, immutable snapshots, stale-result handling, errors, and the shared operation lock.
+- Native build has zero warnings; all 98 Core tests and all 78 API/host tests pass, including build-identity fallback and double-overflow regressions. All 70 Angular tests pass, covering response validation, adapters, comparison, pixel mapping, immutable snapshots, stale-result handling, errors, and the shared operation lock.
 - A blocked `/api` request produces the expected remote availability error.
 - Headless Firefox verification of the published WASM and API hosts matched the 3×2 golden fixture, reused the runtime for repeated calls, returned identical 37×23 results (maximum absolute error 0), produced matching `validation` envelopes for a missing field, and reported the same `coreBuildId`.
 
@@ -124,7 +124,49 @@ Production UI smoke checks used headless Chromium 153 against the single-origin 
 - An intercepted response with a different build ID was flagged as incompatible despite numerical agreement. No browser page errors occurred.
 - The supported maximum `512×512`, eight octaves, scale `1`, height `1000`, and seed `Int32.MinValue` matched across both modes on a 390-pixel viewport without horizontal overflow.
 
-These are correctness and usability checks, not controlled performance findings. Main-thread WASM can still block during computation. PWA/offline availability is not implemented yet.
+These are correctness and usability checks, not controlled performance findings. Main-thread WASM can still block during computation. PWA/offline verification is documented below.
+
+## PWA readiness, updates, and offline reproduction
+
+Production builds register Angular service worker immediately and include a local web manifest/icons. Development builds report offline support as unavailable. `@angular/service-worker` and `@angular/core` both resolve to `22.2.4` in the checked-in lockfile.
+
+The `offline` asset group prefetches the shell, icons, exact catalog, and required WASM files. Compressed mirrors and debug files are excluded. `finalize-pwa.mjs` uses Angular’s generated asset hashes to build a catalog whose URL is part of the cached index. Readiness checks each asset’s bytes in the same complete version cache, confirms that the service worker serves the same index/catalog as the open document, and verifies a tiny Local computation. A version or controller change requires reload rather than reporting readiness for mixed assets. It does not merge old/new caches, rely on filename patterns alone, or use the network indicator as proof. Angular manages the cache; no custom service worker is added. The deployment uses root scope `/`.
+
+Preparation is outside generation timings and shares `OperationLock` with generation and diagnostics. WASM is therefore initialized during successful offline preparation, before the first interactive Local run. Registration/control/cache waits are bounded; slow first downloads can require keeping the page online and retrying. Readiness describes the observed current cache, not permanent storage: clearing site data or browser eviction requires preparation again. Unrecoverable service-worker errors invalidate the ready state.
+
+A `VERSION_READY` event offers **Reload to update**. This button is disabled while another operation holds the lock. The app does not call `activateUpdate()` before reload; navigation assigns the new version without mixing a live old runtime with new assets. The new document verifies readiness again. See [Angular’s update guidance](https://angular.dev/ecosystem/service-workers/communications).
+
+Manual reproduction, using the production bundle above:
+
+1. Clear site data or use a fresh browser profile. Open online and wait for **Offline ready**.
+2. Generate Local and Remote once. In DevTools Application/Cache Storage, confirm the required assets and the absence of API response entries.
+3. Disable networking for the site and API, reload normally, wait for readiness, and generate Local with a new seed.
+4. Open the same URL in a new ordinary tab in the same profile, still offline. Generate with another new seed; this creates a fresh WASM runtime from cached assets.
+5. Invoke Remote: it must report unavailability without a cached result or Local fallback.
+6. Restore networking and verify Remote succeeds.
+7. Deploy a changed bundle, click **Check for updates**, and verify notification. During an active operation, reload must stay disabled. Reload when idle, verify readiness for the new version, then repeat offline reload/generation.
+
+Automated checks:
+
+```sh
+python3 -m unittest discover -s tests/build -v
+npm --prefix src/client test -- --watch=false
+```
+
+The three build tests use isolated fixtures to exercise stale-asset cleanup, rollback after restore/publish/validation/promotion failures, catalog integrity/idempotence, and the generated Angular manifest’s cache policy. They need Python 3, Node.js, Git/Bash tools, and the installed frontend dependencies; no extra Python packages are required.
+
+The optional E2E script requires an external `playwright-core` installation and Chromium. With the local production server already running, point it at those tools:
+
+```sh
+PWG_PLAYWRIGHT_MODULE=/absolute/path/to/playwright-core \
+PWG_BROWSER_EXECUTABLE=/absolute/path/to/chromium \
+PWG_BASE_URL=http://127.0.0.1:8080 \
+node tests/browser/pwa.cjs
+```
+
+It uses a clean isolated browser context, disables actual network access, and temporarily modifies only generated deployment assets to simulate an update. It restores the original deployment in `finally` and writes evidence to `artifacts/pwa-verification.json`. It never edits application source.
+
+Verified with Chromium `153.0.8010.52`: offline reload generated seed `777`; a new offline tab generated `-778`; Remote failed offline and recovered online; no API responses were cached. A changed loader/catalog produced an update notification. Reload was disabled during an intercepted active Remote operation, then the new application version loaded and generated seed `1001` after another offline reload. Runtime initialization stayed at one per document and no browser page errors occurred. These checks passed against the single-origin production bundle without a development server. Angular unit tests alone are not the evidence for these claims.
 
 ## Heightmap contracts, hosts, validation, and generator
 
@@ -227,6 +269,6 @@ This probe supplies test data for calls and bulk transfer. It is not the terrain
 
 ## Next integration step
 
-The heightmap MVP is complete. The next planned step is Phase 3A PWA/offline support, including caching all required runtime assets and verifying offline reload plus generation with a new seed. Keep probe diagnostics and the existing generation contracts.
+The heightmap MVP and PWA/offline phase are complete. The next planned step is Phase 3B: Three.js rendering and simple Core biome classification, with a versioned extended result/workload. Preserve offline behavior, diagnostics, and separate compute/render timing.
 
 Keep mathematical algorithms in Core, keep transport and timers in the thin hosts, and preserve identical parameters and validation for both execution paths. Do not add the Architecture Race or a performance comparison view yet. See the [architecture](ARCHITECTURE.md), [roadmap](IMPLEMENTATION_PLAN.md), and [measurement protocol](BENCHMARKING.md).

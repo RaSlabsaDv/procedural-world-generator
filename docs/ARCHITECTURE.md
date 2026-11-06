@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Phases 0–2 are implemented: the shared deterministic C# core, WASM/API heightmap hosts, and Angular heightmap MVP provide parameter controls, Local/Remote execution, sequential equivalence checks, timings, and Canvas 2D previews. The single-origin production build and browser behavior are verified. Probe checks remain available in collapsed diagnostics. PWA/offline, 3D/biomes, and Architecture Race remain planned. See [development instructions](DEVELOPMENT.md) for commands and verification details. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
+**Status:** Phases 0–3A are implemented: shared deterministic C# computation, WASM/API hosts, the Angular heightmap MVP, and production PWA/offline support. Offline readiness verifies a complete version-specific asset cache and Local execution; updates reload only between operations. Real browser tests cover offline reload, new-tab generation, API unavailability/recovery, and updating to another offline-capable version. 3D/biomes and Architecture Race remain planned. See [development instructions](DEVELOPMENT.md) for commands and verification evidence.
 
 ## 1. Components and dependencies
 
@@ -179,7 +179,7 @@ A Web Worker is an optional future execution change, not a required MVP dependen
 
 `HeightMapService.local` and `.remote` use the existing WASM runtime and HTTP endpoint. Both pass responses through `heightmap.contract.ts`, which checks the envelope, request dimensions/version, workload, timings, identity, and every height before returning independent `Float32Array` storage. Structured host errors are distinguished from protocol and availability failures. Canonical parameter validation remains in Core; the form only rejects empty or unparseable numbers and provides HTML input guidance.
 
-`App` captures a frozen request and uses one operation lock across heightmap actions and `ProbeDiagnostics`. Changed inputs invalidate comparison state; obsolete asynchronous results are discarded. Existing maps retain their original parameter labels. The Local path permits a browser frame before synchronous computation; it can still block the main thread.
+`App` captures a frozen request and uses the shared `OperationLock` across heightmap actions, `ProbeDiagnostics`, offline preparation, and update reloads. Changed inputs invalidate comparison state; obsolete asynchronous results are discarded. Existing maps retain their original parameter labels. The Local path permits a browser frame before synchronous computation; it can still block the main thread.
 
 “Verify equivalence” runs Local then Remote using one snapshot and renders after the pair. It compares every height with the documented tolerance, reports maximum/mean absolute error and mismatch count, and distinguishes numerical agreement from build compatibility. Different IDs are incompatible; matching dirty/unversioned IDs remain unverifiable. This is a correctness check without repeated trials, winner rankings, or performance charts.
 
@@ -195,16 +195,20 @@ Production build order:
 
 1. Publish the WASM host in Release mode.
 2. Copy the entire required publish bundle into a dedicated Angular assets directory, such as `/wasm/`, preserving relative paths.
-3. Build Angular; once PWA support is added, generate the service-worker manifest with the WASM assets already included.
+3. Build Angular with WASM assets already present, run `scripts/finalize-pwa.mjs`, then generate the final Angular service-worker manifest. The finalizer embeds a versioned offline catalog reference in the index before invoking Angular’s own manifest generator.
 4. Deploy the Angular output and API; verify MIME types, loader URLs, and that missing runtime files do not receive the SPA fallback.
 
-Once PWA support is enabled, a dedicated asset group caches the required `/wasm/**` files alongside the application shell using `prefetch`. The resources must enter the manifest during the Angular build; the rules are described in the [Angular service-worker configuration](https://angular.dev/ecosystem/service-workers/config). Prefetch caches files but does not initialize the .NET runtime.
+PWA support uses one `offline` asset group with `prefetch` install/update policies for the shell, icons, versioned offline catalog, and complete required `/wasm/**` bundle. Compressed mirrors (`.br`/`.gz`) and debug files are excluded. The build finalizer derives a version identifier from Angular’s asset hashes, embeds the catalog URL in `index.html`, and regenerates `ngsw.json` using the supported Angular CLI. The catalog records the exact expected SHA-1 of every required asset, including the final index. It is verification metadata; Angular remains the only cache manager. Using one group lets readiness verify one complete cache rather than accidentally combining different app versions. Rules follow the [Angular service-worker configuration](https://angular.dev/ecosystem/service-workers/config).
 
 Neither the service worker nor the server caches API responses; generation responses use `Cache-Control: no-store`. Offline behavior must not present an old response as a new Remote computation. All required fonts and modules are also local assets.
 
-Test the production build over HTTPS or localhost, as described in the [Angular PWA setup](https://angular.dev/ecosystem/service-workers/getting-started). Confirm offline readiness after cache installation and a successful Local check, rather than relying on `navigator.onLine`. The complete reload and new-seed scenario is in [BENCHMARKING.md](BENCHMARKING.md).
+`OfflineReadinessService` waits for service-worker control, checks that each cache containing the current index’s exact catalog has every required asset with matching bytes, confirms that the controlled index/catalog matches the open document, and verifies a tiny Local request. A mismatched version or a controller change cannot produce a ready state. It never unions caches across versions or treats `navigator.onLine` as proof. Preparation is deduplicated and holds `OperationLock`, outside generation timings. Bounded registration/control/cache waits fail with a retry message; unsupported development/nonsecure contexts remain usable for ordinary generation. Unrecoverable service-worker errors invalidate readiness. Cache eviction and clearing site data require preparation again.
 
-Angular and WASM assets are updated as one version. Activate a new version between runs with a reload, not during an experiment. The API may already have a different revision; the `coreBuildId` check must detect this.
+Test production over HTTPS or localhost, as described in the [Angular PWA setup](https://angular.dev/ecosystem/service-workers/getting-started). The complete reload and new-seed scenario is in [BENCHMARKING.md](BENCHMARKING.md); the automated browser reproduction is `tests/browser/pwa.cjs`.
+
+Angular and WASM assets are updated as one version. `SwUpdate.versionUpdates` notifies the user when a version is ready. The update button acquires the same operation lock, invalidates readiness, and reloads; it does not call `activateUpdate()` in the live page. The lock stays held until navigation, and a failed reload is reported and unlocks retry. The new document independently verifies its own catalog and runtime. This follows [Angular’s update/reload guidance](https://angular.dev/ecosystem/service-workers/communications). The API may already have another revision, so `coreBuildId` compatibility checks still apply.
+
+WASM publishing stages a fresh output and client bundle, validates required runtime files, and then promotes both directories with rollback. Previous assets survive restore, publish, validation, and promotion failures. The stage is cleaned on exit; repeated builds do not retain stale hashed files. No compilation or optimization mode was changed.
 
 ## 7. Decisions verified by the PoC
 
