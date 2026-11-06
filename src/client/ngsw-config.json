@@ -1,0 +1,28 @@
+{
+  "$schema": "./node_modules/@angular/service-worker/config/schema.json",
+  "index": "/index.html",
+  "assetGroups": [
+    {
+      "name": "offline",
+      "installMode": "prefetch",
+      "updateMode": "prefetch",
+      "resources": {
+        "files": [
+          "/favicon.ico",
+          "/index.html",
+          "/manifest.webmanifest",
+          "/icons/**",
+          "/*.css$",
+          "/*.js$",
+          "/offline-assets.*.json$",
+          "/wasm/**",
+          "!/wasm/**/*.br$",
+          "!/wasm/**/*.gz$",
+          "!/wasm/**/*.map$",
+          "!/wasm/**/*.pdb$"
+        ]
+      }
+    }
+  ],
+  "navigationUrls": ["/**", "!/**/*.*", "!/**/*__*", "!/**/*__*/**", "!/api/**"]
+}

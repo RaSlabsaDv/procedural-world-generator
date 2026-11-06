@@ -80,6 +80,45 @@ summary:focus-visible {
 .status {
   min-height: 1.5rem;
 }
+.offline,
+.update {
+  padding: 0.8rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  background: #eef3f5;
+  border-left: 3px solid #6b8a94;
+}
+.offline.ready {
+  background: #edf7f1;
+  border-left-color: #2f7d4f;
+}
+.offline.failed {
+  background: #fff2f2;
+  border-left-color: #a32727;
+}
+.offline.unsupported {
+  background: #f7f4e8;
+  border-left-color: #9b7a1f;
+}
+.offline p,
+.update p {
+  margin: 0;
+}
+.offline .actions {
+  margin-top: 0.6rem;
+}
+.update {
+  background: #eaf3f5;
+  border-left-color: #174d5c;
+}
+.update button {
+  margin-top: 0.6rem;
+}
+.update-version {
+  color: #526571;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
 .error,
 .field-error {
   color: #a32727;

@@ -83,6 +83,15 @@ describe('HeightMapService', () => {
     expect(runtime).not.toHaveBeenCalled();
   });
 
+  it('treats the service worker offline response as unavailable', async () => {
+    const promise = service.remote(request);
+    http
+      .expectOne('/api/v1/heightmaps')
+      .flush(null, { status: 504, statusText: 'Gateway Timeout' });
+    await expect(promise).rejects.toMatchObject({ kind: 'availability' });
+    expect(runtime).not.toHaveBeenCalled();
+  });
+
   it('rejects malformed local JSON and corrupt remote responses', async () => {
     generate.mockReturnValueOnce('{');
     await expect(service.local(request)).rejects.toMatchObject({ kind: 'protocol' });

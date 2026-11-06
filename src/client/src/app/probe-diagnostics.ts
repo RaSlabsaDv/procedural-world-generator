@@ -1,5 +1,6 @@
+import { OperationLock } from './operation-lock.service';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal, input, output } from '@angular/core';
+import { Component, inject, signal, input } from '@angular/core';
 import { ApiErrorResponse, SampleResponse } from './probe.models';
 import { RemoteProbeService } from './remote-probe.service';
 import { WasmHostService } from './wasm-host.service';
@@ -28,7 +29,7 @@ const FULL_ARRAY_SHA256 = 'cbd49d9128202d264bddde63406dd224d2a0d4f0d841bed3697a1
 })
 export class ProbeDiagnostics {
   readonly disabled = input(false);
-  readonly busyChange = output<boolean>();
+  private readonly operations = inject(OperationLock);
   private readonly wasm = inject(WasmHostService);
   private readonly remote = inject(RemoteProbeService);
 
@@ -46,7 +47,8 @@ export class ProbeDiagnostics {
   protected async runLocalChecks(): Promise<void> {
     if (this.disabled() || this.localState() === 'running' || this.remoteState() === 'running')
       return;
-    this.busyChange.emit(true);
+    const release = this.operations.tryAcquire();
+    if (!release) return;
     this.localState.set('running');
     this.localError.set(null);
     this.localChecks.set([]);
@@ -104,14 +106,15 @@ export class ProbeDiagnostics {
       this.localError.set(this.describeError(error));
       this.localState.set('error');
     } finally {
-      this.busyChange.emit(false);
+      release();
     }
   }
 
   protected async runRemoteChecks(): Promise<void> {
     if (this.disabled() || this.localState() === 'running' || this.remoteState() === 'running')
       return;
-    this.busyChange.emit(true);
+    const release = this.operations.tryAcquire();
+    if (!release) return;
     this.remoteState.set('running');
     this.remoteError.set(null);
     this.remoteChecks.set([]);
@@ -163,7 +166,7 @@ export class ProbeDiagnostics {
       this.remoteError.set(this.describeError(error));
       this.remoteState.set('error');
     } finally {
-      this.busyChange.emit(false);
+      release();
     }
   }
 

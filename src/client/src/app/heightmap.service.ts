@@ -38,7 +38,7 @@ export class HeightMapService {
       decoded = await firstValueFrom(this.http.post<unknown>('/api/v1/heightmaps', request));
     } catch (error) {
       if (error instanceof HttpErrorResponse) {
-        if (error.status === 0)
+        if (error.status === 0 || [502, 503, 504].includes(error.status))
           throw new HeightMapError(
             'availability',
             'Remote API is unavailable. Check the connection and retry.',

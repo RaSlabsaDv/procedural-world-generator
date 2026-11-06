@@ -10,6 +10,8 @@ import {
 } from './heightmap.models';
 import { HeightMapPreview } from './heightmap-preview';
 import { HeightMapService } from './heightmap.service';
+import { OperationLock } from './operation-lock.service';
+import { OfflineReadinessService } from './offline-readiness.service';
 import { ProbeDiagnostics } from './probe-diagnostics';
 
 @Component({
@@ -20,8 +22,10 @@ import { ProbeDiagnostics } from './probe-diagnostics';
 })
 export class App {
   private readonly generator = inject(HeightMapService);
+  protected readonly offline = inject(OfflineReadinessService);
   private inputRevision = 0;
-  protected readonly busy = signal(false);
+  private readonly operations = inject(OperationLock);
+  protected readonly busy = this.operations.busy;
   protected readonly status = signal('Ready');
   protected readonly error = signal<HeightMapError | null>(null);
   protected readonly local = signal<HeightMapRun | null>(null);
@@ -37,6 +41,7 @@ export class App {
   });
 
   constructor() {
+    void this.offline.start();
     this.form.valueChanges.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe(() => {
       this.inputRevision++;
       this.comparison.set(null);
@@ -45,8 +50,31 @@ export class App {
     });
   }
 
-  protected setDiagnosticsBusy(value: boolean): void {
-    this.busy.set(value);
+  protected retryOfflinePreparation(): void {
+    if (this.busy()) return;
+    void this.offline.prepare();
+  }
+
+  protected checkForUpdates(): void {
+    if (this.busy()) return;
+    void this.offline.checkForUpdate();
+  }
+
+  protected async reloadForUpdate(): Promise<void> {
+    if (this.busy() || !this.offline.updateReady()) return;
+    const release = this.operations.tryAcquire();
+    if (!release) return;
+    try {
+      this.offline.prepareForReload();
+      this.reloadPage();
+    } catch (error) {
+      this.offline.cancelReload(error instanceof Error ? error.message : String(error));
+      release();
+    }
+  }
+
+  protected reloadPage(): void {
+    globalThis.location.reload();
   }
 
   protected fieldError(field: string): string | undefined {
@@ -54,8 +82,8 @@ export class App {
   }
 
   protected async generate(mode: 'local' | 'remote' | 'verify'): Promise<void> {
-    if (this.busy()) return;
-    this.busy.set(true);
+    const release = this.operations.tryAcquire();
+    if (!release) return;
     this.error.set(null);
     this.comparison.set(null);
     this.local.set(null);
@@ -99,7 +127,7 @@ export class App {
       );
       this.status.set('Generation failed');
     } finally {
-      this.busy.set(false);
+      release();
     }
   }
 
