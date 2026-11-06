@@ -1,24 +1,24 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { compareTerrains, TerrainComparison } from './terrain.contract';
-import { TerrainError, TerrainRun } from './terrain.models';
+import { compareTerrains, TerrainComparison } from './terrain/data/terrain.contract';
+import { TerrainError, TerrainRun } from './terrain/data/terrain.models';
 import {
   captureTerrainRequest,
   createParameterForm,
   MAP_PARAMETERS,
   SIMULATION_PARAMETERS,
-} from './terrain-parameters';
-import { TerrainParametersPanel, GenerationMode } from './terrain-parameters-panel';
-import { TerrainResultsPanel } from './terrain-results-panel';
-import { PwaStatusPanel } from './pwa-status-panel';
-import { TerrainService } from './terrain.service';
-import { OperationLock } from './operation-lock.service';
+} from './terrain/editor/terrain-parameters';
+import { TerrainParametersPanel, GenerationMode } from './terrain/editor/terrain-parameters-panel';
+import { TerrainResultsPanel } from './terrain/editor/terrain-results-panel';
+import { PwaStatusPanel } from './platform/pwa-status-panel';
+import { TerrainService } from './terrain/data/terrain.service';
+import { OperationLock } from './platform/operation-lock.service';
 
 @Component({
   selector: 'app-root',
   imports: [TerrainParametersPanel, TerrainResultsPanel, PwaStatusPanel],
   templateUrl: './app.html',
-  styleUrls: ['./panel.css', './app.css'],
+  styleUrls: ['./shared/panel.css', './app.css'],
 })
 export class App {
   private readonly generator = inject(TerrainService);

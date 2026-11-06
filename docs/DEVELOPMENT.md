@@ -8,7 +8,7 @@ The application exposes one generator, **Rich terrain + hydraulic erosion**, wit
 
 `App` owns draft and generation state and orchestration. The editor has grouped controls on the left, one primary 3D viewport in the center, and measurements on the right; panels stack on narrow screens. `TerrainParametersPanel` renders typed forms and emits Local/Remote/Verify actions; `TerrainResultsPanel` presents comparison, snapshots, timings and deferred 3D; `PwaStatusPanel` owns readiness/update actions using the shared lock. The editor uses the versioned ecology contract described below.
 
-Edit parameter labels, tooltips, input steps and initial values in `terrain-parameters.ts`. Slider extents are UI guidance in the same module; numeric controls preserve exact entry and Core validates ranges. This is presentation metadata, not a second validator. Core remains authoritative for ranges and work budgets. Blank/non-finite values are rejected before dispatch without default substitution. Field errors support nested `heightMap.*` paths and are associated with inputs for accessibility.
+Edit parameter labels, tooltips, input steps in `terrain/editor/terrain-parameters.ts` and initial values in `terrain/data/terrain-defaults.ts`. Slider extents are UI guidance in the editor metadata module; numeric controls preserve exact entry and Core validates ranges. This is presentation metadata, not a second validator. Core remains authoritative for ranges and work budgets. Blank/non-finite values are rejected before dispatch without default substitution. Field errors support nested `heightMap.*` paths and are associated with inputs for accessibility.
 
 ## Toolchain and native verification
 
@@ -152,3 +152,27 @@ Next implementation: bounded evolution capture and Three.js playback for this ge
 Plains coverage and Mountain coverage are regional tendencies, not exact percentages per seed. Their sum cannot exceed 1; the remainder favors hills. Mountain strength controls relief in mountain regions independently of their coverage. Global moisture affects vegetation, independently of erosion rainfall. Sea level is a fraction of the height bound; only four-connected low samples reaching a boundary become ocean.
 
 Core uses illustrative grid/world units and a normalized temperature proxy. There are no calibrated weather, lakes, rivers, seasons or marine erosion. Trees occupy eligible forest quads and follow the exact rendered triangles. Core caps output at 16384 instances using independent hash priorities, avoiding a row-major cut-off. All returned trees are rendered with two shared instanced meshes per viewport. Density and forest coverage are retained independently of this output cap. Request/serialization/rendering costs should be measured separately from Core work. Native historical v1 fixtures remain unchanged in tests/core/Historical and the independent v1 Python reference; the public endpoint accepts v2 only.
+
+## Repository layout and maintenance
+
+```text
+src/core/
+  Contracts/       immutable request/result records
+  Validation/      canonical limits and prepared requests
+  Generation/      composition, noise, hydraulic simulation and orchestration
+  Ecology/         environmental fields, ocean, biome rules and vegetation
+src/client/src/app/
+  app.*            root shell and generation orchestration
+  platform/        WASM runtime, PWA and shared operation lock
+  shared/          common panel styles
+  terrain/data/    contracts, defaults, decoder, comparison and adapters
+  terrain/editor/  parameter metadata/forms and result panels
+  terrain/rendering/ Three.js terrain, trees and viewport lifecycle
+  terrain/testing/ reusable frontend test fixtures
+```
+
+Core namespaces and host references remain unchanged. Keep numerical operation order frozen for v2; a semantic biome change requires a new result version. Before extending biomes, update Core rules and the explicit client wire-ID/palette declarations together. UI defaults never substitute for missing host fields. Frontend tests remain colocated; historical v1 tests/reference code stay separate.
+
+The browser suite has three maintained entry points: `landscape.cjs` for complete v2 fields/trees and heavy limits, `editor.cjs` for UI transitions, and `pwa.cjs` for offline/safe-update lifecycle. They share launch configuration and readiness diagnostics in `tests/browser/support/browser.cjs`. The weaker duplicate hydraulic-only script has been removed; its current-workload coverage is included in the landscape/editor suite. Keep the existing PWG_* environment overrides. Packaging and worker RPC tests retain their separate build checks.
+
+`@angular/router` was removed because this single-screen editor does not use Angular routing. No dependencies were added. Reset values and readiness settings now share the same pure defaults module. Formatting and file layout changes preserve v2 results; existing fixtures and full pre/post-refactor numerical fingerprints are used for verification.

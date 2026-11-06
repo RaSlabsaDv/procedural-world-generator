@@ -1,21 +1,14 @@
 // Full v2 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
-const { chromium } = require(
-  process.env.PWG_PLAYWRIGHT_MODULE || "playwright-core",
-);
+const {
+  base,
+  launchBrowser,
+  waitForOfflineReady,
+} = require("./support/browser.cjs");
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises"),
   path = require("node:path");
-const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PWG_BROWSER_EXECUTABLE,
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--enable-unsafe-swiftshader",
-      "--use-angle=swiftshader",
-    ],
-  });
+  const browser = await launchBrowser();
   try {
     const context = await browser.newContext({
         serviceWorkers: "allow",
@@ -24,8 +17,7 @@ const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
       page = await context.newPage();
     const errors = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    const ready = () =>
-      page.locator("#offline-status.ready").waitFor({ timeout: 90000 });
+    const ready = () => waitForOfflineReady(page);
     const complete = () =>
       page.waitForFunction(
         () => document.querySelector(".status").textContent === "Complete",
@@ -102,20 +94,9 @@ const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
             result.executionProfile !== "landscape-worker-json-v2" ||
             result.result.resultVersion !== "landscape-ecology-v2" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
-            result.result.algorithmVersion !== request.algorithmVersion ||
-            JSON.stringify(result.parameters.heightMap) !==
-              JSON.stringify(request.heightMap)
-          ) {
-            // Parameter object order differs between source-generated and browser JSON; compare by key below.
-            if (
-              result.workload !== "landscape-ecology-hydraulic-v2" ||
-              result.executionProfile !== "landscape-worker-json-v2" ||
-              result.result.resultVersion !== "landscape-ecology-v2" ||
-              result.simulationVersion !== "hydraulic-grid-v1" ||
-              result.result.algorithmVersion !== request.algorithmVersion
-            )
-              throw Error("Version mismatch");
-          }
+            result.result.algorithmVersion !== request.algorithmVersion
+          )
+            throw Error("Version mismatch");
           for (const [key, value] of Object.entries(request))
             if (key !== "heightMap" && result.parameters[key] !== value)
               throw Error("Parameter echo: " + key);

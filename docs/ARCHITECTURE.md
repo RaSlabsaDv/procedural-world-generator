@@ -24,7 +24,7 @@ Core owns validation, deterministic noise/composition, hydraulic simulation, and
 
 `App` coordinates draft forms, immutable generation snapshots, revision checks and the shared operation lock. A large deferred Three.js viewport is flanked by the parameters sidebar and results/measurements sidebar. `TerrainParametersPanel` owns grouped controls and draft actions; `TerrainResultsPanel` owns result selection, the viewport, comparison and metrics; `PwaStatusPanel` uses the same root-injected lock for readiness and reload. Panels stack on smaller screens and can be collapsed using native details controls.
 
-`terrain-parameters.ts` centralizes labels, descriptions, input steps and defaults. Mountain/warp sliders have presentation bounds, with synchronized exact numeric inputs. These bounds are UI guidance, not canonical validators; Core remains authoritative for ranges and work budgets. Random seed uses browser crypto only to select an Int32 seed. Reset and all controls modify a draft without executing the generator. Capture rejects missing/non-finite values and freezes both request levels. Nested Core error paths map to input errors.
+`terrain/editor/terrain-parameters.ts` centralizes labels, descriptions and input steps; pure `terrain/data/terrain-defaults.ts` supplies initial values to forms and readiness checks. Mountain/warp sliders have presentation bounds, with synchronized exact numeric inputs. These bounds are UI guidance, not canonical validators; Core remains authoritative for ranges and work budgets. Random seed uses browser crypto only to select an Int32 seed. Reset and all controls modify a draft without executing the generator. Capture rejects missing/non-finite values and freezes both request levels. Nested Core error paths map to input errors.
 
 Generation preserves prior successful maps during work or errors. Display labels distinguish captured settings from the current draft; input edits clear comparison state. Local/Remote verification remains sequential with one snapshot, and commits the pair after both complete. Revision and destruction checks discard obsolete responses; the operation lock is held until the real asynchronous call settles, including after component destruction.
 
@@ -67,3 +67,16 @@ Core time includes composition, simulation allocation and all steps, summaries, 
 Angular service worker prefetches the complete versioned application, deferred Three.js and WASM/worker assets. The generated catalog is tied to the cached index and manifest hashes. Readiness verifies one complete matching version cache and a tiny zero-step terrain computation. API results are never cached. Safe updates require reload while idle; readiness is verified again in the new document.
 
 Preserve the selected generator's appearance and equations when adding evolution capture. Capturing snapshots must not change final values, must have bounded memory, and must be measured as a distinct workload. Future climate and hydrology need explicit versions and must not reintroduce automatic filling of every depression. See the [roadmap](IMPLEMENTATION_PLAN.md).
+
+## Source organization
+
+Core keeps its public `WorldGenerator.Core` namespace and the same API/WASM project references. Files are grouped by responsibility:
+
+- `src/core/Contracts`: immutable input/output records and validation error data.
+- `src/core/Validation`: canonical limits, validators and opaque prepared requests.
+- `src/core/Generation`: pipeline orchestration, terrain composition, lattice noise and unchanged hydraulic arithmetic.
+- `src/core/Ecology`: environment derivation, four-connected ocean classification, ordered biome rules and bounded vegetation placement.
+
+Angular keeps only its root shell/configuration at `src/client/src/app`. `platform` contains PWA, WASM runtime and operation locking; `terrain/data` contains models, defaults, wire decoding and equivalence; `terrain/editor` owns forms/panels; `terrain/rendering` owns Three.js; `terrain/testing` holds fixtures. Tests remain beside their corresponding frontend code. `shared/panel.css` contains common panel styles. The contract entry point re-exports separate decoder/comparison modules. PWA readiness reads pure defaults rather than importing editor forms. Wire biome IDs are centralized, with a typed presentation palette; ecological classification stays in Core.
+
+Display CPU measurements are retained for an unchanged result when the other execution mode is updated. Replacing that result invalidates only its own display measurement. No algorithm/result/workload versions or numerical rules changed during this organization pass.

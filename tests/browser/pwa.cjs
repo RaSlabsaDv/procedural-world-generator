@@ -1,14 +1,15 @@
 // Optional end-to-end tool: run against the local published bundle, not ng serve.
-const { chromium } = require(
-  process.env.PWG_PLAYWRIGHT_MODULE || "playwright-core",
-);
+const {
+  base,
+  launchBrowser,
+  waitForOfflineReady,
+} = require("./support/browser.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 const repo = path.resolve(__dirname, "../..");
-const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
 const webRoot = path.join(repo, "artifacts/app/wwwroot");
 const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
 
@@ -26,32 +27,14 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
   ];
   for (const name of names)
     original.set(name, await fs.readFile(path.join(webRoot, name)));
-  const browser = await chromium.launch({
-    executablePath: process.env.PWG_BROWSER_EXECUTABLE,
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--enable-unsafe-swiftshader",
-      "--use-angle=swiftshader",
-    ],
-  });
+  const browser = await launchBrowser();
   const context = await browser.newContext({ serviceWorkers: "allow" });
   const errors = [];
   const observe = (page) =>
     page.on("pageerror", (error) => errors.push(error.message));
   const page = await context.newPage();
   observe(page);
-  const ready = async (target) => {
-    try {
-      await target.locator("#offline-status.ready").waitFor({ timeout: 90000 });
-    } catch (error) {
-      throw new Error(
-        "Offline preparation failed: " +
-          (await target.locator("#offline-detail").innerText()),
-        { cause: error },
-      );
-    }
-  };
+  const ready = waitForOfflineReady;
   const generate = async (target, seed, mode = "local") => {
     await target.locator("#seed").fill(String(seed));
     await target.locator("#generate-" + mode).click();

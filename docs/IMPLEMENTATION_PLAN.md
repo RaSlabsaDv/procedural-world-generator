@@ -12,13 +12,23 @@ The editor provides a large central Three.js viewport, grouped parameter sidebar
 
 Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Full-result comparisons, worker ownership and safe PWA updates remain supported; generation now uses the v2 ecology contract below. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
 
-No new dependencies, presets, brushes, 2D views, simulation history or placeholder timeline controls were added. The next extension is the bounded capture pipeline below; its player will occupy a bottom timeline after real frame data exists.
+No new dependencies, presets, brushes, 2D views, simulation history or placeholder timeline controls were added. Bounded capture is a later extension; its player will occupy a bottom timeline after real frame data exists.
 
 ## Diverse terrain and vegetation
 
 Current generation uses diverse-landscape-v2 with landscape-ecology-v2 results: regional plains/hills/mountain composition, explicit boundary-connected ocean, environment-based biomes, density and capped deterministic trees. Both hosts share Core; the editor adds four required controls. Two instanced meshes per viewport render every returned tree. Hydraulic-grid-v1 arithmetic and closed boundaries are unchanged. Historical v1 fixtures remain test-only evidence, not another public mode. See [LANDSCAPE_V2.md](LANDSCAPE_V2.md) for exact rules and limits.
 
-## Next: evolution of the selected terrain
+## Organization and polishing: complete
+
+Core is split into Contracts, Validation, Generation and Ecology, with separate composition, sea, biome and vegetation responsibilities. Angular separates platform, terrain data/editor/rendering and shared styles. Pure defaults no longer couple PWA readiness to Angular forms. Wire biome IDs and their palette are explicit and centralized. Decoder and comparison implementations are separate behind the contract entry point. A stale display-timing reset was corrected; updating one mode preserves the other mode's measurement.
+
+Unused Angular routing and the duplicate hydraulic browser script were removed. The landscape, editor and PWA browser scenarios share setup/readiness helpers. Existing v2 mathematics, contracts, limits and workload identities remain the baseline; new biome behavior is not implemented in this cleanup.
+
+## Next planning priority: climate and vegetation diversity
+
+Specify the next version before implementing additional biome types or controls. Candidate scope is differentiated leaf/conifer forests, savanna, tundra and high-altitude snow, with global warmth, vegetation density and independent landform-region scale. Final rules, limits and output identity are still to be defined. Keep v2 as the reproducible comparison baseline until a replacement is explicitly specified.
+
+## Later: evolution of the selected terrain
 
 1. Specify bounded snapshot capture for the existing hydraulic model: initial state, interval frames, final state, no duplicate final frame, and overflow-safe storage budgets.
 2. Add opt-in capture without changing generation arithmetic or final output. Preserve the current generation workload; give capture a separate version/workload and include copying in its Core time.

@@ -2,18 +2,21 @@ import { provideHttpClient } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { PwaStatusPanel } from './pwa-status-panel';
-import { OperationLock } from './operation-lock.service';
-import { TerrainResultsPanel } from './terrain-results-panel';
+import { PwaStatusPanel } from './platform/pwa-status-panel';
+import { OperationLock } from './platform/operation-lock.service';
+import { TerrainResultsPanel } from './terrain/editor/terrain-results-panel';
 import { vi } from 'vitest';
 import { App } from './app';
-import { TerrainService } from './terrain.service';
-import { TerrainError, TerrainRun } from './terrain.models';
-import { OfflinePreparationState, OfflineReadinessService } from './offline-readiness.service';
-import { testWire } from './terrain-test-fixture';
-import { TerrainRequest } from './terrain.models';
-import { decodeTerrain } from './terrain.contract';
-import { TerrainPreview } from './terrain-preview';
+import { TerrainService } from './terrain/data/terrain.service';
+import { TerrainError, TerrainRun } from './terrain/data/terrain.models';
+import {
+  OfflinePreparationState,
+  OfflineReadinessService,
+} from './platform/offline-readiness.service';
+import { testWire } from './terrain/testing/terrain-test-fixture';
+import { TerrainRequest } from './terrain/data/terrain.models';
+import { decodeTerrain } from './terrain/data/terrain.contract';
+import { TerrainPreview } from './terrain/rendering/terrain-preview';
 import { Component, input } from '@angular/core';
 
 @Component({ selector: 'app-terrain-preview', template: '<canvas></canvas>' })

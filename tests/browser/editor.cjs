@@ -1,21 +1,14 @@
 // Production editor integration: real WASM/API, retained results, responsive layout and offline use.
-const { chromium } = require(
-  process.env.PWG_PLAYWRIGHT_MODULE || "playwright-core",
-);
+const {
+  base,
+  launchBrowser,
+  waitForOfflineReady,
+} = require("./support/browser.cjs");
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
 (async () => {
-  const browser = await chromium.launch({
-    executablePath: process.env.PWG_BROWSER_EXECUTABLE,
-    headless: true,
-    args: [
-      "--no-sandbox",
-      "--enable-unsafe-swiftshader",
-      "--use-angle=swiftshader",
-    ],
-  });
+  const browser = await launchBrowser();
   try {
     const context = await browser.newContext({
       serviceWorkers: "allow",
@@ -24,8 +17,7 @@ const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
     const page = await context.newPage();
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    const ready = () =>
-      page.locator("#offline-status.ready").waitFor({ timeout: 90000 });
+    const ready = () => waitForOfflineReady(page);
     const complete = () =>
       page.waitForFunction(
         () => document.querySelector(".status").textContent === "Complete",

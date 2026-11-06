@@ -17,33 +17,33 @@ public sealed class LandscapeTests
     [Fact]
     public void ControlledWeightsSeparateLandformsAndRemainContinuous()
     {
-        Assert.Equal((1d, 0d, 0d), TerrainGenerator.Weights(.1, .45, .3));
-        Assert.Equal((0d, 1d, 0d), TerrainGenerator.Weights(.6, .45, .3));
-        Assert.Equal((0d, 0d, 1d), TerrainGenerator.Weights(.95, .45, .3));
-        Assert.Equal((1d, 0d, 0d), TerrainGenerator.Weights(.99, 1, 0));
-        Assert.Equal((0d, 0d, 1d), TerrainGenerator.Weights(.01, 0, 1));
-        Assert.Equal((0d, 1d, 0d), TerrainGenerator.Weights(.5, 0, 0));
+        Assert.Equal((1d, 0d, 0d), TerrainComposer.Weights(.1, .45, .3));
+        Assert.Equal((0d, 1d, 0d), TerrainComposer.Weights(.6, .45, .3));
+        Assert.Equal((0d, 0d, 1d), TerrainComposer.Weights(.95, .45, .3));
+        Assert.Equal((1d, 0d, 0d), TerrainComposer.Weights(.99, 1, 0));
+        Assert.Equal((0d, 0d, 1d), TerrainComposer.Weights(.01, 0, 1));
+        Assert.Equal((0d, 1d, 0d), TerrainComposer.Weights(.5, 0, 0));
         for (var i = 0; i <= 1000; i++)
         {
             var n = i / 1000d;
-            var a = TerrainGenerator.Weights(n, .45, .3);
-            var b = TerrainGenerator.Weights(n + 1e-8, .45, .3);
+            var a = TerrainComposer.Weights(n, .45, .3);
+            var b = TerrainComposer.Weights(n + 1e-8, .45, .3);
             Assert.InRange(Math.Abs(a.Plains + a.Hills + a.Mountains - 1), 0, 1e-12);
             Assert.InRange(Math.Abs(a.Plains - b.Plains) + Math.Abs(a.Mountains - b.Mountains), 0, 1e-6);
-            Assert.True(TerrainGenerator.Weights(n, .55, .3).Plains >= a.Plains);
-            Assert.True(TerrainGenerator.Weights(n, .45, .4).Mountains >= a.Mountains);
+            Assert.True(TerrainComposer.Weights(n, .55, .3).Plains >= a.Plains);
+            Assert.True(TerrainComposer.Weights(n, .45, .4).Mountains >= a.Mountains);
         }
     }
 
     [Fact]
     public void PlainsHaveSmallNaturalVariationAndMountainsUseTheirOwnStrength()
     {
-        var p0 = TerrainGenerator.Blend(.2, 0, 0, 0, 1, 0, 0, 1);
-        var p1 = TerrainGenerator.Blend(.2, 1, 1, 1, 1, 0, 0, 1);
+        var p0 = TerrainComposer.Blend(.2, 0, 0, 0, 1, 0, 0, 1);
+        var p1 = TerrainComposer.Blend(.2, 1, 1, 1, 1, 0, 0, 1);
         Assert.InRange(p1 - p0, .029999, .030001);
-        Assert.Equal(p1, TerrainGenerator.Blend(.2, 1, 1, 1, 1, 0, 0, 0));
-        var weak = TerrainGenerator.Blend(.2, .5, .5, 1, 0, 0, 1, 0);
-        var strong = TerrainGenerator.Blend(.2, .5, .5, 1, 0, 0, 1, 1);
+        Assert.Equal(p1, TerrainComposer.Blend(.2, 1, 1, 1, 1, 0, 0, 0));
+        var weak = TerrainComposer.Blend(.2, .5, .5, 1, 0, 0, 1, 0);
+        var strong = TerrainComposer.Blend(.2, .5, .5, 1, 0, 0, 1, 1);
         Assert.InRange(strong - weak, .619999, .620001);
     }
 
@@ -52,10 +52,10 @@ public sealed class LandscapeTests
     {
         var values = Enumerable.Repeat(10f, 25).ToArray();
         values[0] = 1; values[6] = 1; values[12] = 1;
-        var ocean = LandscapeEcology.Ocean(values, 5, 5, 1);
+        var ocean = OceanClassifier.Ocean(values, 5, 5, 1);
         Assert.True(ocean[0]); Assert.False(ocean[6]); Assert.False(ocean[12]);
         values[1] = 1; values[11] = 1;
-        ocean = LandscapeEcology.Ocean(values, 5, 5, 1);
+        ocean = OceanClassifier.Ocean(values, 5, 5, 1);
         Assert.True(ocean[6]); Assert.True(ocean[12]); Assert.False(ocean[24]);
     }
 
@@ -70,7 +70,7 @@ public sealed class LandscapeTests
     [InlineData(false, .2, .7, .25, 0, .8, LandscapeBiome.Grassland)]
     [InlineData(false, .2, .7, .8, 0, .42, LandscapeBiome.Grassland)]
     public void BiomesUseEnvironmentAndExplicitPrecedence(bool ocean, double h, double m, double t, double slope, double patch, LandscapeBiome expected) =>
-        Assert.Equal(expected, LandscapeEcology.Classify(ocean, h, m, t, slope, patch));
+        Assert.Equal(expected, LandscapeBiomeClassifier.Classify(ocean, h, m, t, slope, patch));
 
     [Fact]
     public void EnvironmentIsFiniteIndependentDeterministicAndSensitiveToMoisture()
@@ -97,9 +97,9 @@ public sealed class LandscapeTests
         var biomes = Enumerable.Repeat(LandscapeBiome.Forest,heights.Length).ToArray();
         var slopes = Enumerable.Repeat(.03f,heights.Length).ToArray();
         var density = Enumerable.Repeat(1f,heights.Length).ToArray();
-        var trees = LandscapeEcology.PlaceTrees(heights,biomes,slopes,density,size,size,42);
+        var trees = VegetationGenerator.PlaceTrees(heights,biomes,slopes,density,size,size,42);
         Assert.Equal(TerrainLimits.MaxTrees, trees.Length);
-        Assert.Equal(trees, LandscapeEcology.PlaceTrees(heights,biomes,slopes,density,size,size,42));
+        Assert.Equal(trees, VegetationGenerator.PlaceTrees(heights,biomes,slopes,density,size,size,42));
         Assert.Equal(trees.Select(t => t.CellIndex).Order(), trees.Select(t => t.CellIndex));
         Assert.Equal(trees.Length, trees.Select(t => t.CellIndex).Distinct().Count());
         Assert.Contains(trees,t => t.CellIndex > heights.Length*3/4);
@@ -108,7 +108,7 @@ public sealed class LandscapeTests
             Assert.InRange(tree.Scale,.6f,1.4f); Assert.InRange(tree.Rotation,0,(float)(2*Math.PI));
             var i=tree.CellIndex; var x=i%size; var z=i/size;
             Assert.InRange(tree.X,x+.14f,x+.86f); Assert.InRange(tree.Z,z+.14f,z+.86f);
-            Assert.Equal(LandscapeEcology.Surface(heights,size,i,tree.X-x,tree.Z-z),tree.Y);
+            Assert.Equal(VegetationGenerator.Surface(heights,size,i,tree.X-x,tree.Z-z),tree.Y);
         }
     }
 
@@ -117,11 +117,11 @@ public sealed class LandscapeTests
     {
         float[] heights=[1,1,1,1], slopes=[0,0,0,0], density=[1,1,1,1];
         LandscapeBiome[] biomes=[LandscapeBiome.Forest,LandscapeBiome.Forest,LandscapeBiome.Forest,LandscapeBiome.Ocean];
-        Assert.Empty(LandscapeEcology.PlaceTrees(heights,biomes,slopes,density,2,2,42));
+        Assert.Empty(VegetationGenerator.PlaceTrees(heights,biomes,slopes,density,2,2,42));
         biomes[3]=LandscapeBiome.Forest; slopes[3]=.5f;
-        Assert.Empty(LandscapeEcology.PlaceTrees(heights,biomes,slopes,density,2,2,42));
+        Assert.Empty(VegetationGenerator.PlaceTrees(heights,biomes,slopes,density,2,2,42));
         slopes[3]=0; Array.Clear(density);
-        Assert.Empty(LandscapeEcology.PlaceTrees(heights,biomes,slopes,density,2,2,42));
+        Assert.Empty(VegetationGenerator.PlaceTrees(heights,biomes,slopes,density,2,2,42));
     }
 
     [Fact]
