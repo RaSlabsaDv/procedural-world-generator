@@ -28,8 +28,9 @@ internal static class LandscapeEcology
                 biomes[i] = LandscapeBiomeClassifier.Classify(ocean[i], h, moisture[i], temperature[i], slope[i], patch);
                 density[i] = LandscapeBiomeClassifier.Density(biomes[i], moisture[i], slope[i], patch, request.VegetationDensity);
             }
+        var surfaceWeights = SurfaceCoverage.Derive(values, biomes, moisture, temperature, slope, bound);
         var trees = VegetationGenerator.PlaceTrees(values, biomes, slope, density, map.Width, map.Height, seed);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,
-            moisture, temperature, slope, density, trees);
+            moisture, temperature, slope, density, trees, surfaceWeights);
     }
 }

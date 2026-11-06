@@ -2,7 +2,7 @@
 
 ## Supported application
 
-The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Stage 1 surface materials are implemented; surface transitions, lighting and further landscape detailing remain planned. Evolution capture/playback remains a later extension. README is intentionally empty.
+The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Surface materials and Core-owned surface transitions are implemented; lighting and further landscape detailing remain planned. Evolution capture/playback remains a later extension. README is intentionally empty.
 
 ## Frontend structure
 
@@ -26,6 +26,7 @@ node --test tests/build/worker-rpc.test.mjs
 python3 tests/reference/terrain_reference.py
 python3 tests/reference/landscape_reference.py
 python3 tests/reference/climate_reference.py
+python3 tests/reference/surface_reference.py
 ```
 
 If MSBuild worker nodes fail in the local environment, retry the native build with `--disable-build-servers -m:1`, and use `-m:1` for tests. When intentionally changing package references, regenerate NuGet lockfiles with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review them.
@@ -111,7 +112,7 @@ PWA readiness is compact in the header. Expand it for detail; failures and avail
 
 Every member is required; missing numeric values are not defaulted. The nested heightmap settings are a composition contract, not an independent public generator. Strict JSON rejects unexpected fields, wrong case/types and non-finite overflow. Both hosts share preparation and `{ "error", "fields" }` failures. API validation/JSON failures return 400; terrain responses use `Cache-Control: no-store`. Health is `GET /api/health`. Removed generation/probe routes return 404.
 
-Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v3` and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v3`. Result `landscape-ecology-v3` includes moisture, temperature, slope, vegetationDensity and bounded tree records; all arrays/transforms participate in equivalence checks. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
+Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v4` and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v4`. Result `landscape-ecology-v4` includes moisture, temperature, slope, vegetationDensity and bounded tree records; required surfaceWeights is a row-major interleaved Grass/Soil/Sand/Rock/Snow numeric array; all arrays/transforms participate in equivalence checks. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
 
 The WASM proxy creates one module worker with one runtime per document. Always await `generateTerrainJson`. `getRuntimeInfo()` reports initialization count, worker+runtime initialization time, runtime-only time, execution and protocol. Initialization is excluded from Core timing. Startup/crash rejects pending work; a later attempt can retry. Application destruction terminates the worker.
 
@@ -149,7 +150,7 @@ Use the same environment with `node tests/browser/editor.cjs` for the editor (re
 
 Evidence is written under ignored `artifacts/`. Software WebGL smoke timings are not controlled comparative performance evidence. Reserved WASM linear memory is not live managed memory or total browser RAM. Maximum settings are a desktop smoke workload, not a mobile guarantee.
 
-Next implementation: Core-owned smooth surface transitions (Stage 2), then lighting, forests, rocks, local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
+Next implementation: lighting, shadows and atmosphere (Stage 3), then forests, rocks, local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
 
 ## Diverse terrain controls and forests
 
@@ -191,25 +192,32 @@ The Climate & vegetation group contains warmth, moisture and density. Region sca
 
 Frozen v1/v2 references remain test-only, including tests/reference/landscape_reference.py. The independent climate_reference.py computes the literal v3 composition/climate fixture without importing production code. Never update historical expectations to make current changes pass.
 
-## Surface detail materials (Stage 1)
+## Surface detail materials and transitions (Stages 1–2)
 
-The preview uses the existing Lambert lighting and biome tint with a small isolated
-`terrain-surfaces.ts` shader extension (`terrain-detail-triplanar-v1`). Grass, soil,
-rock and snow are grayscale linear detail maps, not sRGB albedo. Sampling remaps
-intensity to 0.7..1.3 and multiplies the tint. Ocean has zero detail contribution;
-sand is packaged for the later coastal stage and is not assigned to a current biome.
-The complete biome-to-family mapping is presentation metadata, with no new climate,
-slope or shoreline classification. Existing per-vertex color interpolation remains;
-Core surface coverage weights and improved ecological transitions are Stage 2.
+The preview uses existing Lambert lighting with Core-owned coverage and an isolated
+`terrain-surfaces.ts` extension (`terrain-surface-coverage-v1`). Grass, soil, rock
+and snow textures modulate linear surface palette colors, then their contributions
+are blended with supplied weights. Ocean retains its color through the complement
+of land coverage. Sand stays zero and is packaged for the later coastal stage.
+There is no categorical base-color switch, ecological shader rule or mesh displacement.
+The legend labels biomes rather than exact visible surface colors.
 
 Textures repeat every four grid/world units, anchored to uncentered grid coordinates.
-The renderer reconstructs these from centered positions using the map dimensions;
-noiseScale, seed and map extents do not change repeat distance. Three orthogonal
-projections, weighted by the existing normal, limit steep-slope stretching. This
-projection blend is rendering math. There is no displacement or alteration of Core
-heights, indices, biome categories or tree records. The only new geometry attribute
-is four one-hot bytes per vertex (zero for Ocean), at most 1048576 bytes at 512x512.
-It records the display family; it is not a generated ecological field.
+Three orthogonal projections limit steep-slope stretching; these normal-based weights
+are rendering math, distinct from the supplied ecological appearance fields. Stage 2
+replaces the old one-hot byte and RGB vertex-color attributes with four float32
+Grass/Soil/Rock/Snow values per vertex. It preserves positions, triangle winding,
+normals, trees and camera behavior. At 512x512 this attribute is 4 MiB, replacing
+3 MiB of colors plus 1 MiB of one-hot bytes, so those vertex buffer bytes are unchanged.
+The original five-channel normalized client field remains 5 MiB. Parsed JSON arrays,
+strings, Core output and client/geometry buffers can overlap; these figures are not
+peak browser/runtime memory. No unused sand channel is uploaded to the GPU.
+
+The new result/workload/profile use v4; the height algorithm stays diverse-landscape-v3
+and the hydraulic kernel stays v1. Exact rules, field invariants and timing are in
+[SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md). The v3 numerical/climate rules
+remain frozen in LANDSCAPE_V3.md. Historical fingerprints captured before Stage 2
+verify every old array, biome, tree and simulation summary on eroded vegetated maps.
 
 Each preview owns one set of four decoded Texture objects, reused across successive
 results. Two comparison views own independent sets. There is one terrain material
@@ -225,8 +233,8 @@ There is no untextured success placeholder. Asset loading/decode wait is display
 separately from CPU setup. The CPU metric sums synchronous setup before/after waiting
 and the first textured render submission; it excludes asset wait and paused time and
 is not GPU completion. If assets finish during computation, scene preparation and
-submission wait until the shared operation is unpaused. Core computeMs, requestMs and
-all v3 generation identities remain unchanged.
+submission wait until the shared operation is unpaused. Core computeMs now includes coverage derivation; requestMs still includes JSON and
+normalization. Algorithm and simulation identities remain unchanged.
 
 All five PNGs are original, reproducible with `python3 scripts/generate-terrain-textures.py`
 using the Python standard library. See `src/client/public/textures/terrain/ASSETS.md`
@@ -247,10 +255,10 @@ browser scripts. It checks real PNG upload/shader compilation, fixed-request nor
 cold and warm rectangular views, one/two-view ownership, repeated replacement, the
 512x512/16384-tree case, narrow layout and offline new-seed rendering. Test-only WebGL
 instrumentation records detail texture counts and draw calls without adding product
-telemetry. Evidence is written to `artifacts/materials-verification.json` and
-`materials-after-{normal,cold,warm}-{overview,close}.png`. Baseline captures use the
+telemetry. Evidence is written to `artifacts/transitions-verification.json` and
+`transitions-after-{normal,cold,warm}-{overview,close}.png`. Baseline captures use the
 same 129x97 requests and camera framing, with a -650 wheel delta for close views,
-and are retained as `materials-before-*` artifacts. Full Local/Remote field parity
+and are retained as `transitions-before-*` artifacts (Stage 1 material output). Full Local/Remote field parity
 remains covered by landscape.cjs; editor.cjs and pwa.cjs cover interactions, offline
 reload/new tab and safe version updates including the complete texture catalog.
 
@@ -261,3 +269,13 @@ errors. Observed texture uploads stay at four per view across replacements and
 eight for two views; closing a view releases its detail uploads. Terrain uses one
 draw call and the observed maximum including vegetation is seven. These checks
 verify bounded resources and correctness, not comparative runtime performance.
+
+Stage 2 verification: 139 Angular tests, 127 Core tests and 37 API tests pass. The
+four packaging/asset tests, worker RPC test, Release/production builds and all four
+browser entry points pass. Complete WASM/API coverage parity has zero observed error.
+The maximum smoke response is 17356255 bytes, with 2621441 wire bytes for the coverage
+array. Reserved WASM memory reached 150470656 bytes across the matrix (not live memory
+or browser RSS). Exact requests, field sizes and diagnostic JSON parse/copy times
+are retained in artifacts/landscape-verification.json; they are not controlled
+benchmark conclusions. materials.cjs enlarges test-only CDP response buffers to inspect
+large JSON bodies before navigation; this instrumentation is not part of the product.

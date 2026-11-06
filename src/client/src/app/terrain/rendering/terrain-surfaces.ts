@@ -1,23 +1,24 @@
-import { MeshLambertMaterial, NoColorSpace, RepeatWrapping, Texture, TextureLoader } from 'three';
-import { LANDSCAPE_BIOME as B, LandscapeBiomeId } from '../data/terrain.models';
-
+import {
+  Color,
+  MeshLambertMaterial,
+  NoColorSpace,
+  RepeatWrapping,
+  Texture,
+  TextureLoader,
+} from 'three';
 export const SURFACE_REPEAT_UNITS = 4;
 export const SURFACE_TEXTURE_NAMES = ['grass', 'soil', 'rock', 'snow'] as const;
 type SurfaceName = (typeof SURFACE_TEXTURE_NAMES)[number];
 type SurfaceTextures = Record<SurfaceName, Texture>;
 
-/** Display mapping of existing categories, not ecological coverage/suitability. Ocean is untinted. */
-export const BIOME_SURFACE = {
-  [B.Ocean]: -1,
-  [B.Grassland]: 0,
-  [B.BroadleafForest]: 0,
-  [B.DryGrassland]: 1,
-  [B.Rock]: 2,
-  [B.ConiferForest]: 0,
-  [B.Savanna]: 1,
-  [B.Tundra]: 2,
-  [B.SnowHighlands]: 3,
-} as const satisfies Record<LandscapeBiomeId, number>;
+/** Rendering colors only. Coverage and suitability are supplied by Core. */
+export const SURFACE_COLORS = {
+  grass: 0xa7b976,
+  soil: 0xb5a17a,
+  rock: 0xa6a397,
+  snow: 0xe9eff1,
+  ocean: 0x37768b,
+} as const;
 
 export interface TerrainSurfaces {
   readonly ready: Promise<SurfaceTextures>;
@@ -62,11 +63,13 @@ export function loadTerrainSurfaces(
 
 /** Frozen Lambert extension: no displacement, extra lights, ecological fields or extra draw calls. */
 export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number, height: number) {
-  const material = new MeshLambertMaterial({ vertexColors: true });
-  material.customProgramCacheKey = () => 'terrain-detail-triplanar-v1';
+  const material = new MeshLambertMaterial();
+  material.customProgramCacheKey = () => 'terrain-surface-coverage-v1';
   material.onBeforeCompile = (shader) => {
     for (const name of SURFACE_TEXTURE_NAMES)
       shader.uniforms[`detail_${name}`] = { value: textures[name] };
+    for (const [name, hex] of Object.entries(SURFACE_COLORS))
+      shader.uniforms[`surface_${name}`] = { value: new Color(hex) };
     shader.uniforms['detailOffset'] = { value: [(width - 1) / 2, (height - 1) / 2] };
     shader.uniforms['detailRepeat'] = { value: SURFACE_REPEAT_UNITS };
     shader.vertexShader = shader.vertexShader
@@ -74,9 +77,9 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
         '#include <common>',
         `
       #include <common>
-      attribute vec4 surfaceFamily;
+      attribute vec4 surfaceCoverage;
       uniform vec2 detailOffset;
-      varying vec4 vSurfaceFamily;
+      varying vec4 vSurfaceCoverage;
       varying vec3 vDetailPosition;
       varying vec3 vDetailNormal;
     `,
@@ -85,7 +88,7 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
         '#include <begin_vertex>',
         `
       #include <begin_vertex>
-      vSurfaceFamily = surfaceFamily;
+      vSurfaceCoverage = surfaceCoverage;
       vDetailPosition = position + vec3(detailOffset.x, 0.0, detailOffset.y);
       vDetailNormal = normal;
     `,
@@ -100,7 +103,12 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
       uniform sampler2D detail_rock;
       uniform sampler2D detail_snow;
       uniform float detailRepeat;
-      varying vec4 vSurfaceFamily;
+      uniform vec3 surface_grass;
+      uniform vec3 surface_soil;
+      uniform vec3 surface_rock;
+      uniform vec3 surface_snow;
+      uniform vec3 surface_ocean;
+      varying vec4 vSurfaceCoverage;
       varying vec3 vDetailPosition;
       varying vec3 vDetailNormal;
       float projectedDetail(sampler2D detail, vec3 p, vec3 axis) {
@@ -116,12 +124,13 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
       vec3 detailAxis = pow(abs(normalize(vDetailNormal)), vec3(4.0));
       detailAxis /= max(dot(detailAxis, vec3(1.0)), 0.0001);
       vec3 detailPoint = vDetailPosition / detailRepeat;
-      float modulation = 1.0;
-      if (vSurfaceFamily.x > 0.0) modulation += vSurfaceFamily.x * (0.6 * projectedDetail(detail_grass, detailPoint, detailAxis) - 0.3);
-      if (vSurfaceFamily.y > 0.0) modulation += vSurfaceFamily.y * (0.6 * projectedDetail(detail_soil, detailPoint, detailAxis) - 0.3);
-      if (vSurfaceFamily.z > 0.0) modulation += vSurfaceFamily.z * (0.6 * projectedDetail(detail_rock, detailPoint, detailAxis) - 0.3);
-      if (vSurfaceFamily.w > 0.0) modulation += vSurfaceFamily.w * (0.6 * projectedDetail(detail_snow, detailPoint, detailAxis) - 0.3);
-      diffuseColor.rgb *= modulation;
+      float land = dot(vSurfaceCoverage, vec4(1.0));
+      vec3 ground = max(0.0, 1.0-land) * surface_ocean;
+      if (vSurfaceCoverage.x > 0.0) ground += vSurfaceCoverage.x * surface_grass * (0.7 + 0.6 * projectedDetail(detail_grass, detailPoint, detailAxis));
+      if (vSurfaceCoverage.y > 0.0) ground += vSurfaceCoverage.y * surface_soil * (0.7 + 0.6 * projectedDetail(detail_soil, detailPoint, detailAxis));
+      if (vSurfaceCoverage.z > 0.0) ground += vSurfaceCoverage.z * surface_rock * (0.7 + 0.6 * projectedDetail(detail_rock, detailPoint, detailAxis));
+      if (vSurfaceCoverage.w > 0.0) ground += vSurfaceCoverage.w * surface_snow * (0.7 + 0.6 * projectedDetail(detail_snow, detailPoint, detailAxis));
+      diffuseColor.rgb *= ground;
     `,
       );
   };

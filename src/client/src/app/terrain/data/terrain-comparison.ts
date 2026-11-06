@@ -1,4 +1,4 @@
-import { TerrainRun, TerrainError, HeightMapRequest } from './terrain.models';
+import { TerrainRun, TerrainError, HeightMapRequest, SURFACE_CHANNELS } from './terrain.models';
 import { sameObject } from './contract-utils';
 
 export interface TerrainComparison {
@@ -10,6 +10,7 @@ export interface TerrainComparison {
   readonly biomesMatch: boolean;
   readonly environmentMismatchCount: number;
   readonly vegetationMismatchCount: number;
+  readonly coverageMismatchCount: number;
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
@@ -88,6 +89,14 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
     'waterEvaporated',
   ] as const)
     if (!close(a.simulation[name], b.simulation[name])) environmentMismatchCount++;
+  if (
+    a.result.surfaceWeights.length !== a.result.values.length * SURFACE_CHANNELS ||
+    b.result.surfaceWeights.length !== b.result.values.length * SURFACE_CHANNELS
+  )
+    throw new TerrainError('protocol', 'Invalid surface coverage length.');
+  let coverageMismatchCount = 0;
+  for (let i = 0; i < a.result.surfaceWeights.length; i++)
+    if (!close(a.result.surfaceWeights[i], b.result.surfaceWeights[i])) coverageMismatchCount++;
   if (a.result.trees.length !== b.result.trees.length) vegetationMismatchCount++;
   for (let i = 0; i < Math.min(a.result.trees.length, b.result.trees.length); i++) {
     const left = a.result.trees[i],
@@ -112,9 +121,13 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
     meanAbsoluteError: sum / a.result.values.length,
     mismatchCount,
     numericMatch:
-      mismatchCount === 0 && environmentMismatchCount === 0 && vegetationMismatchCount === 0,
+      mismatchCount === 0 &&
+      environmentMismatchCount === 0 &&
+      vegetationMismatchCount === 0 &&
+      coverageMismatchCount === 0,
     environmentMismatchCount,
     vegetationMismatchCount,
+    coverageMismatchCount,
     biomeMismatchCount,
     biomesMatch: biomeMismatchCount === 0,
     identity,

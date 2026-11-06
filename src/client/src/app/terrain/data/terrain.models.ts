@@ -1,4 +1,4 @@
-export const RESULT_VERSION = 'landscape-ecology-v3';
+export const RESULT_VERSION = 'landscape-ecology-v4';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -17,6 +17,7 @@ export interface TerrainResponse {
     readonly width: number;
     readonly height: number;
     readonly values: Float32Array;
+    readonly surfaceWeights: Float32Array;
     readonly biomes: Uint8Array;
     readonly moisture: Float32Array;
     readonly temperature: Float32Array;
@@ -30,7 +31,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v3';
+  readonly executionProfile: 'landscape-worker-json-v4';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -53,7 +54,7 @@ export class TerrainError extends Error {
 }
 
 export const TERRAIN_ALGORITHM = 'diverse-landscape-v3';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v3';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v4';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -94,9 +95,9 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v3';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v4';
 
-/** Wire IDs for landscape-ecology-v3; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v4; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,
@@ -121,3 +122,8 @@ export const TREE_KIND_BIOME: Record<TreeKindId, LandscapeBiomeId> = {
   [TREE_KIND.Savanna]: LANDSCAPE_BIOME.Savanna,
 };
 export const VEGETATED_BIOME_IDS: ReadonlySet<number> = new Set(Object.values(TREE_KIND_BIOME));
+
+/** Frozen surface-coverage-v1 wire order; ecological decisions belong in Core. */
+export const SURFACE_CHANNELS = 5;
+export const SURFACE_CHANNEL = { Grass: 0, Soil: 1, Sand: 2, Rock: 3, Snow: 4 } as const;
+export const SURFACE_SUM_TOLERANCE = 1e-6;

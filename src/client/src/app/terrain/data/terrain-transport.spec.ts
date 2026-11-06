@@ -1,3 +1,4 @@
+import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
@@ -50,13 +51,14 @@ function wire() {
       vegetationDensity: Array(6).fill(0),
       trees: [],
       biomes: [1, 0, 1, 0, 1, 2],
+      surfaceWeights: testSurfaceWeights([1, 0, 1, 0, 1, 2]),
       algorithmVersion: TERRAIN_ALGORITHM,
       resultVersion: RESULT_VERSION,
     },
     parameters: terrain,
     simulationVersion: SIMULATION_VERSION,
     workload: TERRAIN_WORKLOAD,
-    executionProfile: 'landscape-worker-json-v3',
+    executionProfile: 'landscape-worker-json-v4',
     computeMs: 2,
     coreBuildId: 'test',
     simulation: {

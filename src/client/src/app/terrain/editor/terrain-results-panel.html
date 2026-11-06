@@ -83,13 +83,14 @@
       <p id="numeric-match">
         {{
           check.numericMatch
-            ? 'All heights match within tolerance, including environment and vegetation.'
+            ? 'All heights match within tolerance, including environment, vegetation and surface coverage.'
             : 'Numeric data differences exceed tolerance.'
         }}
       </p>
       <p>
         Environment mismatches: {{ check.environmentMismatchCount }} · Vegetation mismatches:
-        {{ check.vegetationMismatchCount }}
+        {{ check.vegetationMismatchCount }} · Surface coverage mismatches:
+        {{ check.coverageMismatchCount }}
       </p>
       <p id="biome-match">
         {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
@@ -188,6 +189,7 @@
   }
   <details class="biome-legend">
     <summary>Biome legend</summary>
+    <p>Ecological categories; visible ground blends grass, soil, rock and snow.</p>
     <ul>
       @for (biome of biomeLegend; track biome.label) {
         <li>

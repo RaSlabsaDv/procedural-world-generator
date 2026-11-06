@@ -1,5 +1,7 @@
 # Climate and vegetation v3
 
+Historical v3 result specification. Current generation preserves these terrain/ecology equations but extends the result with coverage v1 and v4 result/workload/profile identities; see [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md). The original equations and evidence below remain unchanged.
+
 Status: implemented and verified. V3 replaces the public generator in the existing editor; v2 remains historical evidence, not another runtime mode. No new dependencies are needed.
 
 ## Identity and required controls

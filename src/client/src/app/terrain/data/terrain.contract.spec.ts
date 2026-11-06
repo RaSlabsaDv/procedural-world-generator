@@ -1,3 +1,4 @@
+import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { compareTerrains, decodeTerrain } from './terrain.contract';
 import { ALGORITHM_VERSION, TerrainError, HeightMapRequest, TerrainRun } from './terrain.models';
 import { testTerrain, testWire } from '../testing/terrain-test-fixture';
@@ -17,6 +18,7 @@ function wire() {
   const value = testWire(terrain);
   value.result.values = [0, 5, 10, 15, 20, 30];
   value.result.biomes = [0, 0, 1, 2, 2, 3];
+  value.result.surfaceWeights = testSurfaceWeights(value.result.biomes);
   return value;
 }
 

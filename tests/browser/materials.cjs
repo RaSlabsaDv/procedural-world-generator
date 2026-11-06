@@ -73,9 +73,53 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     });
     const page = await context.newPage(),
       errors = [];
+    // Preserve large JSON bodies for test-only CDP inspection (default resource buffers can evict them).
+    const network = await context.newCDPSession(page);
+    await network.send("Network.enable", {
+      maxTotalBufferSize: 128 * 1024 * 1024,
+      maxResourceBufferSize: 64 * 1024 * 1024,
+    });
+    const coverageChecks = [],
+      coverageErrors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
+    });
+    page.on("response", (response) => {
+      if (
+        !response.url().endsWith("/api/v1/terrains") ||
+        response.status() !== 200
+      )
+        return;
+      coverageChecks.push(
+        response
+          .json()
+          .then(({ result }) => {
+            const weights = result.surfaceWeights;
+            assert.equal(weights.length, result.width * result.height * 5);
+            for (let i = 0; i < result.width * result.height; i++) {
+              let sum = 0;
+              for (let j = 0; j < 5; j++) {
+                const v = weights[i * 5 + j];
+                assert.ok(Number.isFinite(v) && v >= 0 && v <= 1);
+                if (j === 2 || result.biomes[i] === 0) assert.equal(v, 0);
+                sum += Math.fround(v);
+              }
+              assert.ok(
+                Math.abs(sum - (result.biomes[i] === 0 ? 0 : 1)) <= 1e-6,
+              );
+            }
+            return {
+              samples: result.width * result.height,
+              rawBytes: weights.length * 4,
+              gpuAttributeBytes: result.width * result.height * 16,
+            };
+          })
+          .catch((error) => {
+            coverageErrors.push(error.message);
+            return null;
+          }),
+      );
     });
     await page.goto(base);
     await waitForOfflineReady(page);
@@ -140,13 +184,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       await complete();
       const canvas = page.locator("app-terrain-preview canvas");
       await canvas.screenshot({
-        path: artifact(`materials-after-${label}-overview.png`),
+        path: artifact(`transitions-after-${label}-overview.png`),
       });
       await canvas.hover();
       await page.mouse.wheel(0, -650);
       await page.waitForTimeout(350);
       await canvas.screenshot({
-        path: artifact(`materials-after-${label}-close.png`),
+        path: artifact(`transitions-after-${label}-close.png`),
       });
       const parameters = await page
         .locator("input[type=number]")
@@ -207,6 +251,8 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       true,
     );
     await page.locator("#reset-parameters").click();
+    await Promise.all(coverageChecks);
+    assert.deepEqual(coverageErrors, []);
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForOfflineReady(page);
@@ -232,6 +278,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       pass: true,
       browser: browser.version(),
       captures,
+      coverageChecks: await Promise.all(coverageChecks),
       comparison,
       maximum,
       offline,
@@ -240,7 +287,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       pageErrors: errors,
     };
     await fs.writeFile(
-      artifact("materials-verification.json"),
+      artifact("transitions-verification.json"),
       JSON.stringify(evidence, null, 2),
     );
     console.log(JSON.stringify(evidence));

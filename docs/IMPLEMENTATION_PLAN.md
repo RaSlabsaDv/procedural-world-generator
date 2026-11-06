@@ -10,13 +10,13 @@ Baseline/probe interfaces, the experimental regional generator, and all 2D views
 
 The editor provides a large central Three.js viewport, grouped parameter sidebar, measurements sidebar and compact PWA header. Numeric/slider controls share values; Random seed and Reset affect drafts only. One result is shown by default, with explicit Local/Remote selection and comparison views. Captured labels distinguish previous results from draft edits. Generation/errors retain prior terrain; stale or destroyed-component responses are discarded without releasing the lock before real completion.
 
-Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Full-result comparisons, worker ownership and safe PWA updates remain supported; generation now uses the v3 ecology contract below. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
+Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Full-result comparisons, worker ownership and safe PWA updates remain supported; generation now uses the v4 result contract below. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
 
 No new dependencies, presets, brushes, 2D views, simulation history or placeholder timeline controls were added. Bounded capture is a later extension; its player will occupy a bottom timeline after real frame data exists.
 
 ## Diverse terrain and vegetation
 
-Current generation uses diverse-landscape-v3 with landscape-ecology-v3 results: regional plains/hills/mountain composition, explicit boundary-connected ocean, environment-based biomes, density and capped deterministic trees. Both hosts share Core. Up to six instanced meshes per viewport render every returned tree across three categories. Hydraulic-grid-v1 arithmetic and closed boundaries are unchanged. Historical v1/v2 fixtures remain test-only evidence, not another public mode. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for exact rules and limits.
+Current generation uses diverse-landscape-v3 with landscape-ecology-v4 results: regional plains/hills/mountain composition, explicit boundary-connected ocean, environment-based biomes, density and capped deterministic trees. Both hosts share Core. Up to six instanced meshes per viewport render every returned tree across three categories. Hydraulic-grid-v1 arithmetic and closed boundaries are unchanged. Historical v1/v2 fixtures remain test-only evidence, not another public mode. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for exact rules and limits.
 
 ## Organization and polishing: complete
 
@@ -28,9 +28,9 @@ Unused Angular routing and the duplicate hydraulic browser script were removed. 
 
 V3 specifies required globalWarmth, vegetationDensity and landformRegionScale controls; broadleaf/conifer forests, sparse savanna, tundra and static highland snow; and Core-owned tree kinds. Strict host/client contracts reject missing fields and invalid categories. Density does not change biome coverage, and the existing hydraulic kernel, ocean connectivity and resource caps are preserved. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for precedence, arithmetic and timing. Historical v2 sources and fixtures remain test-only. Production browser evidence covers category/field parity, heavy limits and offline operation.
 
-## Landscape detail — Stage 1 implemented
+## Landscape detail — Stages 1–2 implemented
 
-Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. Stage 1 is implemented and verified; stages 2–7 remain planned.
+Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. Stages 1–2 are implemented and verified; stages 3–7 remain planned.
 
 Before each stage, capture representative normal/cold/warm views with fixed requests and camera framing. Define its resource limits and acceptance checks before implementation. Preserve the historical v3 specification and fixtures when introducing a new semantic contract. Keep README empty and documentation in English.
 
@@ -44,15 +44,21 @@ Acceptance: textures resolve at overview and close-up distances without per-map 
 
 Implemented with four active original 256x256 detail textures and reserved sand, fixed four-unit triplanar sampling, existing biome tint, one terrain draw call and no Core/contract changes. Preview ownership covers async failure/retry, stale completion, pause and destruction; all five assets participate in complete-version offline verification. Actual encoded assets total 271377 bytes; estimated active RGBA+mip storage is about 1.33 MiB per viewport. See DEVELOPMENT.md for ownership and measurement boundaries.
 
-Verification: 119 Angular tests, 115 Core and 37 API tests, four Python packaging/asset tests, worker RPC test, Release/production builds, and materials/landscape/editor/PWA Chromium scenarios pass. The landscape matrix has zero observed Local/Remote numeric error through 512x512x128. Materials evidence covers before/after rectangular normal/cold/warm previews, real shader compilation, four detail GPU textures per viewport, one terrain draw call, independent comparison-view cleanup, 16384 trees and offline generation. Raw evidence/screenshots live under ignored artifacts/. Stage 2 is the next implementation target.
+Verification: 119 Angular tests, 115 Core and 37 API tests, four Python packaging/asset tests, worker RPC test, Release/production builds, and materials/landscape/editor/PWA Chromium scenarios pass. The landscape matrix has zero observed Local/Remote numeric error through 512x512x128. Materials evidence covers before/after rectangular normal/cold/warm previews, real shader compilation, four detail GPU textures per viewport, one terrain draw call, independent comparison-view cleanup, 16384 trees and offline generation. Raw evidence/screenshots live under ignored artifacts/. This is the historical Stage 1 verification baseline; Stage 2 completion is recorded below.
 
-### 2. Smooth surface transitions
+### 2. Smooth surface transitions — complete
+
+Implementation instructions: [SURFACE_TRANSITIONS_PROMPT.md](SURFACE_TRANSITIONS_PROMPT.md).
 
 Specify normalized surface coverage weights in Core for grass, exposed soil, sand, rock and snow. Derive them from the authoritative terrain/environment data with documented thresholds and operation order. Retain categorical biome IDs for ecological decisions; visual blending must not silently change biome classification or tree eligibility. Preserve heights and hydraulic results.
 
 Version the result/workload and, if generation semantics change, the algorithm before extending both hosts, strict TypeScript decoding and full-result comparisons together. Three.js interpolates and blends supplied weights; it does not reproduce the ecological rules. Define bounded fields/encoding before allocating additional full-map arrays; unused sand coverage remains zero until coastal classification exists.
 
 Acceptance: supplied weights are finite, bounded and normalized; categorical rules still hold. Verify complete Local/Remote weight parity and smooth transitions on forest edges, rock slopes and snow boundaries. Record added memory, JSON bytes and Core work.
+
+Implemented coverage v1 with a required five-channel float32 result array, strict host/client contracts and complete coverage comparisons. Core derives appearance without changing the frozen v3 heights, environment, biomes, trees or hydraulic summaries. Lambert rendering blends base colors and texture detail from supplied weights. Result/workload/profile are v4; algorithm remains diverse-landscape-v3. The old categorical vertex-color/one-hot buffers are replaced by four float channels at the same combined byte count. See [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md).
+
+Verification: 139 Angular tests, 127 Core tests, 37 API tests, four Python packaging/asset tests and worker RPC pass. Release/production builds and materials/landscape/editor/PWA browser checks pass. All six WASM/API cases, through 512x512x128, have zero observed numeric error. Maximum response in this smoke run is 17356255 bytes, including 2621441 wire bytes for coverage; the field itself is 5 MiB and its GPU attribute 4 MiB. Texture/draw-call limits and offline updates remain verified. See development/specification evidence for memory caveats. Stage 3 is next; no lighting, shadow, fog or new hydrology changes are included.
 
 ### 3. Lighting, shadows and atmosphere
 
@@ -114,6 +120,6 @@ Preserve the preferred terrain appearance. Develop diagnostic layers for slope/e
 
 ## Architecture Race and research campaign
 
-Build a sequential runner with immutable inputs, alternating execution order, warm-up, raw trial retention, statistics and JSON/CSV export. Use `landscape-ecology-hydraulic-v3` and `landscape-worker-json-v3` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
+Build a sequential runner with immutable inputs, alternating execution order, warm-up, raw trial retention, statistics and JSON/CSV export. Use `landscape-ecology-hydraulic-v4` and `landscape-worker-json-v4` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
 
 Run a controlled size/iteration/seed matrix under documented network profiles. Keep compute, initialization, request overhead and rendering separate. Report failures and environment limits; browser smoke checks are correctness evidence, not a performance campaign.

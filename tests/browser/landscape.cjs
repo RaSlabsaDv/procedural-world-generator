@@ -1,4 +1,4 @@
-// Full v3 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
+// Full v4 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
 const {
   base,
   launchBrowser,
@@ -87,10 +87,16 @@ const assert = require("node:assert/strict"),
           ticks++;
         }, 20);
         const start = performance.now();
-        let text, local;
+        let text, local, parseMs, coverageCopyMs;
         try {
           text = await runtime.generateTerrainJson(JSON.stringify(request));
+          const parseStarted = performance.now();
           local = JSON.parse(text);
+          parseMs = performance.now() - parseStarted;
+          const copyStarted = performance.now();
+          const copied = new Float32Array(local.result.surfaceWeights);
+          coverageCopyMs = performance.now() - copyStarted;
+          if (copied.length !== w * h * 5) throw Error("Coverage copy length");
           maxGap = Math.max(maxGap, performance.now() - last);
         } finally {
           clearInterval(timer);
@@ -105,9 +111,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v3" ||
-            result.executionProfile !== "landscape-worker-json-v3" ||
-            result.result.resultVersion !== "landscape-ecology-v3" ||
+            result.workload !== "landscape-ecology-hydraulic-v4" ||
+            result.executionProfile !== "landscape-worker-json-v4" ||
+            result.result.resultVersion !== "landscape-ecology-v4" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )
@@ -130,6 +136,26 @@ const assert = require("node:assert/strict"),
           )
             throw Error("Conservation/work mismatch");
           if (result.result.trees.length > 16384) throw Error("Tree budget");
+          const coverage = result.result.surfaceWeights;
+          if (!Array.isArray(coverage) || coverage.length !== w * h * 5)
+            throw Error("Coverage shape");
+          for (let i = 0; i < w * h; i++) {
+            let sum = 0;
+            for (let j = 0; j < 5; j++) {
+              const value = coverage[i * 5 + j];
+              if (
+                !Number.isFinite(value) ||
+                value < 0 ||
+                value > 1 ||
+                (j === 2 && value !== 0) ||
+                (result.result.biomes[i] === 0 && value !== 0)
+              )
+                throw Error("Coverage range/category");
+              sum += Math.fround(value);
+            }
+            if (Math.abs(sum - (result.result.biomes[i] === 0 ? 0 : 1)) > 1e-6)
+              throw Error("Coverage sum");
+          }
         }
         if (local.coreBuildId !== remote.coreBuildId)
           throw Error("Core build mismatch");
@@ -166,6 +192,11 @@ const assert = require("node:assert/strict"),
               throw Error("Field range");
           }
         }
+        for (let i = 0; i < local.result.surfaceWeights.length; i++)
+          check(
+            Math.fround(local.result.surfaceWeights[i]),
+            Math.fround(remote.result.surfaceWeights[i]),
+          );
         const counts = Array(9).fill(0),
           treeKinds = Array(3).fill(0);
         for (let i = 0; i < w * h; i++) {
@@ -201,12 +232,26 @@ const assert = require("node:assert/strict"),
         }
         for (const key of Object.keys(local.simulation))
           check(local.simulation[key], remote.simulation[key]);
+        const coverageStart =
+          text.indexOf('"surfaceWeights":') + '"surfaceWeights":'.length;
+        const coverageEnd = text.indexOf("]", coverageStart) + 1;
         rows.push({
           request,
           biomeCounts: counts,
           treeKindCounts: treeKinds,
           trees: local.result.trees.length,
           responseBytes: new TextEncoder().encode(text).length,
+          coverageWireJsonBytes: new TextEncoder().encode(
+            text.slice(coverageStart, coverageEnd),
+          ).length,
+          coverageReserializedJsonBytes: new TextEncoder().encode(
+            JSON.stringify(local.result.surfaceWeights),
+          ).length,
+          coverageRawBytes: w * h * 5 * 4,
+          coverageClientFloatBytes: w * h * 5 * 4,
+          coverageGpuAttributeBytes: w * h * 4 * 4,
+          parseMs,
+          coverageCopyMs,
           localComputeMs: local.computeMs,
           remoteComputeMs: remote.computeMs,
           localRequestMs,

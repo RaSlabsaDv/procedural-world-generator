@@ -1,11 +1,10 @@
+import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { Texture, RepeatWrapping, ShaderLib, WebGLRenderer } from 'three';
 import {
-  BIOME_SURFACE,
   loadTerrainSurfaces,
   terrainSurfaceMaterial,
   SURFACE_REPEAT_UNITS,
 } from './terrain-surfaces';
-import { LANDSCAPE_BIOME_IDS } from '../data/terrain.models';
 import { terrainGeometry } from './terrain-geometry';
 
 function deferred<T>() {
@@ -57,19 +56,16 @@ it('cleans successful and late textures when another asset fails', async () => {
   });
 });
 
-it('maps every biome without changing geometry, colors or triangle indices', () => {
-  expect(Object.keys(BIOME_SURFACE).map(Number).sort()).toEqual([...LANDSCAPE_BIOME_IDS].sort());
+it('unpacks continuous Core weights without category mapping or changed triangle indices', () => {
   const values = new Float32Array(9),
     biomes = Uint8Array.from({ length: 9 }, (_, i) => i);
-  const geometry = terrainGeometry({ width: 3, height: 3, values, biomes });
-  const families = geometry.getAttribute('surfaceFamily');
-  expect(families.array).toBeInstanceOf(Uint8Array);
-  expect(families.array.slice(0, 4)).toEqual(new Uint8Array(4)); // Ocean: modulation exactly one.
-  for (let i = 1; i < 9; i++) {
-    const row = [...families.array.slice(i * 4, i * 4 + 4)];
-    expect(row.reduce((a, b) => a + b)).toBe(1);
-    expect(row[BIOME_SURFACE[i as keyof typeof BIOME_SURFACE]]).toBe(1);
-  }
+  const surfaceWeights = Float32Array.from(testSurfaceWeights(biomes));
+  surfaceWeights.set([0.1, 0.2, 0, 0.3, 0.4], 5);
+  const geometry = terrainGeometry({ width: 3, height: 3, values, surfaceWeights });
+  const coverage = geometry.getAttribute('surfaceCoverage');
+  expect(coverage.array).toBeInstanceOf(Float32Array);
+  expect([...coverage.array.slice(0, 4)]).toEqual([0, 0, 0, 0]);
+  expect([...coverage.array.slice(4, 8)]).toEqual([...Float32Array.from([0.1, 0.2, 0.3, 0.4])]);
   expect([...values]).toEqual(Array(9).fill(0));
   expect([...geometry.index!.array.slice(0, 6)]).toEqual([0, 3, 1, 1, 3, 4]);
   geometry.dispose();

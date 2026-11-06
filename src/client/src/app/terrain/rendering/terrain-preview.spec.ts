@@ -1,3 +1,4 @@
+import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { BufferGeometry, MeshLambertMaterial, Texture } from 'three';
@@ -43,7 +44,8 @@ function run(): TerrainRun {
         height: 2,
         values: new Float32Array([0, 10, 20, 30]),
         biomes: new Uint8Array([0, 1, 2, 3]),
-        resultVersion: 'landscape-ecology-v3',
+        surfaceWeights: Float32Array.from(testSurfaceWeights([0, 1, 2, 3])),
+        resultVersion: 'landscape-ecology-v4',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },

@@ -25,11 +25,21 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
         var b = wasm.RootElement;
         foreach (var key in new[] { "result", "simulation", "parameters", "coreBuildId", "workload", "simulationVersion", "executionProfile" })
             Assert.Equal(a.GetProperty(key).GetRawText(), b.GetProperty(key).GetRawText());
-        Assert.Equal("landscape-ecology-hydraulic-v3", a.GetProperty("workload").GetString());
+        Assert.Equal("landscape-ecology-hydraulic-v4", a.GetProperty("workload").GetString());
         Assert.Equal("hydraulic-grid-v1", a.GetProperty("simulationVersion").GetString());
         Assert.Equal("diverse-landscape-v3", a.GetProperty("result").GetProperty("algorithmVersion").GetString());
         Assert.Equal(15, a.GetProperty("result").GetProperty("values").GetArrayLength());
         Assert.Equal(15, a.GetProperty("result").GetProperty("biomes").GetArrayLength());
+        var weights = a.GetProperty("result").GetProperty("surfaceWeights");
+        Assert.Equal(JsonValueKind.Array, weights.ValueKind);
+        Assert.Equal(75, weights.GetArrayLength());
+        for (var i = 0; i < 15; i++)
+        {
+            double sum = 0;
+            for (var j = 0; j < 5; j++) { var weight = weights[i * 5 + j].GetSingle(); Assert.InRange(weight, 0, 1); sum += weight; }
+            Assert.Equal(0, weights[i * 5 + 2].GetSingle());
+            Assert.InRange(Math.Abs(sum - (a.GetProperty("result").GetProperty("biomes")[i].GetInt32() == 0 ? 0 : 1)), 0, 1e-6);
+        }
         Assert.Equal(120, a.GetProperty("simulation").GetProperty("cellIterations").GetInt64());
         foreach (var root in new[] { a, b })
             Assert.True(double.IsFinite(root.GetProperty("computeMs").GetDouble()) && root.GetProperty("computeMs").GetDouble() >= 0);
@@ -126,7 +136,7 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
         Assert.Equal(a.GetRawText(), wasm.RootElement.GetProperty("result").GetRawText());
         foreach (var field in new[] { "moisture", "temperature", "slope", "vegetationDensity" }) Assert.Equal(16384, a.GetProperty(field).GetArrayLength());
         Assert.True(a.GetProperty("trees").GetArrayLength() > 0);
-        Assert.Equal("landscape-ecology-v3", a.GetProperty("resultVersion").GetString());
+        Assert.Equal("landscape-ecology-v4", a.GetProperty("resultVersion").GetString());
     }
 
     [Theory]

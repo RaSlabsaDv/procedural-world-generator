@@ -41,6 +41,7 @@ export function testWire(terrain = testTerrain()) {
       width: map.width,
       height: map.height,
       values: Array(map.width * map.height).fill(0),
+      surfaceWeights: Array<number>(map.width * map.height * 5).fill(0),
       biomes: Array(map.width * map.height).fill(0),
       moisture: Array(map.width * map.height).fill(0.6),
       temperature: Array(map.width * map.height).fill(0.7),
@@ -53,7 +54,7 @@ export function testWire(terrain = testTerrain()) {
     parameters: terrain,
     workload: TERRAIN_WORKLOAD as typeof TERRAIN_WORKLOAD,
     simulationVersion: SIMULATION_VERSION as typeof SIMULATION_VERSION,
-    executionProfile: 'landscape-worker-json-v3' as const,
+    executionProfile: 'landscape-worker-json-v4' as const,
     computeMs: 1,
     coreBuildId: 'git:123456789abc',
     simulation: {
@@ -67,4 +68,9 @@ export function testWire(terrain = testTerrain()) {
       waterEvaporated: 0,
     },
   };
+}
+
+/** Synthetic valid vectors for contract tests, not a copy of Core coverage rules. */
+export function testSurfaceWeights(biomes: ArrayLike<number>): number[] {
+  return Array.from(biomes).flatMap((id) => (id === 0 ? [0, 0, 0, 0, 0] : [0.5, 0.5, 0, 0, 0]));
 }

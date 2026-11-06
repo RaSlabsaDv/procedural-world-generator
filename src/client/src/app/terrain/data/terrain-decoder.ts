@@ -1,6 +1,9 @@
 import { sameObject, object } from './contract-utils';
 import {
   RESULT_VERSION,
+  SURFACE_CHANNELS,
+  SURFACE_CHANNEL,
+  SURFACE_SUM_TOLERANCE,
   TREE_KIND_IDS,
   TREE_KIND_BIOME,
   VEGETATED_BIOME_IDS,
@@ -109,6 +112,24 @@ export function decodeTerrain(
     vegetationDensity = field('vegetationDensity', 1);
   for (let i = 0; i < normalized.length; i++)
     if (!VEGETATED_BIOME_IDS.has(biomeIds[i]) && vegetationDensity[i] !== 0) return fail();
+  const rawWeights = result['surfaceWeights'];
+  if (!Array.isArray(rawWeights) || rawWeights.length !== normalized.length * SURFACE_CHANNELS)
+    return fail();
+  const surfaceWeights = new Float32Array(rawWeights.length);
+  for (let i = 0; i < normalized.length; i++) {
+    let sum = 0;
+    for (let channel = 0; channel < SURFACE_CHANNELS; channel++) {
+      const index = i * SURFACE_CHANNELS + channel,
+        item: unknown = rawWeights[index];
+      if (typeof item !== 'number' || !Number.isFinite(item) || item < 0 || item > 1) return fail();
+      surfaceWeights[index] = item;
+      if (channel === SURFACE_CHANNEL.Sand && item !== 0) return fail();
+      if (biomeIds[i] === LANDSCAPE_BIOME.Ocean && item !== 0) return fail();
+      sum += surfaceWeights[index];
+    }
+    if (biomeIds[i] !== LANDSCAPE_BIOME.Ocean && Math.abs(sum - 1) > SURFACE_SUM_TOLERANCE)
+      return fail();
+  }
   const rawTrees = result['trees'];
   if (!Array.isArray(rawTrees) || rawTrees.length > MAX_TREES) return fail();
   let previous = -1;
@@ -218,6 +239,7 @@ export function decodeTerrain(
       temperature,
       slope,
       vegetationDensity,
+      surfaceWeights,
       trees: Object.freeze(trees),
       resultVersion: RESULT_VERSION,
       algorithmVersion: terrain.algorithmVersion,

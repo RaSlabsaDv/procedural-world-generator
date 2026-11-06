@@ -1,5 +1,5 @@
-import { terrainGeometry, BIOME_PALETTE } from './terrain-geometry';
-import { Color } from 'three';
+import { testSurfaceWeights } from '../testing/terrain-test-fixture';
+import { terrainGeometry } from './terrain-geometry';
 
 function result(width = 3, height = 2) {
   return {
@@ -7,23 +7,26 @@ function result(width = 3, height = 2) {
     height,
     values: Float32Array.from({ length: width * height }, (_, i) => i),
     biomes: Uint8Array.from({ length: width * height }, (_, i) => i % 4),
+    surfaceWeights: Float32Array.from(
+      testSurfaceWeights(Uint8Array.from({ length: width * height }, (_, i) => i % 4)),
+    ),
     algorithmVersion: 'value-noise-fbm-v1',
     resultVersion: 'heightmap-biomes-v1',
   };
 }
 
 describe('terrain geometry', () => {
-  it('preserves row-major heights and Core biome colors on rectangular maps', () => {
+  it('preserves row-major heights and supplied coverage on rectangular maps', () => {
     const input = result();
     const geometry = terrainGeometry(input);
     const position = geometry.getAttribute('position');
-    const colors = geometry.getAttribute('color');
+    const coverage = geometry.getAttribute('surfaceCoverage');
     expect(position.count).toBe(6);
     expect([...position.array]).toEqual([
       -1, 0, -0.5, 0, 1, -0.5, 1, 2, -0.5, -1, 3, 0.5, 0, 4, 0.5, 1, 5, 0.5,
     ]);
-    const expected = new Float32Array(new Color(BIOME_PALETTE[3]).toArray());
-    expect([...colors.array.slice(9, 12)]).toEqual([...expected]);
+    expect([...coverage.array.slice(12, 16)]).toEqual([0.5, 0.5, 0, 0]);
+    expect(geometry.getAttribute('color')).toBeUndefined();
     expect([...input.values]).toEqual([0, 1, 2, 3, 4, 5]);
     expect([...geometry.index!.array]).toEqual([0, 3, 1, 1, 3, 4, 1, 4, 2, 2, 4, 5]);
     geometry.dispose();
