@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "3Niknp5w3v5yudufxkL/v4WkVKAu+IlFcn7zr7KiL0BkPee0BDRr5gBLjhFfDlOrN4xxHWlX0EqtbgqhmGvSsA=="
+      },
+      "Microsoft.NET.Sdk.WebAssembly.Pack": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "kmmGbV2b97RTuBCVUUKB0wkaEuYn13O6TuCjqqe8+hrDxBkN1/yFTggSz7eqt70PsQbebsrHgUnirGzXsr0lzg=="
+      },
+      "worldgenerator.core": {
+        "type": "Project"
+      }
+    },
+    "net10.0/browser-wasm": {}
+  }
+}

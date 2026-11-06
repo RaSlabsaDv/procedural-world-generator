@@ -7,8 +7,12 @@ publish_dir="$repo_root/artifacts/app"
 client_output="$client_dir/dist/client/browser"
 
 npm --prefix "$client_dir" run build
+dotnet restore "$repo_root/src/api/WorldGenerator.Api.csproj" \
+  --locked-mode \
+  -p:Configuration=Release
 dotnet publish "$repo_root/src/api/WorldGenerator.Api.csproj" \
   --configuration Release \
+  --no-restore \
   --output "$publish_dir"
 
 rm -rf "$publish_dir/wwwroot"
