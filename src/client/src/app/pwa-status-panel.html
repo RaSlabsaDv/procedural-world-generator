@@ -1,0 +1,48 @@
+<section
+  id="offline-status"
+  class="offline"
+  [class.ready]="offline.state() === 'ready'"
+  [class.failed]="offline.state() === 'failed'"
+  [class.unsupported]="offline.state() === 'unsupported'"
+  aria-live="polite"
+  aria-label="Offline readiness"
+>
+  <p id="offline-detail"><strong>Offline:</strong> {{ offline.detail() }}</p>
+  <div class="actions">
+    @if (offline.state() === 'failed') {
+      <button
+        id="retry-offline"
+        type="button"
+        (click)="retryOfflinePreparation()"
+        [disabled]="busy()"
+      >
+        Retry offline preparation
+      </button>
+    }
+    <button id="check-updates" type="button" (click)="checkForUpdates()" [disabled]="busy()">
+      Check for updates
+    </button>
+  </div>
+</section>
+
+@if (offline.updateReady()) {
+  <section id="update-banner" class="update" role="status" aria-live="polite">
+    <p>
+      A new application version is ready
+      @if (offline.updateVersion(); as version) {
+        <span class="update-version">({{ version }})</span>
+      }
+      .
+    </p>
+    <button id="reload-update" type="button" (click)="reloadForUpdate()" [disabled]="busy()">
+      Reload to update
+    </button>
+    @if (busy()) {
+      <small>Finish the active terrain operation before reloading.</small>
+    }
+  </section>
+}
+
+@if (offline.updateError(); as updateProblem) {
+  <p class="error" role="alert">{{ updateProblem }}</p>
+}

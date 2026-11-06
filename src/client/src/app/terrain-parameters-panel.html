@@ -1,0 +1,65 @@
+<form [formGroup]="simulationForm()" novalidate>
+  <fieldset [disabled]="busy()">
+    <legend>Terrain and simulation parameters</legend>
+    <div class="parameters">
+      @for (parameter of simulationParameters; track parameter.name) {
+        <label [for]="parameter.name"
+          >{{ parameter.label }}
+          <input
+            [id]="parameter.name"
+            type="number"
+            [step]="parameter.step"
+            [formControlName]="parameter.name"
+            [title]="parameter.description"
+            [attr.aria-describedby]="parameter.name + '-error'"
+            [attr.aria-invalid]="fieldError(parameter.name) ? 'true' : null"
+          />
+          <small class="field-error" [id]="parameter.name + '-error'">{{
+            fieldError(parameter.name)
+          }}</small>
+        </label>
+      }
+    </div>
+    <p>
+      Work: {{ mapForm().controls.width.value }} × {{ mapForm().controls.height.value }} ×
+      {{ simulationForm().controls.iterations.value }} cell-iterations. Core validates the work
+      budget. More iterations evolve the terrain without increasing mesh size. Heavy runs can take
+      time; progress and cancellation are unavailable.
+    </p>
+  </fieldset>
+</form>
+<form [formGroup]="mapForm()" (ngSubmit)="generate.emit('local')" novalidate>
+  <fieldset [disabled]="busy()">
+    <legend>Generation parameters</legend>
+    <div class="parameters">
+      @for (parameter of mapParameters; track parameter.name) {
+        <label [for]="parameter.name"
+          >{{ parameter.label }}
+          <input
+            [id]="parameter.name"
+            type="number"
+            [step]="parameter.step"
+            [formControlName]="parameter.name"
+            [title]="parameter.description"
+            [attr.aria-describedby]="parameter.name + '-error'"
+            [attr.aria-invalid]="fieldError(parameter.name, true) ? 'true' : null"
+          />
+          <small class="field-error" [id]="parameter.name + '-error'">{{
+            fieldError(parameter.name, true)
+          }}</small>
+        </label>
+      }
+    </div>
+    <div class="actions">
+      <button id="generate-local" type="button" (click)="generate.emit('local')">
+        Generate Local
+      </button>
+      <button id="generate-remote" type="button" (click)="generate.emit('remote')">
+        Generate Remote
+      </button>
+      <button id="verify-equivalence" type="button" (click)="generate.emit('verify')">
+        Verify equivalence
+      </button>
+    </div>
+  </fieldset>
+</form>

@@ -1,0 +1,96 @@
+@if (comparison(); as check) {
+  <section class="comparison" aria-label="Equivalence result">
+    <h2>Equivalence check</h2>
+    <p id="numeric-match">
+      {{
+        check.numericMatch
+          ? 'All heights match within tolerance.'
+          : 'Height differences exceed tolerance.'
+      }}
+    </p>
+    <p id="biome-match">
+      {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
+      {{ check.biomeMismatchCount }}
+    </p>
+    <p id="build-identity">
+      @switch (check.identity) {
+        @case ('compatible') {
+          Matching build identity.
+        }
+        @case ('different') {
+          Build identities differ: these results are incompatible.
+        }
+        @case ('unverifiable') {
+          Build identity is unverifiable (dirty or unversioned); numerical agreement alone does not
+          confirm build compatibility.
+        }
+      }
+    </p>
+    <p>
+      Maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Mean error:
+      {{ check.meanAbsoluteError.toExponential(3) }} · Outside tolerance:
+      {{ check.mismatchCount }}
+    </p>
+  </section>
+}
+
+<div class="maps">
+  @for (
+    entry of [
+      { name: 'Local WebAssembly', run: local() },
+      { name: 'Remote API', run: remote() },
+    ];
+    track entry.name
+  ) {
+    @if (entry.run; as run) {
+      <section class="map-card" [attr.aria-label]="entry.name">
+        <h2>{{ entry.name }}</h2>
+        <p class="snapshot">
+          Seed {{ run.request.seed }} · {{ run.request.width }} × {{ run.request.height }} · Scale
+          {{ run.request.noiseScale }} · {{ run.request.octaves }} octaves · Height
+          {{ run.request.heightMultiplier }}
+        </p>
+        @defer (on immediate) {
+          <app-terrain-preview [run]="run" [paused]="busy()" />
+        } @placeholder {
+          <p>Loading 3D preview…</p>
+        }
+        <dl>
+          <div>
+            <dt>Core computation</dt>
+            <dd>{{ run.response.computeMs.toFixed(2) }} ms</dd>
+          </div>
+          <div>
+            <dt>Request to data ready</dt>
+            <dd>{{ run.requestMs.toFixed(2) }} ms</dd>
+          </div>
+          @if (run.initMs !== null) {
+            <div>
+              <dt>Worker + runtime initialization (once)</dt>
+              <dd>{{ run.initMs.toFixed(2) }} ms</dd>
+            </div>
+          }
+        </dl>
+        <p>
+          Workload: {{ run.response.workload }} · Algorithm:
+          {{ run.response.result.algorithmVersion }}
+        </p>
+        @if (run.terrain; as terrain) {
+          <p class="simulation-snapshot">
+            Iterations {{ terrain.iterations }} · Rainfall {{ terrain.rainfall }} · Evaporation
+            {{ terrain.evaporation }} · Mountains {{ terrain.mountainStrength }} · Warp
+            {{ terrain.warpStrength }}
+          </p>
+        }
+        @if (run.response.simulation; as simulation) {
+          <p>
+            Completed {{ simulation.cellIterations }} cell-iterations. Suspended sediment:
+            {{ simulation.suspendedSediment.toFixed(3) }}. Remaining water:
+            {{ simulation.waterRemaining.toFixed(3) }}.
+          </p>
+        }
+        <p class="build-id">Core: {{ run.response.coreBuildId }}</p>
+      </section>
+    }
+  }
+</div>

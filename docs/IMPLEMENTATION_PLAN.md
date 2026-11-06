@@ -6,6 +6,14 @@ The supported product is **Rich terrain + hydraulic erosion** with a Three.js pr
 
 Baseline/probe interfaces, the experimental regional generator, and all 2D views have been removed. Their browser scripts and feature-specific tests are removed with them. Noise, height contracts and validation remain as dependencies of the supported terrain generator. README stays empty; documentation stays in English.
 
+## Editor preparation and proposed layout
+
+Preparation is implemented: typed parameter/default metadata and independent parameters, results and PWA panels. Existing generation and safe-update integration tests exercise the extracted components. The current UI still exposes the same generation actions and deferred 3D view; there are no new presets, brush tools, sliders or history controls yet.
+
+The proposed editor uses a large central Three.js viewport, a left parameter panel, a right results/measurement panel, and a bottom timeline once capture is implemented. Group controls into terrain, erosion and advanced noise settings. Changing controls should update a draft; explicit Generate applies one immutable snapshot. Do not automatically start expensive simulation on every slider movement. Single-result display is the default design direction; comparison can open a second view on demand with identical camera scale.
+
+Keep Local/Remote execution, numerical comparison, startup and computation metrics accessible. PWA state should become compact while retaining visible recovery/update actions. First establish the layout and parameter interactions, then implement the bounded capture pipeline below and connect its playback controls. Preserve the preferred generator appearance throughout.
+
 ## Next: evolution of the selected terrain
 
 1. Specify bounded snapshot capture for the existing hydraulic model: initial state, interval frames, final state, no duplicate final frame, and overflow-safe storage budgets.

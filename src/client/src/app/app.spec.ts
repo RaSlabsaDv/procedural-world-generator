@@ -1,6 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { PwaStatusPanel } from './pwa-status-panel';
+import { TerrainResultsPanel } from './terrain-results-panel';
 import { vi } from 'vitest';
 import { App } from './app';
 import { TerrainService } from './terrain.service';
@@ -67,7 +70,7 @@ describe('App terrain workflow', () => {
         { provide: OfflineReadinessService, useValue: readiness },
       ],
     })
-      .overrideComponent(App, {
+      .overrideComponent(TerrainResultsPanel, {
         remove: { imports: [TerrainPreview] },
         add: { imports: [PreviewStub] },
       })
@@ -80,6 +83,10 @@ describe('App terrain workflow', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
+
+  function pwa(): PwaStatusPanel {
+    return fixture.debugElement.query(By.directive(PwaStatusPanel)).componentInstance;
+  }
 
   function button(id: string): HTMLButtonElement {
     return fixture.nativeElement.querySelector('#' + id);
@@ -125,7 +132,7 @@ describe('App terrain workflow', () => {
 
   it('notifies about an update and activates it only when idle', async () => {
     const reload = vi
-      .spyOn(fixture.componentInstance as unknown as { reloadPage(): void }, 'reloadPage')
+      .spyOn(pwa() as unknown as { reloadPage(): void }, 'reloadPage')
       .mockImplementation(() => {});
     readiness.updateReady.set(true);
     readiness.updateVersion.set('version-2');
@@ -143,16 +150,11 @@ describe('App terrain workflow', () => {
   });
 
   it('reports a reload failure and releases the operation lock', async () => {
-    vi.spyOn(
-      fixture.componentInstance as unknown as { reloadPage(): void },
-      'reloadPage',
-    ).mockImplementation(() => {
+    vi.spyOn(pwa() as unknown as { reloadPage(): void }, 'reloadPage').mockImplementation(() => {
       throw new Error('Reload blocked');
     });
     readiness.updateReady.set(true);
-    await (
-      fixture.componentInstance as unknown as { reloadForUpdate(): Promise<void> }
-    ).reloadForUpdate();
+    await (pwa() as unknown as { reloadForUpdate(): Promise<void> }).reloadForUpdate();
     expect(readiness.cancelReload).toHaveBeenCalledWith('Reload blocked');
     expect(fixture.componentInstance['busy']()).toBe(false);
   });
@@ -171,14 +173,12 @@ describe('App terrain workflow', () => {
     readiness.updateReady.set(true);
     fixture.detectChanges();
     const reload = vi
-      .spyOn(fixture.componentInstance as unknown as { reloadPage(): void }, 'reloadPage')
+      .spyOn(pwa() as unknown as { reloadPage(): void }, 'reloadPage')
       .mockImplementation(() => {});
     const reloadButton = fixture.nativeElement.querySelector('#reload-update') as HTMLButtonElement;
     expect(reloadButton.disabled).toBe(true);
 
-    await (
-      fixture.componentInstance as unknown as { reloadForUpdate(): Promise<void> }
-    ).reloadForUpdate();
+    await (pwa() as unknown as { reloadForUpdate(): Promise<void> }).reloadForUpdate();
     expect(readiness.prepareForReload).not.toHaveBeenCalled();
     expect(reload).not.toHaveBeenCalled();
 
@@ -259,6 +259,28 @@ describe('App terrain workflow', () => {
       'Invalid width',
     );
     expect(local).not.toHaveBeenCalled();
+  });
+
+  it('shows nested Core errors beside the matching composition control', async () => {
+    remote.mockRejectedValueOnce(
+      new TerrainError('validation', 'Check parameters', {
+        'heightMap.noiseScale': 'value.out_of_range: Invalid noise scale',
+      }),
+    );
+    button('generate-remote').click();
+    await waitForIdle();
+    expect(fixture.nativeElement.querySelector('#noiseScale-error').textContent).toContain(
+      'Invalid noise scale',
+    );
+    expect(fixture.nativeElement.querySelector('#noiseScale').getAttribute('aria-invalid')).toBe(
+      'true',
+    );
+    input('noiseScale', '0.04');
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#noiseScale-error').textContent).toBe('');
+    expect(fixture.nativeElement.querySelector('#noiseScale').hasAttribute('aria-invalid')).toBe(
+      false,
+    );
   });
 
   it('shows remote availability errors without invoking Local', async () => {

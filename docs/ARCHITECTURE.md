@@ -20,6 +20,14 @@ Core owns validation, deterministic noise/composition, hydraulic simulation, and
 
 `TerrainGenerator.Generate` validates before allocation. Hosts use `TerrainValidator.Prepare` and its immutable `ValidatedTerrainRequest`, then time `GenerateValidated` without revalidation. Null direct requests throw `ArgumentNullException`; invalid direct requests throw `ArgumentException`.
 
+## Editor preparation
+
+`App` coordinates generation, immutable snapshots, revision checks and the shared operation lock. Presentation is split into `TerrainParametersPanel`, `TerrainResultsPanel` (including the deferred Three.js preview) and `PwaStatusPanel`. PWA preparation/reload uses the same root-injected lock as generation. Components do not own separate runtime instances or copies of computation logic.
+
+`terrain-parameters.ts` is the single frontend source for parameter labels, descriptions, input steps and defaults. Typed form factories use this metadata; request capture rejects missing/non-finite values and freezes both request levels. It deliberately leaves canonical ranges and work limits to Core rather than duplicating them as Angular validators. Strict response validation remains separate. Nested Core field names map to their corresponding input errors.
+
+The editor layout and playback remain planned. These component boundaries allow moving controls, results and PWA state around the existing viewport without changing generation contracts.
+
 ## Contracts and public surface
 
 The sole generation endpoint is `POST /api/v1/terrains`; `GET /api/health` reports availability. Unknown `/api` routes return 404 rather than the Angular shell. The sole WASM export is `GenerateTerrainJson`, exposed as the asynchronous `generateTerrainJson` worker proxy. See [development](DEVELOPMENT.md) for a complete request.

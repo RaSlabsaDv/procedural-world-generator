@@ -4,6 +4,12 @@
 
 The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Evolution capture/playback is the next planned extension. README is intentionally empty.
 
+## Frontend structure
+
+`App` owns generation state and orchestration. `TerrainParametersPanel` renders typed forms and emits Local/Remote/Verify actions; `TerrainResultsPanel` presents comparison, snapshots, timings and deferred 3D; `PwaStatusPanel` owns readiness/update actions using the shared lock. The mathematical core and transport contracts are unchanged.
+
+Edit parameter labels, tooltips, input steps and initial values in `terrain-parameters.ts`. This is presentation metadata, not a second validator. Core remains authoritative for ranges and work budgets. Blank/non-finite values are rejected before dispatch without default substitution. Field errors support nested `heightMap.*` paths and are associated with inputs for accessibility.
+
 ## Toolchain and native verification
 
 Use the SDK feature band specified by `global.json` (.NET 10.0.4xx) and its `wasm-tools` workload, plus Node.js/npm. Checked-in NuGet and npm lockfiles pin dependencies; installed workloads are separate toolchain prerequisites.

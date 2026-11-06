@@ -1,0 +1,50 @@
+h2 {
+  font-size: 1.2rem;
+}
+fieldset {
+  border: 1px solid #cdd7dd;
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+legend {
+  font-weight: 650;
+  padding: 0 0.5rem;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+button {
+  padding: 0.6rem 1rem;
+  background: #174d5c;
+  color: white;
+  border: 0;
+  border-radius: 0.35rem;
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled,
+fieldset:disabled button {
+  opacity: 0.55;
+  cursor: wait;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #66b7c5;
+  outline-offset: 2px;
+}
+.error,
+.field-error {
+  color: #a32727;
+}
+.field-error {
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+.error {
+  padding: 0.8rem;
+  border-left: 3px solid #a32727;
+  background: #fff2f2;
+}

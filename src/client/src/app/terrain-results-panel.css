@@ -1,0 +1,43 @@
+:host {
+  display: block;
+}
+.comparison {
+  background: #eaf3f5;
+  padding: 0.8rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+.maps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+.map-card {
+  border: 1px solid #d4dfe4;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  min-width: 0;
+}
+.snapshot,
+.build-id {
+  color: #526571;
+  font-size: 0.8rem;
+}
+.build-id {
+  overflow-wrap: anywhere;
+}
+dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 640px) {
+  .maps {
+    grid-template-columns: 1fr;
+  }
+}
