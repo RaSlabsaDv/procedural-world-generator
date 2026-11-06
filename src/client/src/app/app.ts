@@ -8,6 +8,7 @@ import {
   HeightMapRequest,
   HeightMapRun,
 } from './heightmap.models';
+import { TerrainPreview } from './terrain-preview';
 import { HeightMapPreview } from './heightmap-preview';
 import { HeightMapService } from './heightmap.service';
 import { OperationLock } from './operation-lock.service';
@@ -16,7 +17,7 @@ import { ProbeDiagnostics } from './probe-diagnostics';
 
 @Component({
   selector: 'app-root',
-  imports: [ReactiveFormsModule, HeightMapPreview, ProbeDiagnostics],
+  imports: [ReactiveFormsModule, HeightMapPreview, TerrainPreview, ProbeDiagnostics],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
@@ -26,6 +27,7 @@ export class App {
   private inputRevision = 0;
   private readonly operations = inject(OperationLock);
   protected readonly busy = this.operations.busy;
+  protected readonly view = signal<'2d' | '3d'>('2d');
   protected readonly status = signal('Ready');
   protected readonly error = signal<HeightMapError | null>(null);
   protected readonly local = signal<HeightMapRun | null>(null);

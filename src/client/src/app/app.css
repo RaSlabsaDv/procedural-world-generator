@@ -185,3 +185,11 @@ summary {
     grid-template-columns: 1fr;
   }
 }
+
+.view-controls button {
+  margin-right: 0.5rem;
+}
+.view-controls button[aria-pressed='true'] {
+  outline: 2px solid #1b5361;
+  outline-offset: 2px;
+}

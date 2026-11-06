@@ -154,6 +154,10 @@
             : 'Height differences exceed tolerance.'
         }}
       </p>
+      <p id="biome-match">
+        {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
+        {{ check.biomeMismatchCount }}
+      </p>
       <p id="build-identity">
         @switch (check.identity) {
           @case ('compatible') {
@@ -176,6 +180,26 @@
     </section>
   }
 
+  <fieldset class="view-controls" [disabled]="busy()">
+    <legend>Terrain view</legend>
+    <button
+      id="view-2d"
+      type="button"
+      [attr.aria-pressed]="view() === '2d'"
+      (click)="view.set('2d')"
+    >
+      2D heights
+    </button>
+    <button
+      id="view-3d"
+      type="button"
+      [attr.aria-pressed]="view() === '3d'"
+      (click)="view.set('3d')"
+    >
+      3D biomes
+    </button>
+    <p>Biome palette: water (blue), plains (light green), forest (dark green), mountains (gray).</p>
+  </fieldset>
   <div class="maps">
     @for (
       entry of [
@@ -192,7 +216,15 @@
             {{ run.request.noiseScale }} · {{ run.request.octaves }} octaves · Height
             {{ run.request.heightMultiplier }}
           </p>
-          <app-heightmap-preview [run]="run" />
+          @if (view() === '3d') {
+            @defer (on immediate) {
+              <app-terrain-preview [run]="run" [paused]="busy()" />
+            } @placeholder {
+              <p>Loading 3D preview…</p>
+            }
+          } @else {
+            <app-heightmap-preview [run]="run" />
+          }
           <dl>
             <div>
               <dt>Core computation</dt>
@@ -215,8 +247,9 @@
     }
   </div>
   <p class="caption">
-    Black = zero height; white = the selected height multiplier. Both previews use the same scale.
-    Request timing excludes rendering and comparison.
+    2D: black = zero height; white = the selected height multiplier. Both previews use the same
+    scale. Request timing excludes rendering and comparison. Core computation includes biome
+    classification.
   </p>
   <details class="diagnostics">
     <summary>Probe diagnostics</summary>

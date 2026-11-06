@@ -16,10 +16,17 @@ const request: HeightMapRequest = Object.freeze({
   algorithmVersion: ALGORITHM_VERSION,
 });
 const response = () => ({
-  result: { width: 2, height: 2, values: [0, 10, 20, 30], algorithmVersion: ALGORITHM_VERSION },
+  result: {
+    width: 2,
+    height: 2,
+    values: [0, 10, 20, 30],
+    biomes: [0, 1, 2, 3],
+    resultVersion: 'heightmap-biomes-v1',
+    algorithmVersion: ALGORITHM_VERSION,
+  },
   computeMs: 1,
   coreBuildId: 'git:123456789abc',
-  workload: 'heightmap',
+  workload: 'heightmap+biomes',
 });
 
 describe('HeightMapService', () => {

@@ -24,10 +24,12 @@ function wire() {
       height: 2,
       algorithmVersion: ALGORITHM_VERSION,
       values: [0, 5, 10, 15, 20, 30],
+      biomes: [0, 0, 1, 2, 2, 3],
+      resultVersion: 'heightmap-biomes-v1',
     },
     computeMs: 1.25,
     coreBuildId: 'git:123456789abc',
-    workload: 'heightmap',
+    workload: 'heightmap+biomes',
   };
 }
 
@@ -65,6 +67,13 @@ describe('heightmap contract', () => {
     { width: 2 },
     { height: 3 },
     { algorithmVersion: 'v2' },
+    { resultVersion: 'other' },
+    { biomes: undefined },
+    { biomes: [0] },
+    { biomes: [0, 0, 1, 2, 2, 4] },
+    { biomes: [0, 0, 1, 2, 2, -1] },
+    { biomes: [0, 0, 1, 2, 2, 1.5] },
+    { biomes: 'AAAAAA==' },
     { values: [0] },
     { values: [0, 5, 10, 15, 20, NaN] },
     { values: [0, 5, 10, 15, 20, Infinity] },
@@ -102,6 +111,18 @@ describe('heightmap contract', () => {
 });
 
 describe('full-array equivalence', () => {
+  it('compares biome IDs exactly, including the last cell', () => {
+    const local = run();
+    const remote = run();
+    expect(compareHeightMaps(local, remote).biomesMatch).toBe(true);
+    remote.response.result.biomes[5] = 2;
+    expect(compareHeightMaps(local, remote)).toMatchObject({
+      numericMatch: true,
+      biomesMatch: false,
+      biomeMismatchCount: 1,
+    });
+  });
+
   it('matches equal outputs and detects a mismatch at the last cell', () => {
     const local = run();
     const remote = run();

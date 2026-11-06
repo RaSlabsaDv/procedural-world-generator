@@ -1,4 +1,6 @@
 import {
+  RESULT_VERSION,
+  WORKLOAD,
   HeightMapError,
   HeightMapRequest,
   HeightMapResponse,
@@ -38,13 +40,17 @@ export function decodeHeightMap(value: unknown, request: HeightMapRequest): Heig
   if (!object(value) || !object(value['result'])) return fail();
   const result = value['result'];
   const values = result['values'];
+  const biomes = result['biomes'];
   if (
     !Number.isSafeInteger(result['width']) ||
     !Number.isSafeInteger(result['height']) ||
     result['width'] !== request.width ||
     result['height'] !== request.height ||
     result['algorithmVersion'] !== request.algorithmVersion ||
-    value['workload'] !== 'heightmap' ||
+    value['workload'] !== WORKLOAD ||
+    result['resultVersion'] !== RESULT_VERSION ||
+    !Array.isArray(biomes) ||
+    biomes.length !== request.width * request.height ||
     typeof value['coreBuildId'] !== 'string' ||
     value['coreBuildId'].trim().length === 0 ||
     typeof value['computeMs'] !== 'number' ||
@@ -58,11 +64,16 @@ export function decodeHeightMap(value: unknown, request: HeightMapRequest): Heig
     return fail();
 
   const normalized = new Float32Array(values.length);
+  const biomeIds = new Uint8Array(values.length);
   const upper = Math.fround(request.heightMultiplier);
   if (!Number.isFinite(upper) || upper < 0) return fail();
   for (let index = 0; index < values.length; index++) {
     const item: unknown = values[index];
     if (typeof item !== 'number' || !Number.isFinite(item)) return fail();
+    const biome: unknown = biomes[index];
+    if (typeof biome !== 'number' || !Number.isInteger(biome) || biome < 0 || biome > 3)
+      return fail();
+    biomeIds[index] = biome;
     normalized[index] = item;
     if (!Number.isFinite(normalized[index]) || normalized[index] < 0 || normalized[index] > upper)
       return fail();
@@ -72,11 +83,13 @@ export function decodeHeightMap(value: unknown, request: HeightMapRequest): Heig
       width: request.width,
       height: request.height,
       values: normalized,
+      biomes: biomeIds,
+      resultVersion: RESULT_VERSION,
       algorithmVersion: request.algorithmVersion,
     },
     computeMs: value['computeMs'],
     coreBuildId: value['coreBuildId'],
-    workload: 'heightmap',
+    workload: WORKLOAD,
   };
 }
 
@@ -85,6 +98,8 @@ export interface HeightMapComparison {
   readonly meanAbsoluteError: number;
   readonly mismatchCount: number;
   readonly numericMatch: boolean;
+  readonly biomeMismatchCount: number;
+  readonly biomesMatch: boolean;
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
@@ -106,6 +121,9 @@ export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): He
     a.result.height !== b.result.height ||
     a.result.algorithmVersion !== b.result.algorithmVersion ||
     a.workload !== b.workload ||
+    a.result.resultVersion !== b.result.resultVersion ||
+    a.result.biomes.length !== a.result.values.length ||
+    b.result.biomes.length !== b.result.values.length ||
     a.result.values.length !== b.result.values.length ||
     a.result.values.length === 0
   )
@@ -117,12 +135,14 @@ export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): He
   let maxAbsoluteError = 0;
   let sum = 0;
   let mismatchCount = 0;
+  let biomeMismatchCount = 0;
   for (let index = 0; index < a.result.values.length; index++) {
     const left = a.result.values[index];
     const right = b.result.values[index];
     if (!Number.isFinite(left) || !Number.isFinite(right)) {
       throw new HeightMapError('protocol', 'Cannot compare non-finite heights.');
     }
+    if (a.result.biomes[index] !== b.result.biomes[index]) biomeMismatchCount++;
     const difference = Math.abs(left - right);
     maxAbsoluteError = Math.max(maxAbsoluteError, difference);
     sum += difference;
@@ -142,6 +162,8 @@ export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): He
     meanAbsoluteError: sum / a.result.values.length,
     mismatchCount,
     numericMatch: mismatchCount === 0,
+    biomeMismatchCount,
+    biomesMatch: biomeMismatchCount === 0,
     identity,
   };
 }

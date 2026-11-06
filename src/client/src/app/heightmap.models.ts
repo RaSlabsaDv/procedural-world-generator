@@ -1,3 +1,6 @@
+export const RESULT_VERSION = 'heightmap-biomes-v1';
+export const WORKLOAD = 'heightmap+biomes';
+
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
 export interface HeightMapRequest {
@@ -15,11 +18,13 @@ export interface HeightMapResponse {
     readonly width: number;
     readonly height: number;
     readonly values: Float32Array;
+    readonly biomes: Uint8Array;
+    readonly resultVersion: string;
     readonly algorithmVersion: string;
   };
   readonly computeMs: number;
   readonly coreBuildId: string;
-  readonly workload: 'heightmap';
+  readonly workload: typeof WORKLOAD;
 }
 
 export interface HeightMapRun {
