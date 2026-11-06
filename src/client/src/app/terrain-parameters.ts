@@ -137,3 +137,23 @@ export function captureTerrainRequest(
     algorithmVersion: TERRAIN_ALGORITHM,
   }) as TerrainRequest;
 }
+
+// Slider extents are UI guidance, not a duplicate of canonical Core validation.
+export const SLIDER_GUIDANCE = {
+  mountainStrength: { min: 0, max: 1 },
+  warpStrength: { min: 0, max: 8 },
+} as const;
+
+export function sameTerrainParameters(a: TerrainRequest | null, b: TerrainRequest | null): boolean {
+  if (!a || !b) return false;
+  return (
+    a.algorithmVersion === b.algorithmVersion &&
+    a.heightMap.algorithmVersion === b.heightMap.algorithmVersion &&
+    (Object.keys(MAP_PARAMETERS) as (keyof typeof MAP_PARAMETERS)[]).every(
+      (key) => a.heightMap[key] === b.heightMap[key],
+    ) &&
+    (Object.keys(SIMULATION_PARAMETERS) as (keyof typeof SIMULATION_PARAMETERS)[]).every(
+      (key) => a[key] === b[key],
+    )
+  );
+}

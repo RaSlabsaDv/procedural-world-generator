@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { compareTerrains, TerrainComparison } from './terrain.contract';
 import { TerrainError, TerrainRun } from './terrain.models';
@@ -22,7 +22,17 @@ import { OperationLock } from './operation-lock.service';
 })
 export class App {
   private readonly generator = inject(TerrainService);
-  private inputRevision = 0;
+  private readonly inputRevision = signal(0);
+  private alive = true;
+  protected readonly preferred = signal<'local' | 'remote'>('local');
+  protected readonly draft = computed(() => {
+    this.inputRevision();
+    try {
+      return captureTerrainRequest(this.form, this.terrainForm);
+    } catch {
+      return null;
+    }
+  });
   protected readonly terrainForm = createParameterForm(SIMULATION_PARAMETERS);
   private readonly operations = inject(OperationLock);
   protected readonly busy = this.operations.busy;
@@ -34,6 +44,9 @@ export class App {
   protected readonly form = createParameterForm(MAP_PARAMETERS);
 
   constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      this.alive = false;
+    });
     this.terrainForm.valueChanges
       .pipe(takeUntilDestroyed(inject(DestroyRef)))
       .subscribe(() => this.invalidate());
@@ -51,9 +64,7 @@ export class App {
     if (!release) return;
     this.error.set(null);
     this.comparison.set(null);
-    this.local.set(null);
-    this.remote.set(null);
-    const revision = this.inputRevision;
+    const revision = this.inputRevision();
     try {
       const terrain = captureTerrainRequest(this.form, this.terrainForm);
       this.status.set(
@@ -63,28 +74,31 @@ export class App {
       );
       // Paint the loading state before dispatching computation to the worker or API.
       await new Promise<void>((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+      if (!this.alive || revision !== this.inputRevision()) return;
       if (mode === 'local') {
         const result = await this.generator.local(terrain);
-        if (revision !== this.inputRevision) return;
+        if (!this.alive || revision !== this.inputRevision()) return;
         this.local.set(result);
+        this.preferred.set('local');
       } else if (mode === 'remote') {
         const result = await this.generator.remote(terrain);
-        if (revision !== this.inputRevision) return;
+        if (!this.alive || revision !== this.inputRevision()) return;
         this.remote.set(result);
+        this.preferred.set('remote');
       } else {
         const local = await this.generator.local(terrain);
-        if (revision !== this.inputRevision) return;
+        if (!this.alive || revision !== this.inputRevision()) return;
         // Render both maps after the sequential pair completes.
         this.status.set('Generating the same request remotely…');
         const remote = await this.generator.remote(terrain);
-        if (revision !== this.inputRevision) return;
+        if (!this.alive || revision !== this.inputRevision()) return;
         this.local.set(local);
         this.remote.set(remote);
         this.comparison.set(compareTerrains(local, remote));
       }
       this.status.set('Complete');
     } catch (error) {
-      if (revision !== this.inputRevision) return;
+      if (!this.alive || revision !== this.inputRevision()) return;
       this.error.set(
         error instanceof TerrainError
           ? error
@@ -97,7 +111,7 @@ export class App {
   }
 
   private invalidate(): void {
-    this.inputRevision++;
+    this.inputRevision.update((value) => value + 1);
     this.comparison.set(null);
     this.error.set(null);
     this.status.set('Parameters changed. Existing maps retain their original inputs.');

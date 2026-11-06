@@ -121,4 +121,30 @@ describe('terrain preview lifecycle', () => {
     expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('No WebGL');
     expect(fixture.nativeElement.textContent).toContain('Numerical results remain available');
   });
+  it('preserves the camera on same-scale replacement and resets it on request', async () => {
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await fixture.whenStable();
+    const component = fixture.componentInstance as unknown as { controls: OrbitControls };
+    const controls = component.controls;
+    const initial = controls.object.position.clone();
+    controls.object.position.set(31, 47, 59);
+    controls.target.set(2, 3, 4);
+    controls.update();
+    fixture.componentRef.setInput('run', run());
+    await fixture.whenStable();
+    expect(component.controls.object.position.distanceTo(controls.object.position)).toBeLessThan(
+      1e-10,
+    );
+    expect(component.controls.target.distanceTo(controls.target)).toBeLessThan(1e-10);
+    (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    expect(component.controls.object.position.distanceTo(initial)).toBeLessThan(1e-10);
+    fixture.componentRef.setInput('paused', true);
+    await fixture.whenStable();
+    expect(component.controls.enabled).toBe(false);
+    expect((fixture.nativeElement.querySelector('button') as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+  });
 });

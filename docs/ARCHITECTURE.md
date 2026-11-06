@@ -20,13 +20,19 @@ Core owns validation, deterministic noise/composition, hydraulic simulation, and
 
 `TerrainGenerator.Generate` validates before allocation. Hosts use `TerrainValidator.Prepare` and its immutable `ValidatedTerrainRequest`, then time `GenerateValidated` without revalidation. Null direct requests throw `ArgumentNullException`; invalid direct requests throw `ArgumentException`.
 
-## Editor preparation
+## Terrain editor
 
-`App` coordinates generation, immutable snapshots, revision checks and the shared operation lock. Presentation is split into `TerrainParametersPanel`, `TerrainResultsPanel` (including the deferred Three.js preview) and `PwaStatusPanel`. PWA preparation/reload uses the same root-injected lock as generation. Components do not own separate runtime instances or copies of computation logic.
+`App` coordinates draft forms, immutable generation snapshots, revision checks and the shared operation lock. A large deferred Three.js viewport is flanked by the parameters sidebar and results/measurements sidebar. `TerrainParametersPanel` owns grouped controls and draft actions; `TerrainResultsPanel` owns result selection, the viewport, comparison and metrics; `PwaStatusPanel` uses the same root-injected lock for readiness and reload. Panels stack on smaller screens and can be collapsed using native details controls.
 
-`terrain-parameters.ts` is the single frontend source for parameter labels, descriptions, input steps and defaults. Typed form factories use this metadata; request capture rejects missing/non-finite values and freezes both request levels. It deliberately leaves canonical ranges and work limits to Core rather than duplicating them as Angular validators. Strict response validation remains separate. Nested Core field names map to their corresponding input errors.
+`terrain-parameters.ts` centralizes labels, descriptions, input steps and defaults. Mountain/warp sliders have presentation bounds, with synchronized exact numeric inputs. These bounds are UI guidance, not canonical validators; Core remains authoritative for ranges and work budgets. Random seed uses browser crypto only to select an Int32 seed. Reset and all controls modify a draft without executing the generator. Capture rejects missing/non-finite values and freezes both request levels. Nested Core error paths map to input errors.
 
-The editor layout and playback remain planned. These component boundaries allow moving controls, results and PWA state around the existing viewport without changing generation contracts.
+Generation preserves prior successful maps during work or errors. Display labels distinguish captured settings from the current draft; input edits clear comparison state. Local/Remote verification remains sequential with one snapshot, and commits the pair after both complete. Revision and destruction checks discard obsolete responses; the operation lock is held until the real asynchronous call settles, including after component destruction.
+
+One primary result is visible by default; Local/Remote selection and Compare views are explicit. Comparison views can retain results from different requests, which are labelled and flagged; numerical verification is shown only for a verified identical request. Build identity remains separate from numeric agreement. Captured parameters, versions, simulation totals and startup/display details are expandable. Individual runs are not a benchmark campaign.
+
+Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new dependencies, Core mathematics or host contracts are introduced.
+
+Playback and brush editing are not implemented. Bounded evolution capture is the next phase.
 
 ## Contracts and public surface
 

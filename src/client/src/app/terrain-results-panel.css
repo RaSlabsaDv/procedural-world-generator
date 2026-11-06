@@ -1,43 +1,185 @@
 :host {
-  display: block;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 1rem;
+  align-items: start;
 }
-.comparison {
-  background: #eaf3f5;
-  padding: 0.8rem 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
+.viewport-panel {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid #dce5e5;
+  border-radius: 0.7rem;
+  overflow: hidden;
+}
+.viewport-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 1rem;
+  border-bottom: 1px solid #e6eded;
+}
+.eyebrow {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.6rem;
+  color: #7b9087;
+  font-weight: 700;
+}
+h2 {
+  margin: 0.25rem 0 0.5rem;
+}
+h3 {
+  margin: 0;
+}
+.view-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  border: 0;
+  padding: 0;
+  margin: 0;
 }
 .maps {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-}
-.map-card {
-  border: 1px solid #d4dfe4;
-  border-radius: 0.75rem;
-  padding: 1rem;
   min-width: 0;
 }
-.snapshot,
-.build-id {
-  color: #526571;
-  font-size: 0.8rem;
+.maps.comparing {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.build-id {
-  overflow-wrap: anywhere;
+.map-card {
+  min-width: 0;
+  padding: 1rem;
 }
-dl > div {
+.map-heading {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
+  align-items: center;
+}
+.result-state {
+  font-size: 0.66rem;
+  color: #7a8b7b;
+}
+.snapshot {
+  color: #738980;
+  font-size: 0.73rem;
+  margin: 0.35rem 0 0.8rem;
+}
+.empty-viewport {
+  min-height: 540px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  background: radial-gradient(ellipse at bottom, #2e4944, #172b2d 75%);
+  color: #e2ece5;
+}
+.empty-viewport p {
+  color: #9eb8ae;
   font-size: 0.85rem;
 }
+.empty-viewport small {
+  color: #7f9e92;
+}
+.empty-symbol {
+  font-size: 6rem;
+  font-weight: 200;
+  color: #7ea58d;
+}
+.results-panel {
+  min-width: 0;
+  padding: 1rem;
+  background: #fff;
+  border: 1px solid #dce5e5;
+  border-radius: 0.7rem;
+}
+.measurement {
+  border-top: 1px solid #e6eded;
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.timings {
+  margin: 0.8rem 0;
+}
+.timings > div {
+  margin: 0.6rem 0;
+}
+dt {
+  color: #73877e;
+  font-size: 0.73rem;
+}
 dd {
-  margin: 0;
+  margin: 0.1rem 0;
+  color: #294e42;
+  font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
 }
-@media (max-width: 640px) {
-  .maps {
+dd small {
+  font-size: 0.7rem;
+  font-weight: 400;
+}
+details {
+  border-top: 1px solid #edf1ee;
+  padding: 0.65rem 0;
+}
+summary {
+  font-size: 0.75rem;
+  color: #526f60;
+  font-weight: 600;
+}
+details p,
+.metric-note,
+.no-measurements,
+.comparison {
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+.metric-note {
+  color: #839487;
+  margin: 1rem 0 0;
+}
+.comparison {
+  padding: 0.7rem;
+  border: 1px solid #d8e9de;
+  border-radius: 0.4rem;
+  background: #f2f8f3;
+}
+.comparison h2 {
+  font-size: 0.85rem;
+}
+.simulation-totals dd {
+  font-size: 0.8rem;
+}
+.comparison-warning,
+.working {
+  margin: 0.7rem 1rem;
+  font-size: 0.76rem;
+  color: #796532;
+}
+.loading-preview {
+  min-height: 540px;
+}
+@media (max-width: 1200px) {
+  :host {
     grid-template-columns: 1fr;
+  }
+  .results-panel {
+    display: block;
+  }
+}
+@media (max-width: 650px) {
+  .maps.comparing {
+    grid-template-columns: 1fr;
+  }
+  .map-heading {
+    flex-wrap: wrap;
+  }
+  .empty-viewport {
+    min-height: 360px;
   }
 }

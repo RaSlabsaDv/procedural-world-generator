@@ -6,13 +6,13 @@ The supported product is **Rich terrain + hydraulic erosion** with a Three.js pr
 
 Baseline/probe interfaces, the experimental regional generator, and all 2D views have been removed. Their browser scripts and feature-specific tests are removed with them. Noise, height contracts and validation remain as dependencies of the supported terrain generator. README stays empty; documentation stays in English.
 
-## Editor preparation and proposed layout
+## Terrain editor: implemented
 
-Preparation is implemented: typed parameter/default metadata and independent parameters, results and PWA panels. Existing generation and safe-update integration tests exercise the extracted components. The current UI still exposes the same generation actions and deferred 3D view; there are no new presets, brush tools, sliders or history controls yet.
+The editor provides a large central Three.js viewport, grouped parameter sidebar, measurements sidebar and compact PWA header. Numeric/slider controls share values; Random seed and Reset affect drafts only. One result is shown by default, with explicit Local/Remote selection and comparison views. Captured labels distinguish previous results from draft edits. Generation/errors retain prior terrain; stale or destroyed-component responses are discarded without releasing the lock before real completion.
 
-The proposed editor uses a large central Three.js viewport, a left parameter panel, a right results/measurement panel, and a bottom timeline once capture is implemented. Group controls into terrain, erosion and advanced noise settings. Changing controls should update a draft; explicit Generate applies one immutable snapshot. Do not automatically start expensive simulation on every slider movement. Single-result display is the default design direction; comparison can open a second view on demand with identical camera scale.
+Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Existing Core equations, contracts, full-array comparisons, worker ownership and safe PWA updates remain unchanged. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
 
-Keep Local/Remote execution, numerical comparison, startup and computation metrics accessible. PWA state should become compact while retaining visible recovery/update actions. First establish the layout and parameter interactions, then implement the bounded capture pipeline below and connect its playback controls. Preserve the preferred generator appearance throughout.
+No new dependencies, presets, brushes, 2D views, simulation history or placeholder timeline controls were added. The next extension is the bounded capture pipeline below; its player will occupy a bottom timeline after real frame data exists.
 
 ## Next: evolution of the selected terrain
 

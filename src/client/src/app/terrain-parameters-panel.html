@@ -1,65 +1,80 @@
-<form [formGroup]="simulationForm()" novalidate>
-  <fieldset [disabled]="busy()">
-    <legend>Terrain and simulation parameters</legend>
-    <div class="parameters">
-      @for (parameter of simulationParameters; track parameter.name) {
-        <label [for]="parameter.name"
-          >{{ parameter.label }}
-          <input
-            [id]="parameter.name"
-            type="number"
-            [step]="parameter.step"
-            [formControlName]="parameter.name"
-            [title]="parameter.description"
-            [attr.aria-describedby]="parameter.name + '-error'"
-            [attr.aria-invalid]="fieldError(parameter.name) ? 'true' : null"
-          />
-          <small class="field-error" [id]="parameter.name + '-error'">{{
-            fieldError(parameter.name)
-          }}</small>
-        </label>
-      }
-    </div>
-    <p>
-      Work: {{ mapForm().controls.width.value }} × {{ mapForm().controls.height.value }} ×
-      {{ simulationForm().controls.iterations.value }} cell-iterations. Core validates the work
-      budget. More iterations evolve the terrain without increasing mesh size. Heavy runs can take
-      time; progress and cancellation are unavailable.
-    </p>
-  </fieldset>
-</form>
 <form [formGroup]="mapForm()" (ngSubmit)="generate.emit('local')" novalidate>
   <fieldset [disabled]="busy()">
-    <legend>Generation parameters</legend>
-    <div class="parameters">
-      @for (parameter of mapParameters; track parameter.name) {
-        <label [for]="parameter.name"
-          >{{ parameter.label }}
-          <input
-            [id]="parameter.name"
-            type="number"
-            [step]="parameter.step"
-            [formControlName]="parameter.name"
-            [title]="parameter.description"
-            [attr.aria-describedby]="parameter.name + '-error'"
-            [attr.aria-invalid]="fieldError(parameter.name, true) ? 'true' : null"
-          />
-          <small class="field-error" [id]="parameter.name + '-error'">{{
-            fieldError(parameter.name, true)
-          }}</small>
-        </label>
-      }
-    </div>
-    <div class="actions">
-      <button id="generate-local" type="button" (click)="generate.emit('local')">
-        Generate Local
+    <legend class="sr-only">Terrain parameters</legend>
+    <div class="draft-tools">
+      <button id="random-seed" class="secondary" type="button" (click)="randomSeed()">
+        Random seed
       </button>
-      <button id="generate-remote" type="button" (click)="generate.emit('remote')">
+      <button id="reset-parameters" class="secondary" type="button" (click)="resetParameters()">
+        Reset parameters
+      </button>
+    </div>
+    <div class="actions generate-actions">
+      <button id="generate-local" type="submit">Generate Local</button>
+      <button
+        id="generate-remote"
+        class="secondary"
+        type="button"
+        (click)="generate.emit('remote')"
+      >
         Generate Remote
       </button>
-      <button id="verify-equivalence" type="button" (click)="generate.emit('verify')">
+      <button
+        id="verify-equivalence"
+        class="secondary"
+        type="button"
+        (click)="generate.emit('verify')"
+      >
         Verify equivalence
       </button>
     </div>
+    @for (group of groups(); track group.title) {
+      <details class="parameter-group" [open]="!group.advanced">
+        <summary>{{ group.title }}</summary>
+        @for (field of group.fields; track field.name) {
+          <div class="parameter">
+            <label [for]="field.name">{{ field.definition.label }}</label>
+            <input
+              [id]="field.name"
+              type="number"
+              [step]="field.definition.step"
+              [formControl]="field.control"
+              [attr.aria-describedby]="field.name + '-help ' + field.name + '-error'"
+              [attr.aria-invalid]="fieldError(field.name, field.nested) ? 'true' : null"
+            />
+            @if (field.slider; as slider) {
+              <input
+                class="slider"
+                [id]="field.name + '-slider'"
+                type="range"
+                [min]="slider.min"
+                [max]="slider.max"
+                [step]="field.definition.step"
+                [value]="field.control.value ?? field.definition.defaultValue"
+                (input)="slide(field.control, $event)"
+                [attr.aria-label]="field.definition.label + ' slider'"
+                [attr.aria-describedby]="field.name + '-help'"
+              />
+            }
+            <small class="parameter-help" [id]="field.name + '-help'">{{
+              field.definition.description
+            }}</small>
+            <small class="field-error" [id]="field.name + '-error'">{{
+              fieldError(field.name, field.nested)
+            }}</small>
+          </div>
+        }
+      </details>
+    }
+    <p class="work-estimate">
+      {{ mapForm().controls.width.value }} × {{ mapForm().controls.height.value }} ×
+      {{ simulationForm().controls.iterations.value }} cell-iterations. Core validates the work
+      budget.
+    </p>
+
+    <p class="parameter-help">
+      Changes stay in the draft until you generate. Heavy runs may take time; progress and
+      cancellation are unavailable.
+    </p>
   </fieldset>
 </form>

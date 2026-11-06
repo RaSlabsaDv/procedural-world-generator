@@ -6,9 +6,9 @@ The application exposes one generator, **Rich terrain + hydraulic erosion**, wit
 
 ## Frontend structure
 
-`App` owns generation state and orchestration. `TerrainParametersPanel` renders typed forms and emits Local/Remote/Verify actions; `TerrainResultsPanel` presents comparison, snapshots, timings and deferred 3D; `PwaStatusPanel` owns readiness/update actions using the shared lock. The mathematical core and transport contracts are unchanged.
+`App` owns draft and generation state and orchestration. The editor has grouped controls on the left, one primary 3D viewport in the center, and measurements on the right; panels stack on narrow screens. `TerrainParametersPanel` renders typed forms and emits Local/Remote/Verify actions; `TerrainResultsPanel` presents comparison, snapshots, timings and deferred 3D; `PwaStatusPanel` owns readiness/update actions using the shared lock. The mathematical core and transport contracts are unchanged.
 
-Edit parameter labels, tooltips, input steps and initial values in `terrain-parameters.ts`. This is presentation metadata, not a second validator. Core remains authoritative for ranges and work budgets. Blank/non-finite values are rejected before dispatch without default substitution. Field errors support nested `heightMap.*` paths and are associated with inputs for accessibility.
+Edit parameter labels, tooltips, input steps and initial values in `terrain-parameters.ts`. Slider extents are UI guidance in the same module; numeric controls preserve exact entry and Core validates ranges. This is presentation metadata, not a second validator. Core remains authoritative for ranges and work budgets. Blank/non-finite values are rejected before dispatch without default substitution. Field errors support nested `heightMap.*` paths and are associated with inputs for accessibility.
 
 ## Toolchain and native verification
 
@@ -65,6 +65,16 @@ Use **Generate Local**, **Generate Remote**, or **Verify equivalence**. Verifica
 Drag to orbit, scroll/pinch to zoom, right-drag to pan. Heights and biome IDs come from Core. Water is currently a height-based color band, not a flat lake/ocean overlay. A WebGL error leaves numeric results available. No 2D fallback exists. Heavy requests run in the worker; the UI does not offer simulated progress or cancellation.
 
 Core limits and exact arithmetic are specified in [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md). The work budget is 33,554,432 cell-iterations; at 512×512, at most 128 iterations are allowed. Model units are illustrative and are not geological years.
+
+## Editor interactions
+
+Terrain contains seed, dimensions, height multiplier and mountain strength. Erosion contains iterations, rainfall and evaporation. Expand Advanced noise for noise scale, octaves and warp strength. Sliders and numeric fields share values. Random seed and Reset parameters affect drafts only; use an explicit generation action to run computation.
+
+The previous successful terrain remains visible during work and failures. Captured labels identify earlier settings when drafts differ. One result is visible by default; select Local/Remote or use Compare views to display both. Different captured requests are flagged; Verify equivalence is the sequential full-array check for an identical snapshot. Editing drafts clears its old comparison state. Technical details and captured settings are expandable in the results sidebar.
+
+Reset camera restores request-based framing. Same-scale updates preserve the camera within an existing preview; dimension/scale changes and view recreation use default framing. Rendering and camera interaction pause during computation. Display CPU setup/first submission is separate from computation and request timing and is not GPU completion.
+
+PWA readiness is compact in the header. Expand it for detail; failures and available updates open the panel. Check for updates remains directly available. The shared operation lock protects generation, offline preparation and safe reload. No playback timeline, brushes, presets or repeated-trial runner are included.
 
 ## Transport contract
 
@@ -126,7 +136,7 @@ PWG_BASE_URL=http://127.0.0.1:8080 \
 node tests/browser/hydraulic.cjs
 ```
 
-Use the same environment with `node tests/browser/pwa.cjs` for offline and safe-update regression. The hydraulic script covers complete WASM/API arrays and conservation summaries, size/iteration extremes through 512×512×128, worker responsiveness, 3D, offline generation and Remote failure. The PWA script tests offline reload/new tab, recovery, deferred reload and the updated terrain bundle. It temporarily modifies only generated deployment assets and restores them in `finally`; do not run it concurrently with publishing.
+Use the same environment with `node tests/browser/editor.cjs` for the editor (real equivalence, single/comparison views, slider synchronization, draft actions, retained maps after errors, desktop/narrow layout and offline 3D), and `node tests/browser/pwa.cjs` for offline and safe-update regression. The hydraulic script covers complete WASM/API arrays and conservation summaries, size/iteration extremes through 512×512×128, worker responsiveness, 3D, offline generation and Remote failure. The PWA script tests offline reload/new tab, recovery, deferred reload and the updated terrain bundle. It temporarily modifies only generated deployment assets and restores them in `finally`; do not run it concurrently with publishing.
 
 Evidence is written under ignored `artifacts/`. Software WebGL smoke timings are not controlled comparative performance evidence. Reserved WASM linear memory is not live managed memory or total browser RAM. Maximum settings are a desktop smoke workload, not a mobile guarantee.
 

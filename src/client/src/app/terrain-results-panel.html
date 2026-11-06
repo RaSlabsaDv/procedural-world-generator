@@ -1,96 +1,181 @@
-@if (comparison(); as check) {
-  <section class="comparison" aria-label="Equivalence result">
-    <h2>Equivalence check</h2>
-    <p id="numeric-match">
-      {{
-        check.numericMatch
-          ? 'All heights match within tolerance.'
-          : 'Height differences exceed tolerance.'
-      }}
-    </p>
-    <p id="biome-match">
-      {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
-      {{ check.biomeMismatchCount }}
-    </p>
-    <p id="build-identity">
-      @switch (check.identity) {
-        @case ('compatible') {
-          Matching build identity.
-        }
-        @case ('different') {
-          Build identities differ: these results are incompatible.
-        }
-        @case ('unverifiable') {
-          Build identity is unverifiable (dirty or unversioned); numerical agreement alone does not
-          confirm build compatibility.
-        }
+<section class="viewport-panel" aria-label="Terrain viewport" [attr.aria-busy]="busy()">
+  <header class="viewport-toolbar">
+    <div>
+      <p class="eyebrow">Rich terrain / hydraulic erosion</p>
+      <h2>Landscape</h2>
+    </div>
+    <fieldset class="view-actions" [disabled]="busy()">
+      <legend class="sr-only">Viewport selection</legend>
+      @for (entry of entries(); track entry.source) {
+        <button
+          class="secondary"
+          type="button"
+          [id]="'select-' + entry.source"
+          [attr.aria-pressed]="!comparing() && visible()[0]?.source === entry.source"
+          (click)="selected.set(entry.source); comparing.set(false)"
+        >
+          {{ entry.source === 'local' ? 'Local' : 'Remote' }}
+        </button>
       }
+      @if (entries().length === 2) {
+        <button
+          id="compare-views"
+          class="secondary"
+          type="button"
+          [attr.aria-pressed]="comparing()"
+          (click)="comparing.set(!comparing())"
+        >
+          {{ comparing() ? 'Single view' : 'Compare views' }}
+        </button>
+      }
+    </fieldset>
+  </header>
+  @if (comparing() && !sameResults()) {
+    <p class="comparison-warning">
+      These results have different captured settings. Use Verify equivalence to compare one
+      identical request.
     </p>
-    <p>
-      Maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Mean error:
-      {{ check.meanAbsoluteError.toExponential(3) }} · Outside tolerance:
-      {{ check.mismatchCount }}
-    </p>
-  </section>
-}
-
-<div class="maps">
-  @for (
-    entry of [
-      { name: 'Local WebAssembly', run: local() },
-      { name: 'Remote API', run: remote() },
-    ];
-    track entry.name
-  ) {
-    @if (entry.run; as run) {
+  }
+  <div class="maps" [class.comparing]="comparing() && entries().length === 2">
+    @for (entry of visible(); track entry.source) {
       <section class="map-card" [attr.aria-label]="entry.name">
-        <h2>{{ entry.name }}</h2>
+        <div class="map-heading">
+          <h3>{{ entry.name }}</h3>
+          <span class="result-state">{{
+            matchesDraft(entry.run) ? 'Matches draft' : 'Earlier settings'
+          }}</span>
+        </div>
         <p class="snapshot">
+          Seed {{ entry.run.request.seed }} · {{ entry.run.request.width }} ×
+          {{ entry.run.request.height }} · {{ entry.run.terrain.iterations }} iterations
+        </p>
+        @defer (on immediate) {
+          <app-terrain-preview
+            [run]="entry.run"
+            [paused]="busy()"
+            (displayMeasured)="recordDisplay(entry.source, $event)"
+          />
+        } @placeholder {
+          <p class="loading-preview">Loading 3D preview…</p>
+        }
+      </section>
+    } @empty {
+      <div class="empty-viewport">
+        <span class="empty-symbol" aria-hidden="true">△</span>
+        <h3>Your landscape starts here</h3>
+        <p>Choose terrain settings, then Generate Local or Remote.</p>
+        <small>The same C# generator runs in both locations.</small>
+      </div>
+    }
+  </div>
+  @if (busy()) {
+    <p class="working" role="note">
+      Computing… Previous terrain stays visible; viewport interaction is paused.
+    </p>
+  }
+</section>
+<aside class="results-panel" aria-label="Results and measurements">
+  <p class="eyebrow">Execution</p>
+  <h2>Results &amp; measurements</h2>
+  @if (comparison(); as check) {
+    <section class="comparison" aria-label="Equivalence result">
+      <h2>Equivalence check</h2>
+      <p id="numeric-match">
+        {{
+          check.numericMatch
+            ? 'All heights match within tolerance.'
+            : 'Height differences exceed tolerance.'
+        }}
+      </p>
+      <p id="biome-match">
+        {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
+        {{ check.biomeMismatchCount }}
+      </p>
+      <p id="build-identity">
+        @switch (check.identity) {
+          @case ('compatible') {
+            Matching build identity.
+          }
+          @case ('different') {
+            Build identities differ: these results are incompatible.
+          }
+          @case ('unverifiable') {
+            Build identity is unverifiable (dirty or unversioned); numerical agreement alone does
+            not confirm build compatibility.
+          }
+        }
+      </p>
+      <p>
+        Maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Mean error:
+        {{ check.meanAbsoluteError.toExponential(3) }} · Outside tolerance:
+        {{ check.mismatchCount }}
+      </p>
+    </section>
+  }
+
+  @for (entry of entries(); track entry.source) {
+    @let run = entry.run;
+    <section class="measurement" [attr.aria-label]="entry.name + ' measurements'">
+      <h3>{{ entry.name }}</h3>
+      <p class="result-state">
+        {{ matchesDraft(run) ? 'Matches current draft' : 'Captured settings differ from draft' }}
+      </p>
+      <dl class="timings">
+        <div>
+          <dt>Core computation</dt>
+          <dd>{{ run.response.computeMs.toFixed(2) }} <small>ms</small></dd>
+        </div>
+        <div>
+          <dt>Request to data ready</dt>
+          <dd>{{ run.requestMs.toFixed(2) }} <small>ms</small></dd>
+        </div>
+      </dl>
+      <details>
+        <summary>Captured parameters</summary>
+        <p class="captured-parameters">
           Seed {{ run.request.seed }} · {{ run.request.width }} × {{ run.request.height }} · Scale
           {{ run.request.noiseScale }} · {{ run.request.octaves }} octaves · Height
           {{ run.request.heightMultiplier }}
         </p>
-        @defer (on immediate) {
-          <app-terrain-preview [run]="run" [paused]="busy()" />
-        } @placeholder {
-          <p>Loading 3D preview…</p>
-        }
-        <dl>
-          <div>
-            <dt>Core computation</dt>
-            <dd>{{ run.response.computeMs.toFixed(2) }} ms</dd>
-          </div>
-          <div>
-            <dt>Request to data ready</dt>
-            <dd>{{ run.requestMs.toFixed(2) }} ms</dd>
-          </div>
-          @if (run.initMs !== null) {
-            <div>
-              <dt>Worker + runtime initialization (once)</dt>
-              <dd>{{ run.initMs.toFixed(2) }} ms</dd>
-            </div>
-          }
-        </dl>
-        <p>
-          Workload: {{ run.response.workload }} · Algorithm:
-          {{ run.response.result.algorithmVersion }}
+        <p class="simulation-snapshot">
+          Iterations {{ run.terrain.iterations }} · Rainfall {{ run.terrain.rainfall }} ·
+          Evaporation {{ run.terrain.evaporation }} · Mountains {{ run.terrain.mountainStrength }} ·
+          Warp {{ run.terrain.warpStrength }}
         </p>
-        @if (run.terrain; as terrain) {
-          <p class="simulation-snapshot">
-            Iterations {{ terrain.iterations }} · Rainfall {{ terrain.rainfall }} · Evaporation
-            {{ terrain.evaporation }} · Mountains {{ terrain.mountainStrength }} · Warp
-            {{ terrain.warpStrength }}
-          </p>
+      </details>
+      <details>
+        <summary>Technical details &amp; startup</summary>
+        @if (run.initMs !== null) {
+          <p>Worker + runtime initialization (once): {{ run.initMs.toFixed(2) }} ms</p>
         }
-        @if (run.response.simulation; as simulation) {
+        @let displayMs = displayTimes()[entry.source];
+        @if (displayMs !== undefined) {
           <p>
-            Completed {{ simulation.cellIterations }} cell-iterations. Suspended sediment:
-            {{ simulation.suspendedSediment.toFixed(3) }}. Remaining water:
-            {{ simulation.waterRemaining.toFixed(3) }}.
+            Display setup / first submission (CPU): {{ displayMs.toFixed(2) }} ms. Not GPU timing.
           </p>
         }
         <p class="build-id">Core: {{ run.response.coreBuildId }}</p>
-      </section>
-    }
+        <p>
+          Algorithm: {{ run.response.result.algorithmVersion }}<br />Result:
+          {{ run.response.result.resultVersion }}<br />Simulation:
+          {{ run.response.simulationVersion }}<br />Workload: {{ run.response.workload }}
+        </p>
+        <p>Completed {{ run.response.simulation.cellIterations }} cell-iterations.</p>
+        <dl class="simulation-totals">
+          @for (item of summary(run); track item[0]) {
+            <div>
+              <dt>{{ item[0] }}</dt>
+              <dd>{{ item[1].toFixed(3) }}</dd>
+            </div>
+          }
+        </dl>
+      </details>
+    </section>
+  } @empty {
+    <p class="no-measurements">Generation timings and validation results will appear here.</p>
   }
-</div>
+  <p class="metric-note">
+    Request time includes transport and decoding. Rendering and comparison are separate. These
+    individual runs are not a benchmark campaign.
+  </p>
+</aside>

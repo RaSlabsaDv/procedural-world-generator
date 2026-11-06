@@ -194,7 +194,8 @@ const base = process.env.PWG_BASE_URL || "http://127.0.0.1:8080";
       await page.locator("#biome-match").innerText(),
       /All biome IDs match exactly/,
     );
-    await page.locator("app-terrain-preview .display-time").first().waitFor();
+    await page.locator("#compare-views").click();
+    await page.locator("app-terrain-preview .display-time").nth(1).waitFor();
     assert.equal(
       await page.locator('app-terrain-preview [role="alert"]').count(),
       0,

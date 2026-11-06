@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { PwaStatusPanel } from './pwa-status-panel';
+import { OperationLock } from './operation-lock.service';
 import { TerrainResultsPanel } from './terrain-results-panel';
 import { vi } from 'vitest';
 import { App } from './app';
@@ -106,8 +107,8 @@ describe('App terrain workflow', () => {
   }
 
   it('renders only the rich terrain workflow and 3D preview', () => {
-    expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Terrain explorer');
-    expect(fixture.nativeElement.querySelectorAll('input').length).toBe(11);
+    expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Terrain editor');
+    expect(fixture.nativeElement.querySelectorAll('input[type=number]').length).toBe(11);
     expect(fixture.nativeElement.querySelector('#workload')).toBeNull();
     expect(fixture.nativeElement.querySelector('#view-2d')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-heightmap-preview')).toBeNull();
@@ -219,6 +220,9 @@ describe('App terrain workflow', () => {
     await waitForIdle();
     expect(order).toEqual(['local', 'remote']);
     expect(local.mock.calls[0][0]).toBe(remote.mock.calls[0][0]);
+    expect(fixture.nativeElement.querySelectorAll('canvas').length).toBe(1);
+    button('compare-views').click();
+    await fixture.whenStable();
     expect(fixture.nativeElement.querySelectorAll('canvas').length).toBe(2);
     expect(fixture.nativeElement.querySelector('#numeric-match').textContent).toContain(
       'All heights match',
@@ -322,5 +326,111 @@ describe('App terrain workflow', () => {
     expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain(
       'Parameters changed',
     );
+  });
+  it('synchronizes sliders and numeric inputs without generating', async () => {
+    input('mountainStrength-slider', '0.75');
+    await fixture.whenStable();
+    expect(
+      (fixture.nativeElement.querySelector('#mountainStrength') as HTMLInputElement).value,
+    ).toBe('0.75');
+    input('mountainStrength', '0.25');
+    input('warpStrength', '3.5');
+    await fixture.whenStable();
+    expect(
+      (fixture.nativeElement.querySelector('#mountainStrength-slider') as HTMLInputElement).value,
+    ).toBe('0.25');
+    expect(
+      (fixture.nativeElement.querySelector('#warpStrength-slider') as HTMLInputElement).value,
+    ).toBe('3.5');
+    expect(local).not.toHaveBeenCalled();
+    expect(remote).not.toHaveBeenCalled();
+  });
+
+  it('randomizes only the draft seed and resets every parameter without generating', async () => {
+    vi.spyOn(crypto, 'getRandomValues').mockImplementation(((values: Uint32Array) => {
+      values[0] = 0xffffffff;
+      return values;
+    }) as Crypto['getRandomValues']);
+    input('iterations', '8');
+    button('random-seed').click();
+    await fixture.whenStable();
+    expect((fixture.nativeElement.querySelector('#seed') as HTMLInputElement).value).toBe('-1');
+    expect((fixture.nativeElement.querySelector('#iterations') as HTMLInputElement).value).toBe(
+      '8',
+    );
+    button('reset-parameters').click();
+    await fixture.whenStable();
+    expect((fixture.nativeElement.querySelector('#seed') as HTMLInputElement).value).toBe('42');
+    expect((fixture.nativeElement.querySelector('#iterations') as HTMLInputElement).value).toBe(
+      '64',
+    );
+    expect(local).not.toHaveBeenCalled();
+    expect(remote).not.toHaveBeenCalled();
+  });
+
+  it('retains the previous map during work and failure with captured labels', async () => {
+    button('generate-local').click();
+    await waitForIdle();
+    input('seed', '99');
+    let reject!: (error: Error) => void;
+    remote.mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+    );
+    button('generate-remote').click();
+    await vi.waitFor(() => expect(remote).toHaveBeenCalledTimes(1));
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.snapshot').textContent).toContain('Seed 42');
+    expect(fixture.nativeElement.querySelector('.result-state').textContent).toContain(
+      'Earlier settings',
+    );
+    expect(fixture.nativeElement.querySelector('app-terrain-preview')).toBeTruthy();
+    reject(new TerrainError('availability', 'Unavailable'));
+    await waitForIdle();
+    expect(fixture.nativeElement.querySelector('.snapshot').textContent).toContain('Seed 42');
+    expect(fixture.nativeElement.querySelector('[role=alert]').textContent).toContain(
+      'Unavailable',
+    );
+  });
+
+  it('selects either primary result and opens comparison explicitly', async () => {
+    button('verify-equivalence').click();
+    await waitForIdle();
+    expect(fixture.nativeElement.querySelectorAll('.map-card').length).toBe(1);
+    button('select-remote').click();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.map-card').getAttribute('aria-label')).toBe(
+      'Remote API',
+    );
+    button('compare-views').click();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelectorAll('.map-card').length).toBe(2);
+    button('select-local').click();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelectorAll('.map-card').length).toBe(1);
+    expect(fixture.nativeElement.querySelector('.map-card').getAttribute('aria-label')).toBe(
+      'Local WebAssembly',
+    );
+  });
+
+  it('keeps the lock until real completion and discards results after destruction', async () => {
+    let finish!: (run: TerrainRun) => void;
+    remote.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    button('generate-remote').click();
+    await vi.waitFor(() => expect(remote).toHaveBeenCalledTimes(1));
+    const operations = TestBed.inject(OperationLock);
+    const app = fixture.componentInstance;
+    fixture.destroy();
+    expect(operations.busy()).toBe(true);
+    finish(result(remote.mock.calls[0][0]));
+    await vi.waitFor(() => expect(operations.busy()).toBe(false));
+    expect(app['remote']()).toBeNull();
   });
 });

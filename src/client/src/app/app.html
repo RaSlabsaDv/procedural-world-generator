@@ -1,43 +1,50 @@
 <main>
-  <header>
-    <p class="eyebrow">Procedural World Generator</p>
-    <h1>Terrain explorer</h1>
-    <p>Generate the same deterministic terrain in your browser or on the server.</p>
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">△</span>
+      <div>
+        <p class="eyebrow">Procedural World Generator</p>
+        <h1>Terrain editor</h1>
+      </div>
+    </div>
+    <app-pwa-status />
   </header>
-
-  <app-pwa-status />
-  <app-terrain-parameters
-    [mapForm]="form"
-    [simulationForm]="terrainForm"
-    [busy]="busy()"
-    [error]="error()"
-    (generate)="generate($event)"
-  />
-
-  <p class="status" role="status" aria-live="polite">{{ status() }}</p>
+  <div class="status-strip">
+    <p class="status" role="status" aria-live="polite">{{ status() }}</p>
+    <span>Deterministic seed · Shared C# Core</span>
+  </div>
   @if (error(); as problem) {
     <div class="error" role="alert">
       <strong>{{ problem.message }}</strong>
       @if (problem.kind === 'validation') {
         <ul>
           @for (field of errorFields(); track field) {
-            @if (problem.fields[field]; as message) {
-              <li>{{ field }}: {{ message }}</li>
-            }
+            <li>{{ field }}: {{ problem.fields[field] }}</li>
           }
         </ul>
       }
     </div>
   }
-
-  <app-terrain-results
-    [local]="local()"
-    [remote]="remote()"
-    [comparison]="comparison()"
-    [busy]="busy()"
-  />
-  <p class="caption">
-    Rich terrain with hydraulic erosion. Both 3D previews use the same scale. Request timing
-    excludes rendering and comparison. Core computation includes biome classification.
-  </p>
+  <div class="workspace">
+    <aside class="parameter-sidebar" aria-label="Parameter sidebar">
+      <details open>
+        <summary class="sidebar-heading">Parameters <span>Draft settings</span></summary>
+        <app-terrain-parameters
+          [mapForm]="form"
+          [simulationForm]="terrainForm"
+          [busy]="busy()"
+          [error]="error()"
+          (generate)="generate($event)"
+        />
+      </details>
+    </aside>
+    <app-terrain-results
+      [local]="local()"
+      [remote]="remote()"
+      [comparison]="comparison()"
+      [busy]="busy()"
+      [draft]="draft()"
+      [preferred]="preferred()"
+    />
+  </div>
 </main>

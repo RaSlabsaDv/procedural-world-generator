@@ -1,42 +1,45 @@
 :host {
   display: block;
+  font-size: 0.75rem;
+  max-width: 380px;
+}
+.pwa-details > summary {
+  border: 1px solid #d8e4df;
+  border-radius: 2rem;
+  padding: 0.35rem 0.7rem;
+  color: #708074;
+}
+.pwa-details > summary.ready {
+  color: #2d7154;
+  background: #eff7f0;
+}
+.pwa-details > summary.failed {
+  color: #a23f36;
 }
 .offline,
 .update {
-  padding: 0.8rem 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1rem;
-  background: #eef3f5;
-  border-left: 3px solid #6b8a94;
+  padding: 0.65rem 0;
 }
-.offline.ready {
-  background: #edf7f1;
-  border-left-color: #2f7d4f;
+p {
+  margin: 0.3rem 0;
 }
-.offline.failed {
-  background: #fff2f2;
-  border-left-color: #a32727;
-}
-.offline.unsupported {
-  background: #f7f4e8;
-  border-left-color: #9b7a1f;
-}
-.offline p,
-.update p {
-  margin: 0;
-}
-.offline .actions {
-  margin-top: 0.6rem;
-}
-.update {
-  background: #eaf3f5;
-  border-left-color: #174d5c;
+.actions {
+  margin-top: 0.5rem;
 }
 .update button {
-  margin-top: 0.6rem;
+  margin-top: 0.4rem;
 }
 .update-version {
-  color: #526571;
-  font-size: 0.85rem;
   overflow-wrap: anywhere;
+}
+
+:host {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 0.4rem;
+}
+.pwa-details {
+  flex: 1;
+  min-width: 0;
 }
