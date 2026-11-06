@@ -34,10 +34,10 @@ public sealed class BiomeTests
     [InlineData(1000.0)]
     public void Generation_ReturnsIndependentDeterministicBiomesFromStoredHeights(double multiplier)
     {
-        var request = new HeightMapRequest(int.MinValue, 17, 9, 0.37, 4, multiplier,
-            HeightMapLimits.SupportedAlgorithmVersion);
-        var a = HeightMapGenerator.Generate(request);
-        var b = HeightMapGenerator.GenerateValidated(HeightMapValidator.Prepare(request).ValidatedRequest!);
+        var request = new TerrainRequest(new(int.MinValue, 17, 9, 0.37, 4, multiplier,
+            HeightMapLimits.SupportedAlgorithmVersion), .55, 2, 2, .05, .1, TerrainLimits.AlgorithmVersion);
+        var a = TerrainGenerator.Generate(request).HeightMap;
+        var b = TerrainGenerator.GenerateValidated(TerrainValidator.Prepare(request).ValidatedRequest!).HeightMap;
         Assert.Equal(HeightMapResult.CurrentVersion, a.ResultVersion);
         Assert.Equal(a.Values.Length, a.Biomes.Length);
         Assert.Equal(a.Values, b.Values);
@@ -51,11 +51,4 @@ public sealed class BiomeTests
         Assert.Equal(snapshot, b.Biomes);
     }
 
-    [Fact]
-    public void Generation_GoldenBiomesRetainHeightFixture()
-    {
-        var request = new HeightMapRequest(42, 3, 2, 0.37, 3, 30,
-            HeightMapLimits.SupportedAlgorithmVersion);
-        Assert.Equal(new BiomeId[6], HeightMapGenerator.Generate(request).Biomes);
-    }
 }

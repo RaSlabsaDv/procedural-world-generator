@@ -72,8 +72,7 @@ fieldset:disabled button {
   cursor: wait;
 }
 button:focus-visible,
-input:focus-visible,
-summary:focus-visible {
+input:focus-visible {
   outline: 3px solid #66b7c5;
   outline-offset: 2px;
 }
@@ -168,15 +167,6 @@ dd {
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
-.diagnostics {
-  border-top: 1px solid #d4dfe4;
-  padding-top: 1rem;
-  margin-top: 2rem;
-}
-summary {
-  cursor: pointer;
-  font-weight: 600;
-}
 @media (max-width: 640px) {
   .parameters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -184,12 +174,4 @@ summary {
   .maps {
     grid-template-columns: 1fr;
   }
-}
-
-.view-controls button {
-  margin-right: 0.5rem;
-}
-.view-controls button[aria-pressed='true'] {
-  outline: 2px solid #1b5361;
-  outline-offset: 2px;
 }

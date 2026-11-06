@@ -1,17 +1,20 @@
 import {
   RESULT_VERSION,
-  WORKLOAD,
-  HeightMapError,
+  TERRAIN_WORKLOAD,
+  SIMULATION_VERSION,
+  TerrainRequest,
+  SimulationSummary,
+  TerrainError,
   HeightMapRequest,
-  HeightMapResponse,
-  HeightMapRun,
-} from './heightmap.models';
+  TerrainResponse,
+  TerrainRun,
+} from './terrain.models';
 
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function decodeError(value: unknown): HeightMapError | null {
+export function decodeError(value: unknown): TerrainError | null {
   if (!object(value) || (value['error'] !== 'validation' && value['error'] !== 'invalid_json')) {
     return null;
   }
@@ -22,7 +25,7 @@ export function decodeError(value: unknown): HeightMapError | null {
   ) {
     return null;
   }
-  return new HeightMapError(
+  return new TerrainError(
     value['error'],
     value['error'] === 'validation'
       ? 'Check the highlighted parameters.'
@@ -31,23 +34,28 @@ export function decodeError(value: unknown): HeightMapError | null {
   );
 }
 
-export function decodeHeightMap(value: unknown, request: HeightMapRequest): HeightMapResponse {
+export function decodeTerrain(
+  value: unknown,
+  request: HeightMapRequest,
+  terrain: TerrainRequest,
+): TerrainResponse {
   const error = decodeError(value);
   if (error) throw error;
   const fail = (): never => {
-    throw new HeightMapError('protocol', 'The host returned an invalid heightmap response.');
+    throw new TerrainError('protocol', 'The host returned an invalid heightmap response.');
   };
   if (!object(value) || !object(value['result'])) return fail();
   const result = value['result'];
   const values = result['values'];
+  const workload = TERRAIN_WORKLOAD;
   const biomes = result['biomes'];
   if (
     !Number.isSafeInteger(result['width']) ||
     !Number.isSafeInteger(result['height']) ||
     result['width'] !== request.width ||
     result['height'] !== request.height ||
-    result['algorithmVersion'] !== request.algorithmVersion ||
-    value['workload'] !== WORKLOAD ||
+    result['algorithmVersion'] !== terrain.algorithmVersion ||
+    value['workload'] !== workload ||
     result['resultVersion'] !== RESULT_VERSION ||
     !Array.isArray(biomes) ||
     biomes.length !== request.width * request.height ||
@@ -78,6 +86,37 @@ export function decodeHeightMap(value: unknown, request: HeightMapRequest): Heig
     if (!Number.isFinite(normalized[index]) || normalized[index] < 0 || normalized[index] > upper)
       return fail();
   }
+  let simulation: SimulationSummary;
+  {
+    if (
+      !sameObject(terrain.heightMap, request) ||
+      value['simulationVersion'] !== SIMULATION_VERSION ||
+      !sameObject(value['parameters'], terrain) ||
+      !object(value['simulation'])
+    )
+      return fail();
+    const stats = value['simulation'];
+    const names = [
+      'iterations',
+      'cellIterations',
+      'initialTerrainMass',
+      'finalTerrainMass',
+      'suspendedSediment',
+      'waterAdded',
+      'waterRemaining',
+      'waterEvaporated',
+    ] as const;
+    if (
+      names.some(
+        (name) =>
+          typeof stats[name] !== 'number' || !Number.isFinite(stats[name]) || stats[name] < 0,
+      ) ||
+      stats['iterations'] !== terrain.iterations ||
+      stats['cellIterations'] !== terrain.iterations * request.width * request.height
+    )
+      return fail();
+    simulation = stats as unknown as SimulationSummary;
+  }
   return {
     result: {
       width: request.width,
@@ -85,15 +124,17 @@ export function decodeHeightMap(value: unknown, request: HeightMapRequest): Heig
       values: normalized,
       biomes: biomeIds,
       resultVersion: RESULT_VERSION,
-      algorithmVersion: request.algorithmVersion,
+      algorithmVersion: terrain.algorithmVersion,
     },
     computeMs: value['computeMs'],
     coreBuildId: value['coreBuildId'],
-    workload: WORKLOAD,
+    workload,
+    simulation,
+    simulationVersion: SIMULATION_VERSION,
   };
 }
 
-export interface HeightMapComparison {
+export interface TerrainComparison {
   readonly maxAbsoluteError: number;
   readonly meanAbsoluteError: number;
   readonly mismatchCount: number;
@@ -103,7 +144,7 @@ export interface HeightMapComparison {
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
-export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): HeightMapComparison {
+export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainComparison {
   const keys: (keyof HeightMapRequest)[] = [
     'seed',
     'width',
@@ -116,6 +157,7 @@ export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): He
   const a = local.response;
   const b = remote.response;
   if (
+    !sameObject(local.terrain, remote.terrain) ||
     keys.some((key) => local.request[key] !== remote.request[key]) ||
     a.result.width !== b.result.width ||
     a.result.height !== b.result.height ||
@@ -127,7 +169,7 @@ export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): He
     a.result.values.length !== b.result.values.length ||
     a.result.values.length === 0
   )
-    throw new HeightMapError(
+    throw new TerrainError(
       'protocol',
       'Only results from the same request and workload can be compared.',
     );
@@ -140,7 +182,7 @@ export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): He
     const left = a.result.values[index];
     const right = b.result.values[index];
     if (!Number.isFinite(left) || !Number.isFinite(right)) {
-      throw new HeightMapError('protocol', 'Cannot compare non-finite heights.');
+      throw new TerrainError('protocol', 'Cannot compare non-finite heights.');
     }
     if (a.result.biomes[index] !== b.result.biomes[index]) biomeMismatchCount++;
     const difference = Math.abs(left - right);
@@ -166,4 +208,14 @@ export function compareHeightMaps(local: HeightMapRun, remote: HeightMapRun): He
     biomesMatch: biomeMismatchCount === 0,
     identity,
   };
+}
+
+function sameObject(actual: unknown, expected: unknown): boolean {
+  if (actual === expected) return true;
+  if (!object(actual) || !object(expected)) return false;
+  const keys = Object.keys(expected);
+  return (
+    Object.keys(actual).length === keys.length &&
+    keys.every((key) => sameObject(actual[key], expected[key]))
+  );
 }

@@ -2,7 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { SwUpdate, VersionEvent } from '@angular/service-worker';
 import { Subject } from 'rxjs';
 import { vi } from 'vitest';
-import { ALGORITHM_VERSION } from './heightmap.models';
+import { ALGORITHM_VERSION } from './terrain.models';
+import { testTerrain, testWire } from './terrain-test-fixture';
 import { OfflineReadinessService } from './offline-readiness.service';
 import { OperationLock } from './operation-lock.service';
 import { WasmHostService } from './wasm-host.service';
@@ -16,19 +17,18 @@ const assets = {
   '/wasm/_framework/WorldGenerator.Core.current.wasm': '0'.repeat(40),
   '/wasm/_framework/System.Private.CoreLib.current.wasm': '0'.repeat(40),
 };
-const readinessResponse = {
-  result: {
+const readinessResponse = testWire({
+  ...testTerrain({
+    seed: 0,
     width: 2,
     height: 2,
-    values: [0, 0.25, 0.5, 0.75],
-    biomes: [0, 1, 2, 3],
-    resultVersion: 'heightmap-biomes-v1',
+    noiseScale: 0.5,
+    octaves: 1,
+    heightMultiplier: 1,
     algorithmVersion: ALGORITHM_VERSION,
-  },
-  computeMs: 1,
-  coreBuildId: 'git:123456789abc',
-  workload: 'heightmap+biomes',
-};
+  }),
+  iterations: 0,
+});
 
 describe('OfflineReadinessService', () => {
   let service: OfflineReadinessService;
@@ -68,7 +68,7 @@ describe('OfflineReadinessService', () => {
       removeEventListener: vi.fn(),
     };
     generate = vi.fn(() => JSON.stringify(readinessResponse));
-    getRuntime = vi.fn(async () => ({ generateHeightMapJson: generate }));
+    getRuntime = vi.fn(async () => ({ generateTerrainJson: generate }));
     cacheEntries = new Map([
       [
         'current',

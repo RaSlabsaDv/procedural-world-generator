@@ -24,16 +24,16 @@ Procedural terrain generation provides a reproducible mathematical workload. Vis
 
 ## Scope
 
-| Milestone | Deliverable |
-| --- | --- |
-| Technical PoC | Angular invokes the shared core through WASM and HTTP; scalar results, bulk arrays, and production publishing work |
-| Functional MVP | Parameters produce a deterministic 2D map in Local/Remote mode, with real timings, equivalence checks, and loading/error states |
-| Required coursework | PWA/offline support, 3D terrain, simple biomes, Architecture Race, repeated measurements, export, and research findings |
-| Only on a separate request | Adaptive Mode, WASM AOT, Web Workers, more complex algorithms, history, and presets |
+| Milestone                  | Deliverable                                                                                                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Technical PoC              | Angular invokes the shared core through WASM and HTTP; scalar results, bulk arrays, and production publishing work             |
+| Functional MVP             | Parameters produce deterministic terrain in Local/Remote mode, with real timings, equivalence checks, and loading/error states |
+| Required coursework        | PWA/offline support, 3D terrain, simple biomes, Architecture Race, repeated measurements, export, and research findings        |
+| Only on a separate request | Adaptive Mode, WASM AOT, presets, and further algorithm extensions                                                             |
 
-User parameters are seed, map width/height, noise scale, octave count, and height multiplier. The initial generator uses layered 2D value noise (fBm); exact rules and limits are defined in the [architecture](ARCHITECTURE.md).
+The sole generator is **Rich terrain + hydraulic erosion**: warped/ridged deterministic noise and a fixed-step hydraulic model. Angular displays the resulting heightfield in Three.js. Parameters include seed, dimensions, noise scale, octaves, height multiplier, mountain strength, warp strength, iterations, rainfall and evaporation. The exact contract and equations are in [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md).
 
-The 3D view uses Three.js. Biomes are a simple height-based classification in the core: water, plains, forest, and mountains. Colors belong to visualization. This is a demonstration model without climate or erosion simulation.
+A dedicated module worker owns Local execution. Simple height-based biomes are classified in Core. The next extension is bounded evolution capture and playback for this same generator. Regional geography, probe/baseline public interfaces and 2D previews have been removed to keep one maintained workflow. The model remains illustrative rather than a calibrated geological simulator.
 
 ## Architecture Race
 
@@ -61,7 +61,7 @@ Pure network latency cannot be obtained by simply subtracting core execution tim
 
 - Both modes invoke one core implementation; automated determinism and cross-mode equivalence checks pass.
 - Documented commands reproduce the build and startup from a clean checkout.
-- The application provides 2D/3D views, correct error handling, and real measurements.
+- The application provides a 3D view, correct error handling, and real measurements.
 - After caching, the production build reloads offline and generates a map with a new seed.
 - Architecture Race uses an immutable parameter snapshot; repeated trials are exported with their conditions and errors.
 - Several map sizes and at least two reproducible network conditions are tested; raw results are retained.

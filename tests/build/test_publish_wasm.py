@@ -21,10 +21,12 @@ while [[ "$#" -gt 0 ]]; do
 done
 mkdir -p "$output/wwwroot/_framework"
 printf 'loader' > "$output/wwwroot/world-generator-host.js"
+printf 'worker' > "$output/wwwroot/world-generator-worker.js"
 printf 'bootstrap' > "$output/wwwroot/_framework/dotnet.js"
 for name in "dotnet.native.${PWG_TEST_VERSION}.wasm" "dotnet.runtime.${PWG_TEST_VERSION}.js" "WorldGenerator.Core.${PWG_TEST_VERSION}.wasm" "WorldGenerator.Wasm.${PWG_TEST_VERSION}.wasm"; do
   printf '%s' "$PWG_TEST_VERSION" > "$output/wwwroot/_framework/$name"
 done
+if [[ "${PWG_TEST_FAIL:-}" == worker ]]; then rm "$output/wwwroot/world-generator-worker.js"; fi
 if [[ "${PWG_TEST_FAIL:-}" == invalid ]]; then rm "$output/wwwroot/_framework/dotnet.native.${PWG_TEST_VERSION}.wasm"; fi
 '''
 
@@ -68,7 +70,7 @@ exec ''' + shlex.quote(shutil.which('mv')) + ' "$@"\n')
         self.assertFalse(list((self.root / "artifacts").glob(".wasm-publish.*")))
 
     def test_failures_preserve_both_previous_outputs(self):
-        for failure in ["restore", "publish", "invalid", "promotion"]:
+        for failure in ["restore", "publish", "invalid", "worker", "promotion"]:
             with self.subTest(failure=failure):
                 self.assertEqual(self.publish("old").returncode, 0)
                 before = self.snapshot()

@@ -3,36 +3,35 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import { App } from './app';
-import { HeightMapService } from './heightmap.service';
-import { HeightMapError, HeightMapRequest, HeightMapRun } from './heightmap.models';
+import { TerrainService } from './terrain.service';
+import { TerrainError, TerrainRun } from './terrain.models';
 import { OfflinePreparationState, OfflineReadinessService } from './offline-readiness.service';
-import { WasmHostService } from './wasm-host.service';
+import { testWire } from './terrain-test-fixture';
+import { TerrainRequest } from './terrain.models';
+import { decodeTerrain } from './terrain.contract';
+import { TerrainPreview } from './terrain-preview';
+import { Component, input } from '@angular/core';
 
-function result(request: HeightMapRequest): HeightMapRun {
+@Component({ selector: 'app-terrain-preview', template: '<canvas></canvas>' })
+class PreviewStub {
+  readonly run = input.required<TerrainRun>();
+  readonly paused = input(false);
+}
+
+function result(terrain: TerrainRequest): TerrainRun {
+  const request = terrain.heightMap;
   return {
     request,
-    response: {
-      result: {
-        width: request.width,
-        height: request.height,
-        values: new Float32Array(request.width * request.height),
-        biomes: new Uint8Array(request.width * request.height),
-        resultVersion: 'heightmap-biomes-v1',
-        algorithmVersion: request.algorithmVersion,
-      },
-      computeMs: 1,
-      coreBuildId: 'git:123456789abc',
-      workload: 'heightmap+biomes',
-    },
+    terrain,
+    response: decodeTerrain(testWire(terrain), request, terrain),
     requestMs: 2,
     initMs: null,
   };
 }
 
-describe('App heightmap workflow', () => {
-  const local = vi.fn(async (request: HeightMapRequest) => result(request));
-  const remote = vi.fn(async (request: HeightMapRequest) => result(request));
-  const probeRuntime = vi.fn();
+describe('App terrain workflow', () => {
+  const local = vi.fn(async (terrain: TerrainRequest) => result(terrain));
+  const remote = vi.fn(async (terrain: TerrainRequest) => result(terrain));
   const readiness = {
     state: signal<OfflinePreparationState>('ready'),
     detail: signal('Offline ready for tests.'),
@@ -48,9 +47,8 @@ describe('App heightmap workflow', () => {
   let fixture: ReturnType<typeof TestBed.createComponent<App>>;
 
   beforeEach(async () => {
-    local.mockReset().mockImplementation(async (request) => result(request));
-    remote.mockReset().mockImplementation(async (request) => result(request));
-    probeRuntime.mockReset();
+    local.mockReset().mockImplementation(async (terrain) => result(terrain));
+    remote.mockReset().mockImplementation(async (terrain) => result(terrain));
     readiness.state.set('ready');
     readiness.detail.set('Offline ready for tests.');
     readiness.updateReady.set(false);
@@ -61,24 +59,19 @@ describe('App heightmap workflow', () => {
     readiness.checkForUpdate.mockClear();
     readiness.prepareForReload.mockClear();
     readiness.cancelReload.mockClear();
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
-      createImageData: (width: number, height: number) => ({
-        data: new Uint8ClampedArray(width * height * 4),
-      }),
-      putImageData: vi.fn(),
-    } as unknown as CanvasRenderingContext2D);
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [
         provideHttpClient(),
-        { provide: HeightMapService, useValue: { local, remote } },
+        { provide: TerrainService, useValue: { local, remote } },
         { provide: OfflineReadinessService, useValue: readiness },
-        {
-          provide: WasmHostService,
-          useValue: { getInfo: () => ({ initCount: 0, initMs: null }), getRuntime: probeRuntime },
-        },
       ],
-    }).compileComponents();
+    })
+      .overrideComponent(App, {
+        remove: { imports: [TerrainPreview] },
+        add: { imports: [PreviewStub] },
+      })
+      .compileComponents();
     fixture = TestBed.createComponent(App);
     await fixture.whenStable();
   });
@@ -105,11 +98,13 @@ describe('App heightmap workflow', () => {
     await fixture.whenStable();
   }
 
-  it('renders parameters and retains collapsed probe diagnostics', () => {
-    expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Heightmap explorer');
-    expect(fixture.nativeElement.querySelectorAll('input').length).toBe(6);
-    expect(fixture.nativeElement.querySelector('details').open).toBe(false);
-    expect(fixture.nativeElement.querySelector('app-probe-diagnostics')).toBeTruthy();
+  it('renders only the rich terrain workflow and 3D preview', () => {
+    expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Terrain explorer');
+    expect(fixture.nativeElement.querySelectorAll('input').length).toBe(11);
+    expect(fixture.nativeElement.querySelector('#workload')).toBeNull();
+    expect(fixture.nativeElement.querySelector('#view-2d')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-heightmap-preview')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-probe-diagnostics')).toBeNull();
     expect(readiness.start).toHaveBeenCalledTimes(1);
     expect(fixture.nativeElement.querySelector('#offline-detail').textContent).toContain(
       'Offline ready for tests.',
@@ -163,10 +158,10 @@ describe('App heightmap workflow', () => {
   });
 
   it('does not activate an update or reload during an active operation', async () => {
-    let finish!: (run: HeightMapRun) => void;
+    let finish!: (run: TerrainRun) => void;
     remote.mockImplementationOnce(
       () =>
-        new Promise<HeightMapRun>((resolve) => {
+        new Promise<TerrainRun>((resolve) => {
           finish = resolve;
         }),
     );
@@ -205,8 +200,7 @@ describe('App heightmap workflow', () => {
     expect(local).toHaveBeenCalledTimes(1);
     expect(remote).not.toHaveBeenCalled();
     expect(Object.isFrozen(local.mock.calls[0][0])).toBe(true);
-    expect(fixture.nativeElement.querySelector('canvas').width).toBe(3);
-    expect(fixture.nativeElement.querySelector('canvas').height).toBe(2);
+    expect(fixture.nativeElement.querySelector('.snapshot').textContent).toContain('3 × 2');
     input('seed', '9');
     expect(fixture.nativeElement.querySelector('.snapshot').textContent).toContain('Seed 42');
   });
@@ -234,6 +228,17 @@ describe('App heightmap workflow', () => {
     expect(fixture.nativeElement.querySelector('#numeric-match')).toBeNull();
   });
 
+  it('captures one terrain workload snapshot for both execution modes', async () => {
+    input('iterations', '32');
+    button('verify-equivalence').click();
+    await waitForIdle();
+    const captured = local.mock.calls[0][0];
+    expect(captured.iterations).toBe(32);
+    expect(Object.isFrozen(captured)).toBe(true);
+    expect(Object.isFrozen(captured.heightMap)).toBe(true);
+    expect(remote.mock.calls[0][0]).toBe(captured);
+  });
+
   it('rejects blank controls without turning them into zeros', async () => {
     input('seed', '');
     button('generate-local').click();
@@ -244,7 +249,7 @@ describe('App heightmap workflow', () => {
 
   it('shows structured host validation errors', async () => {
     remote.mockRejectedValueOnce(
-      new HeightMapError('validation', 'Check parameters', {
+      new TerrainError('validation', 'Check parameters', {
         width: 'value.out_of_range: Invalid width',
       }),
     );
@@ -258,7 +263,7 @@ describe('App heightmap workflow', () => {
 
   it('shows remote availability errors without invoking Local', async () => {
     remote.mockRejectedValueOnce(
-      new HeightMapError(
+      new TerrainError(
         'availability',
         'Remote API is unavailable. Check the connection and retry.',
       ),
@@ -273,10 +278,10 @@ describe('App heightmap workflow', () => {
   });
 
   it('blocks overlapping operations and discards an obsolete response', async () => {
-    let finish!: (run: HeightMapRun) => void;
+    let finish!: (run: TerrainRun) => void;
     remote.mockImplementationOnce(
       () =>
-        new Promise<HeightMapRun>((resolve) => {
+        new Promise<TerrainRun>((resolve) => {
           finish = resolve;
         }),
     );
@@ -295,25 +300,5 @@ describe('App heightmap workflow', () => {
     expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain(
       'Parameters changed',
     );
-  });
-
-  it('shares the operation lock with probe diagnostics', async () => {
-    let fail!: (reason: Error) => void;
-    probeRuntime.mockReturnValueOnce(
-      new Promise((_, reject) => {
-        fail = reject;
-      }),
-    );
-    const probe = fixture.nativeElement.querySelector(
-      'app-probe-diagnostics button',
-    ) as HTMLButtonElement;
-    probe.click();
-    await fixture.whenStable();
-    expect(button('generate-local').matches(':disabled')).toBe(true);
-    button('generate-local').click();
-    expect(local).not.toHaveBeenCalled();
-    fail(new Error('Test runtime unavailable'));
-    await waitForIdle();
-    expect(button('generate-local').matches(':disabled')).toBe(false);
   });
 });

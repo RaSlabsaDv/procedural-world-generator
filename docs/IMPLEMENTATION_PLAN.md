@@ -1,97 +1,27 @@
-# Implementation Roadmap
+# Implementation plan
 
-**Status:** Phases 0–3B are complete. Core generation, the WASM/API hosts, and the Angular heightmap MVP are implemented. PWA support now verifies version-specific cached assets and Local execution, supports production offline reload/new-tab generation, and applies updates by safe reload between operations. Publishing uses clean staged WASM output with rollback. Actual browser evidence and reproduction commands are in [DEVELOPMENT.md](DEVELOPMENT.md). Phase 3B now provides Three.js terrain and deterministic Core biomes. Phase 4 (Architecture Race and repeated trials) is next; controlled experiments follow later.
+## Current foundation
 
-Phases are completed based on verified outcomes. Calendar estimates should follow the PoC, once the cost of WASM integration is clearer. Timing boundaries are introduced early; the full Race and experiments follow visualization and PWA support, as required by AGENTS.md. Keep `README.md` empty for now and record setup instructions in `docs/`.
+The supported product is **Rich terrain + hydraulic erosion** with a Three.js preview. Local C# WebAssembly runs in a dedicated worker; Remote runs the same C# library through ASP.NET Core. Controls, strict validation, full-array equivalence checks, separate timings, transactional WASM publishing and production PWA/offline behavior are implemented.
 
-## Sequence and dependencies
+Baseline/probe interfaces, the experimental regional generator, and all 2D views have been removed. Their browser scripts and feature-specific tests are removed with them. Noise, height contracts and validation remain as dependencies of the supported terrain generator. README stays empty; documentation stays in English.
 
-| Phase | Depends on | Observable result |
-| --- | --- | --- |
-| 0. Toolchain and scaffolding | — | Reproducible build/test commands for the initial projects |
-| 1. WASM + API PoC | 0 | Identical scalar and bulk-array results in both modes |
-| 2. Generator + 2D | 1 | A deterministic map with a validated contract and timings |
-| 3A. PWA/offline | 2 | Offline reload and new Local generation |
-| 3B. 3D + biomes | 2 | Equivalent interactive terrain in both modes |
-| 4. Architecture Race + runner | 3A, 3B | Comparisons, repeated trials, and raw data export |
-| 5. Experiments and report | 4 | Reproducible results and supported conclusions |
+## Next: evolution of the selected terrain
 
-Phases 3A and 3B are independent after Phase 2. For one developer, start with 3A to test offline risks earlier. The remaining phases are sequential. The MVP is complete after Phase 2; the coursework is complete after Phase 5.
+1. Specify bounded snapshot capture for the existing hydraulic model: initial state, interval frames, final state, no duplicate final frame, and overflow-safe storage budgets.
+2. Add opt-in capture without changing generation arithmetic or final output. Preserve the current generation workload; give capture a separate version/workload and include copying in its Core time.
+3. Extend shared host contracts and both execution paths together. Verify exact final identity with capture disabled and Local/Remote equivalence of every frame.
+4. Add Three.js playback: play/pause, scrub, reset, speed and iteration labels. Reuse geometry and preserve camera; pause during measured work and dispose resources.
+5. Verify memory bounds, zero steps, error handling, replacement and offline playback. Keep model iterations distinct from real-world days or years.
 
-## Phase 0 — Toolchain and scaffolding
+This extension is planned and is not part of the cleanup implementation.
 
-**Work:** Check available SDKs and Angular/Node/TypeScript compatibility; choose a stable .NET SDK and matching WASM workload/template. Create an Angular project, a C# solution with Core, API, and WASM host projects, and a minimal test structure. Pin the SDK (`global.json`), Node/package manager, and dependencies through lockfiles. Extend `.gitignore` for Angular and generated WASM assets.
+## Later: improve the world model incrementally
 
-**Done when:** The initial projects build, the test runner starts, and project documentation contains verified Linux commands and versions. An empty test run is not evidence of correctness. Toolchain selection remains provisional until Phase 1 succeeds.
+Preserve the preferred terrain appearance. Develop diagnostic layers for slope/erosion, then climate and richer biomes. Add visible rivers/lakes only with an explicit water model and tests for supply, drainage and evaporation. A depression's spill level is a routing limit, not evidence that the depression is full of water. No new regional mode or 2D view is planned.
 
-## Phase 1 — Verify both execution paths
+## Architecture Race and research campaign
 
-**Work:** Implement a small deterministic method in the core and call it from Angular through JS/.NET and HTTP. First verify a known integer scalar, then an array transferred in one call. Add a core timer to both hosts, separate WASM initialization timing, and adapter duration measurement. Configure Release publishing and copy the bundle into Angular assets before the frontend build.
+Build a sequential runner with immutable inputs, alternating execution order, warm-up, raw trial retention, statistics and JSON/CSV export. Use `terrain-hydraulic-v1` and the worker JSON profile as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
 
-**Done when:**
-
-- Angular → WASM → Core and Angular → API → Core return the expected scalar and every array element, including on repeated calls.
-- Transfer is verified with a small array and an array matching the planned maximum map size; there are no per-element interop calls.
-- The WASM runtime initializes once; runtime loading failures and API unavailability are shown in the UI.
-- Both paths work from a static production build without the Angular development server.
-- Unit/API/browser smoke checks and reproduction commands are documented.
-
-**Gate:** If standalone WASM, bulk transfer, or publishing fails, resolve the PoC first. Do not implement the generator or 3D yet, replace C# with a TypeScript algorithm, or replace Angular with a Blazor UI.
-
-## Phase 2 — Contract, generator, and 2D MVP
-
-**Work:** Implement the v1 contract, identical validation, value-noise/fBm in the core, and shared size limits. Fix the hash implementation and formulas, reference outputs, and numerical tolerance. Replace the test array with a real heightmap; add parameter controls, mode selection, a 2D preview, and real timings. Cross-runtime comparison at this stage is a test, not the full Race UI.
-
-Step 1 is complete: `HeightMapRequest`, `HeightMapLimits`, `HeightMapValidator`/`ValidationError`, and `HeightMapResult` are implemented in Core with boundary, non-finite, null, ordering, and extreme-dimension tests. `HeightMapValidator.Prepare` and the immutable `ValidatedHeightMapRequest` let hosts validate once and time only `GenerateValidated`. The `GenerationResponse` envelope, strict `HostJson` options, `HeightMapTransport`, shared error envelope, and `CoreBuildId` are implemented as shared host-owned source linked into both hosts. The generator step is complete: `HeightMapGenerator` implements the frozen `value-noise-fbm-v1` algorithm with deterministic fixtures. The WASM export and `POST /api/v1/heightmaps` endpoint are implemented and verified against the same golden fixture, error contract, and build ID. The Angular heightmap UI, minimal 2D preview, real in-app timings, and loading/error states are complete. Probe checks are retained in collapsed diagnostics. The standard publish scripts use explicit locked restores followed by publish without restore; both normal frontend build and single-origin publishing are verified.
-
-**Done when:**
-
-- Repeated generation with the same seed is stable; Local/API pass full-array comparisons for several seeds and sizes.
-- Tests cover negative seeds, rectangular maps, zero height, parameter limits, missing fields, and excessive sizes.
-- Both modes reject invalid requests consistently; unsupported versions and invalid responses do not reach the renderer.
-- Loading/error/result states work; the size limit is verified in the target browser or reduced for both modes.
-- Compute time excludes serialization and 2D display; initialization is reported separately.
-
-## Phase 3A — Production PWA and offline support
-
-**Work:** Add the Angular service worker and manifest, including the entire required WASM bundle in caching. Verify consistent frontend/runtime versions, offline readiness, and unavailable API handling. Do not cache generation results.
-
-**Done when:** After online preparation, the production build reloads offline, opens in a new tab, and generates a map with a new seed. Remote reports a clear error. A reproduction procedure includes cache reset steps; asset updates are verified without mixing versions. Merely using an already loaded page does not count as an offline check.
-
-**Verified:** Angular service worker and manifest, a single complete prefetch group, exact asset-catalog/hash checks, a shared operation lock, safe update reloads, and staged publishing are implemented. Production Chromium tests passed online preparation, offline reload with a new seed, a new offline tab with another seed, Remote failure without cached results/fallback, network recovery, deferred update reload, and offline operation of the new version. Build regression tests cover stale-asset removal and preservation of the previous outputs after failures.
-
-## Phase 3B — 3D and simple biomes
-
-**Work:** Add Three.js, a mesh built from the generated heights, a camera, zoom, and lighting. Add deterministic height-based biome IDs in the core and a palette in the renderer. Fix thresholds, rules for zero height, and the version of the extended result. If necessary, reduce the shared resolution limit after checking memory use and UI behavior.
-
-**Done when:** Both modes return equivalent heights and identical biome IDs, and the renderer displays both consistently. Repeated generation releases old Three.js resources. Mesh construction/CPU display time is separate from core execution. Before further measurements, update contract fixtures and set `workload = heightmap+biomes`: biome classification is included in compute time in both modes.
-
-**Verified:** Core returns numeric biome IDs and `resultVersion = heightmap-biomes-v1`, preserving the frozen height algorithm and golden heights. Both hosts time the full `heightmap+biomes` workload. Angular validates every ID, compares IDs exactly, and provides a deferred Three.js view with shared palette/camera rules, separate CPU display timing, and resource cleanup. Unit tests and a production Chromium check cover rectangular/maximum maps, zero height, extreme seeds, WASM/API parity, orbit/zoom, replacement, and offline 3D. The existing production PWA update regression also passed, including deferred reload while busy and offline generation after updating.
-
-## Phase 4 — Architecture Race, repeated trials, and export
-
-**Work:** Run both modes from an immutable parameter snapshot, execute them sequentially, and display the maps side by side. Add full-value comparisons, alternating Local/Remote order, warm-up, repeated trials, median/IQR, and JSON/CSV export. The runner uses the same adapters and endpoint as ordinary generation.
-
-**Done when:**
-
-- Data or version mismatches are clearly marked; failed results are excluded from valid summaries.
-- Rendering and animation are paused during trials; each record includes parameters, order, timings, environment ID, and status.
-- HTTP duration minus core time is labeled mixed overhead; CPU rendering time is not labeled GPU time.
-- Export retains raw trials, warm-up records, and errors; summaries can be reproduced from the export.
-- Runner tests cover order, trial counts, immutable parameters, and error retention.
-
-## Phase 5 — Controlled experiments and coursework report
-
-**Work:** Freeze the revision, algorithm, workload, format, and configuration. Follow the [protocol](BENCHMARKING.md) to run the size/seed matrix under two network conditions; investigate cold start and offline behavior separately. Retain raw results and prepare tables, charts, and written conclusions.
-
-**Done when:** Every chart has source records, an aggregation method, and a test environment description; another person can reproduce the procedure. Conclusions distinguish compute time, time until data is ready, startup, and rendering, and account for hardware, transport, and runtime. Failed trials and limitations are disclosed. A final smoke check repeats the production/offline scenario.
-
-## Optional, after core completion and a separate request
-
-Adaptive Mode, AOT, Web Workers, binary transport, richer biomes/erosion, presets, and history. Each extension requires a separate hypothesis and comparison series; do not change the baseline during a study.
-
-## Next implementation task
-
-> Start Phase 4 when requested: add Architecture Race and the repeated-trial runner using immutable requests, alternating sequential order, warm-up, error retention, median/IQR, and raw JSON/CSV export. Use the existing adapters with `heightmap+biomes` and preserve result/build identity checks, PWA/offline behavior, diagnostics, and separate timing boundaries. Keep README.md empty.
-
-Work on one acceptance criterion at a time, update documentation alongside decisions, and distinguish verified results from assumptions. Add new dependencies only when the relevant phase begins.
+Run a controlled size/iteration/seed matrix under documented network profiles. Keep compute, initialization, request overhead and rendering separate. Report failures and environment limits; browser smoke checks are correctness evidence, not a performance campaign.

@@ -1,6 +1,6 @@
 # Benchmarking Protocol
 
-This is a protocol for the baseline experiment. The WASM and API heightmap hosts now implement the transport, validation boundary, build identity, and `computeMs` boundary described here, but no benchmark runner or campaign results are implemented or reported yet. Module boundaries are defined in the [architecture](ARCHITECTURE.md), and implementation order is defined in the [roadmap](IMPLEMENTATION_PLAN.md).
+The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check is implemented; repeated-trial running and campaign results remain planned. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
 
 ## 1. What we compare
 
@@ -10,34 +10,32 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- `baselineVersion`: `json-v1`; `algorithmVersion`: `value-noise-fbm-v1`, `resultVersion`: `heightmap-biomes-v1`, `workload`: `heightmap+biomes`; both modes perform the same fixed workload throughout a campaign.
+- Primary profile: `hydraulic-worker-json-v1`, algorithm `warped-ridged-hydraulic-v1`, result `heightmap-biomes-v1`, simulation `hydraulic-grid-v1`, workload `terrain-hydraulic-v1`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
-- One sequential generator in Core, without Web Workers, parallel generation, or caching of computed maps.
+- One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
-- JSON results for both modes; after decoding, the adapter creates a `Float32Array`. This conversion is excluded from Core time.
-- Result values are final float32 heights in world units; `heightMultiplier` has already been applied in Core.
+- JSON results for both modes; adapters normalize numeric layers into the typed arrays defined by each result contract. This conversion is excluded from Core time.
+- Result elevations are final float32 values in illustrative world units and already include `heightMultiplier`; renderers must not normalize each map by its own extrema.
 - Arrays use row-major order: `index = y * width + x`. The renderer does not alter heights to make results match.
-- The API and client do not return stored generation results. Use the regular `POST /api/v1/heightmaps`, without a separate benchmark endpoint; set `Cache-Control: no-store`, exclude it from the service worker's data cache, and verify that requests actually execute.
+- The API and client do not return stored generation results. Use the regular workload endpoint (`POST /api/v1/terrains`), without a separate benchmark endpoint; set `Cache-Control: no-store`, exclude it from the service worker's data cache, and verify that requests actually execute.
 
 Freeze the code version (`coreBuildId`, preferably a commit, plus a separate application revision), configurations, and transfer format for the campaign. Changing the algorithm, workload, JSON to binary, AOT, or compression creates a separate configuration; do not mix its results with the previous one.
 
 ## 3. Measurement boundaries
 
-| Field | Start → finish | Meaning |
-| --- | --- | --- |
-| `computeMs` | After host parsing and Core preparation, immediately before `GenerateValidated` → completed Core result | Result allocation and mathematical generation, including runtime pauses within this boundary |
-| `requestMs` | Before calling the adapter with prepared parameters → decoded result in typed arrays and validated contract | Complete Local or Remote operation after the WASM runtime is ready |
-| `initMs` | Before WASM initialization → exports ready | Download and initialization under the recorded cache state; excluded from warm `requestMs` |
-| `actionToDataMs` | User action → usable map data | UI waiting, preparation, any required initialization, and the request; excludes equivalence checking and rendering |
-| `renderCpuMs` | Before visualization preparation → completion of synchronous CPU work | Geometry, colors, scene updates, and command submission, if included in the defined boundary |
+| Field            | Start → finish                                                                                              | Meaning                                                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `computeMs`      | After host parsing and Core preparation, immediately before `GenerateValidated` → completed Core result     | Result allocation and mathematical generation, including runtime pauses within this boundary                       |
+| `requestMs`      | Before calling the adapter with prepared parameters → decoded result in typed arrays and validated contract | Complete Local or Remote operation after the WASM runtime is ready                                                 |
+| `initMs`         | Worker creation → WASM exports ready                                                                        | Worker/runtime startup under recorded cache state; excludes loader-module import and warm `requestMs`              |
+| `actionToDataMs` | User action → usable map data                                                                               | UI waiting, preparation, any required initialization, and the request; excludes equivalence checking and rendering |
+| `renderCpuMs`    | Before visualization preparation → completion of synchronous CPU work                                       | Geometry, colors, scene updates, and command submission, if included in the defined boundary                       |
 
-The Angular PWA displays host `computeMs`, browser `requestMs`, and the existing loader's one-time `initMs`. The loader measures `dotnet.create()` through export lookup; importing the loader ES module is outside that timer. This is not a complete cold page-load measurement. Offline preparation verifies the cached version and eagerly initializes Local under the shared operation lock before interactive generation. Record this startup/preparation cost and cache state separately; the displayed first interactive Local request is not a cold-runtime measurement. The sequential UI equivalence check performs no repeated trials and excludes comparison and Canvas drawing from `requestMs`. Matching dirty or unversioned identities do not establish build compatibility even when numerical values match.
+The Angular PWA displays host `computeMs`, browser `requestMs`, and the existing loader's one-time `initMs`. The current loader measures worker creation through WASM readiness; worker-side `runtimeMs` reports runtime startup. Importing the loader module precedes both. This is not a complete cold page-load measurement. Offline preparation verifies the cached version and eagerly initializes Local under the shared operation lock before interactive generation. Record this startup/preparation cost and cache state separately; the displayed first interactive Local request is not a cold-runtime measurement. The sequential UI equivalence check performs no repeated trials and excludes comparison and rendering from `requestMs`. Matching dirty or unversioned identities do not establish build compatibility even when numerical values match.
 
-In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. The `heightmap+biomes` timer covers classification and biome ID allocation in both hosts. The timer belongs in thin host code; Core does not depend on browser or HTTP telemetry.
+In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. Core time includes composition, simulation allocation/steps, summaries, final conversion and biomes. The timer belongs in thin host code; Core has no HTTP or browser telemetry. Hosts parse through `TerrainTransport` and prepare through `TerrainValidator.Prepare`, then time `TerrainGenerator.GenerateValidated`. Worker messaging and JSON remain adapter overhead in `requestMs`.
 
-The current hosts implement this boundary with `Stopwatch`: after `HeightMapTransport` has parsed the request and `HeightMapValidator.Prepare` has produced a `ValidatedHeightMapRequest`, each host starts its timer and calls `HeightMapGenerator.GenerateValidated`. This keeps invalid requests from being timed and avoids revalidating in the generator. The JSON transport and strict error envelope are part of the baseline `json-v1` overhead and are included in `requestMs`, not `computeMs`.
-
-`coreBuildId` is generated at build time from repository HEAD, checking `global.json`, `src/core`, and `src/hosts` for modifications. It has a `-dirty` suffix for modifications and `unversioned` as an invalid fallback when Git is unavailable, the revision is invalid, or either Git command fails. Failed Git diagnostics must not become build identity. It must not be replaced by an assembly `ModuleVersionId`, which can change without a source change. Both hosts return this value in `GenerationResponse`; a pair with different build IDs or algorithm versions is incompatible.
+`coreBuildId` is generated at build time from repository HEAD, checking `global.json`, `src/core`, and `src/hosts` for modifications. It has a `-dirty` suffix for modifications and `unversioned` as an invalid fallback when Git is unavailable, the revision is invalid, or either Git command fails. Failed Git diagnostics must not become build identity. It must not be replaced by an assembly `ModuleVersionId`, which can change without a source change. Both hosts return this value in `TerrainGenerationResponse`; a pair with different build IDs or algorithm versions is incompatible.
 
 In the browser, use the monotonic Performance API. `requestMs` includes request serialization, host-side validation, computation, result serialization/transfer, JSON decoding, normalization to `Float32Array`, and response contract validation. Comparing the two maps takes place outside this boundary. For Remote, completion means that the entire response body has been read, not merely that headers have arrived.
 
@@ -66,14 +64,15 @@ A pair with a correctness failure remains in the raw data with an error status; 
 
 Initial proposal for the pilot:
 
-| Parameter | Values |
-| --- | --- |
-| Square map size | `128×128`, `256×256`, `512×512` |
-| Seed | `42`, `2026`, `-7` |
-| Other parameters | `octaves = 4`, `noiseScale = 0.03`, `heightMultiplier = 30` |
-| Network conditions | Two fixed profiles |
-| Warm-up | 3 runs per mode for each combination of size, seed, and profile |
-| Main sample | 30 runs per mode for each such combination |
+| Parameter          | Values                                                                                                                                             |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Square map size    | `128×128`, `256×256`, `512×512`                                                                                                                    |
+| Seed               | `42`, `2026`, `-7`                                                                                                                                 |
+| Iterations         | `0`, `32`, `128` (respect the cell-iteration cap)                                                                                                  |
+| Other parameters   | `octaves = 4`, `noiseScale = 0.03`, `heightMultiplier = 30`, `mountainStrength = 0.55`, `warpStrength = 2`, `rainfall = 0.05`, `evaporation = 0.1` |
+| Network conditions | Two fixed profiles                                                                                                                                 |
+| Warm-up            | 3 runs per mode for each combination of size, seed, and profile                                                                                    |
+| Main sample        | 30 runs per mode for each such combination                                                                                                         |
 
 Use the pilot to verify safe sizes and sufficient warm-up. If parameters need to change, do so before the main campaign and record the reason. These numbers are a starting plan, not a guarantee of statistical adequacy.
 
@@ -138,6 +137,12 @@ Different hardware prevents attributing the entire difference solely to WASM or 
 
 Synchronous WASM can block the UI; a `Promise` alone does not prevent this. Time to usable data does not fully describe interactivity. Limit conclusions to the tested sizes, configurations, and conditions; do not declare a universal winner. Do not report numerical results before conducting the experiments.
 
-## Phase 3B display boundary
+## Display boundary
 
-The interactive Three.js card reports CPU scene setup and first render submission only. It does not measure GPU completion or include the deferred module download. It must not be added to `computeMs` or request-to-data time. Biome allocation/classification is already inside Core in both execution modes. Rendering is on demand and pauses during a shared operation. The future trial runner must additionally defer scene construction until its measurement series completes; the interactive equivalence check is not that runner. Preserve `resultVersion` along with the algorithm, workload, and build identity in future trial exports. Do not combine old height-only timings with this workload.
+The interactive Three.js card reports CPU scene setup and first render submission only. It does not measure GPU completion or include the deferred module download. It must not be added to `computeMs` or request-to-data time. Biome allocation/classification is already inside Core in both execution modes. Rendering is on demand and pauses during a shared operation. The future trial runner must additionally defer scene construction until its measurement series completes; the interactive equivalence check is not that runner. Preserve `resultVersion` along with the algorithm, workload, and build identity in future trial exports. Do not combine historical workload timings with this workload.
+
+## Hydraulic workload scaling and worker execution
+
+The hydraulic profile is specified in [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md). Use map size and iteration count as independent axes, including a zero-step composition reference. Iterations add genuine simulation work without enlarging final-only geometry or returning simulation history. No convergence shortcut or no-op repetition is used.
+
+Offline preparation normally initializes the worker/runtime before interactive generation. Record startup, cache state, worker protocol and execution model separately. `requestMs` includes string serialization, RPC or HTTP, parsing, normalization and validation. C# `computeMs` excludes those costs. The browser smoke matrix through 512x512x128 established scalable work and active main-thread heartbeats, not controlled comparative performance. Raw evidence is generated at ignored `artifacts/hydraulic-verification.json`; the work cap is 33,554,432 cell-iterations and steps are also limited to 2048.

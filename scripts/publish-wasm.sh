@@ -61,6 +61,7 @@ dotnet publish "$repo_root/src/wasm/WorldGenerator.Wasm.csproj" \
 
 test -f "$stage_publish/wwwroot/_framework/dotnet.js"
 test -f "$stage_publish/wwwroot/world-generator-host.js"
+test -f "$stage_publish/wwwroot/world-generator-worker.js"
 require_glob "$stage_publish/wwwroot/_framework/dotnet.native.*.wasm"
 require_glob "$stage_publish/wwwroot/_framework/dotnet.runtime.*.js"
 require_glob "$stage_publish/wwwroot/_framework/WorldGenerator.Core.*.wasm"
@@ -69,6 +70,7 @@ require_glob "$stage_publish/wwwroot/_framework/WorldGenerator.Wasm.*.wasm"
 mkdir -p "$stage_assets"
 cp -R "$stage_publish/wwwroot/_framework" "$stage_assets/"
 cp "$stage_publish"/wwwroot/world-generator-host.js* "$stage_assets/"
+cp "$stage_publish"/wwwroot/world-generator-worker.js* "$stage_assets/"
 
 if [[ -e "$publish_dir" ]]; then
   mv "$publish_dir" "$tmp_root/backup-publish"

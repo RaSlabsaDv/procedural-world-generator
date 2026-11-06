@@ -2,8 +2,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import { HeightMapService } from './heightmap.service';
-import { ALGORITHM_VERSION, HeightMapRequest } from './heightmap.models';
+import { TerrainService } from './terrain.service';
+import { ALGORITHM_VERSION, HeightMapRequest } from './terrain.models';
+import { testTerrain, testWire } from './terrain-test-fixture';
 import { WasmHostService } from './wasm-host.service';
 
 const request: HeightMapRequest = Object.freeze({
@@ -15,29 +16,18 @@ const request: HeightMapRequest = Object.freeze({
   heightMultiplier: 30,
   algorithmVersion: ALGORITHM_VERSION,
 });
-const response = () => ({
-  result: {
-    width: 2,
-    height: 2,
-    values: [0, 10, 20, 30],
-    biomes: [0, 1, 2, 3],
-    resultVersion: 'heightmap-biomes-v1',
-    algorithmVersion: ALGORITHM_VERSION,
-  },
-  computeMs: 1,
-  coreBuildId: 'git:123456789abc',
-  workload: 'heightmap+biomes',
-});
+const terrain = testTerrain(request);
+const response = () => testWire(terrain);
 
-describe('HeightMapService', () => {
-  let service: HeightMapService;
+describe('TerrainService', () => {
+  let service: TerrainService;
   let http: HttpTestingController;
   let generate: ReturnType<typeof vi.fn>;
   let runtime: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     generate = vi.fn(() => JSON.stringify(response()));
-    runtime = vi.fn(async () => ({ generateHeightMapJson: generate }));
+    runtime = vi.fn(async () => ({ generateTerrainJson: generate }));
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -48,14 +38,14 @@ describe('HeightMapService', () => {
         },
       ],
     });
-    service = TestBed.inject(HeightMapService);
+    service = TestBed.inject(TerrainService);
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
 
   it('calls the local runtime once per array and reports initialization separately', async () => {
-    const result = await service.local(request);
-    expect(generate).toHaveBeenCalledExactlyOnceWith(JSON.stringify(request));
+    const result = await service.local(terrain);
+    expect(generate).toHaveBeenCalledExactlyOnceWith(JSON.stringify(terrain));
     expect(result.response.result.values).toBeInstanceOf(Float32Array);
     expect(result.initMs).toBe(123);
     expect(result.requestMs).toBeGreaterThanOrEqual(0);
@@ -63,9 +53,9 @@ describe('HeightMapService', () => {
   });
 
   it('posts the unchanged snapshot and normalizes the remote response', async () => {
-    const promise = service.remote(request);
-    const pending = http.expectOne('/api/v1/heightmaps');
-    expect(pending.request.body).toBe(request);
+    const promise = service.remote(terrain);
+    const pending = http.expectOne('/api/v1/terrains');
+    expect(pending.request.body).toBe(terrain);
     expect(pending.request.method).toBe('POST');
     pending.flush(response());
     expect((await promise).response.result.values).toBeInstanceOf(Float32Array);
@@ -74,36 +64,34 @@ describe('HeightMapService', () => {
   it('maps the same structured error from Local and Remote', async () => {
     const failure = { error: 'validation', fields: { width: 'Invalid width' } };
     generate.mockReturnValueOnce(JSON.stringify(failure));
-    await expect(service.local(request)).rejects.toMatchObject({
+    await expect(service.local(terrain)).rejects.toMatchObject({
       kind: 'validation',
       fields: failure.fields,
     });
-    const promise = service.remote(request);
-    http.expectOne('/api/v1/heightmaps').flush(failure, { status: 400, statusText: 'Bad Request' });
+    const promise = service.remote(terrain);
+    http.expectOne('/api/v1/terrains').flush(failure, { status: 400, statusText: 'Bad Request' });
     await expect(promise).rejects.toMatchObject({ kind: 'validation', fields: failure.fields });
   });
 
   it('reports an unavailable API without invoking Local', async () => {
-    const promise = service.remote(request);
-    http.expectOne('/api/v1/heightmaps').error(new ProgressEvent('error'));
+    const promise = service.remote(terrain);
+    http.expectOne('/api/v1/terrains').error(new ProgressEvent('error'));
     await expect(promise).rejects.toMatchObject({ kind: 'availability' });
     expect(runtime).not.toHaveBeenCalled();
   });
 
   it('treats the service worker offline response as unavailable', async () => {
-    const promise = service.remote(request);
-    http
-      .expectOne('/api/v1/heightmaps')
-      .flush(null, { status: 504, statusText: 'Gateway Timeout' });
+    const promise = service.remote(terrain);
+    http.expectOne('/api/v1/terrains').flush(null, { status: 504, statusText: 'Gateway Timeout' });
     await expect(promise).rejects.toMatchObject({ kind: 'availability' });
     expect(runtime).not.toHaveBeenCalled();
   });
 
   it('rejects malformed local JSON and corrupt remote responses', async () => {
     generate.mockReturnValueOnce('{');
-    await expect(service.local(request)).rejects.toMatchObject({ kind: 'protocol' });
-    const promise = service.remote(request);
-    http.expectOne('/api/v1/heightmaps').flush({ ...response(), computeMs: -1 });
+    await expect(service.local(terrain)).rejects.toMatchObject({ kind: 'protocol' });
+    const promise = service.remote(terrain);
+    http.expectOne('/api/v1/terrains').flush({ ...response(), computeMs: -1 });
     await expect(promise).rejects.toMatchObject({ kind: 'protocol' });
   });
 });

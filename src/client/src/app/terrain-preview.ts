@@ -22,7 +22,7 @@ import {
   WebGLRenderer,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { HeightMapRun } from './heightmap.models';
+import { TerrainRun } from './terrain.models';
 import { terrainGeometry } from './terrain-geometry';
 
 export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
@@ -44,7 +44,7 @@ export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
       ></canvas>
     </div>
     @if (problem()) {
-      <p role="alert">{{ problem() }} The 2D view remains available.</p>
+      <p role="alert">{{ problem() }} Numerical results remain available.</p>
     }
     @if (displayMs() !== null) {
       <p class="display-time">
@@ -73,7 +73,7 @@ export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
   `,
 })
 export class TerrainPreview {
-  readonly run = input.required<HeightMapRun>();
+  readonly run = input.required<TerrainRun>();
   readonly paused = input(false);
   protected readonly problem = signal<string | null>(null);
   protected readonly displayMs = signal<number | null>(null);
@@ -101,7 +101,7 @@ export class TerrainPreview {
       let mesh: Mesh<ReturnType<typeof terrainGeometry>, MeshLambertMaterial> | undefined;
       const contextLost = (event: Event) => {
         event.preventDefault();
-        this.problem.set('The WebGL context was lost. Switch to 2D and back to retry.');
+        this.problem.set('The WebGL context was lost. Generate again to retry.');
       };
       let disposed = false;
       const dispose = () => {

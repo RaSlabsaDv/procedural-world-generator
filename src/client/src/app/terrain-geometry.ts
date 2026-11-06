@@ -1,10 +1,10 @@
 import { BufferAttribute, BufferGeometry, Color } from 'three';
-import { HeightMapResponse } from './heightmap.models';
+import { TerrainResponse } from './terrain.models';
 
 // Presentation only: numeric biome IDs are supplied by Core; no classification here.
 export const BIOME_PALETTE = [0x286caa, 0x9cb85a, 0x34714b, 0xb8b5ac] as const;
 
-export function terrainGeometry(result: HeightMapResponse['result']): BufferGeometry {
+export function terrainGeometry(result: TerrainResponse['result']): BufferGeometry {
   const { width, height, values, biomes } = result;
   const positions = new Float32Array(values.length * 3);
   const colors = new Float32Array(values.length * 3);

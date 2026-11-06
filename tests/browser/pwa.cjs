@@ -29,7 +29,11 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
   const browser = await chromium.launch({
     executablePath: process.env.PWG_BROWSER_EXECUTABLE,
     headless: true,
-    args: ["--no-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--enable-unsafe-swiftshader",
+      "--use-angle=swiftshader",
+    ],
   });
   const context = await browser.newContext({ serviceWorkers: "allow" });
   const errors = [];
@@ -142,7 +146,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
     const blocked = new Promise((resolve) => {
       sawRequest = resolve;
     });
-    await context.route("**/api/v1/heightmaps", async (route) => {
+    await context.route("**/api/v1/terrains", async (route) => {
       sawRequest();
       await new Promise((resolve) => {
         releaseRequest = resolve;
@@ -166,7 +170,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
         document.querySelector('.status[role="status"]').textContent ===
         "Complete",
     );
-    await context.unroute("**/api/v1/heightmaps");
+    await context.unroute("**/api/v1/terrains");
     await Promise.all([
       page.waitForNavigation({ waitUntil: "domcontentloaded" }),
       page.locator("#reload-update").click(),
@@ -194,6 +198,8 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
       secondCatalog,
     );
     assert.equal((await runtimeInfo(page)).initCount, 1);
+    await page.locator("app-terrain-preview .display-time").first().waitFor();
+    assert.equal((await runtimeInfo(page)).initCount, 1);
     assert.deepEqual(errors, []);
     const result = {
       pass: true,
@@ -207,6 +213,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
       cachedApiResponses: 0,
       updateDeferredWhileBusy: true,
       updatedVersionOffline: true,
+      updatedVersionTerrain3d: true,
       firstCatalog,
       secondCatalog,
       pageErrors: errors,

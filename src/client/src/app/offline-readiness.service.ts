@@ -1,8 +1,13 @@
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SwUpdate } from '@angular/service-worker';
-import { decodeHeightMap } from './heightmap.contract';
-import { ALGORITHM_VERSION, HeightMapRequest } from './heightmap.models';
+import { decodeTerrain } from './terrain.contract';
+import {
+  ALGORITHM_VERSION,
+  TERRAIN_ALGORITHM,
+  TerrainRequest,
+  HeightMapRequest,
+} from './terrain.models';
 import { OperationLock } from './operation-lock.service';
 import { WasmHostService } from './wasm-host.service';
 
@@ -16,6 +21,16 @@ const READINESS_REQUEST: HeightMapRequest = Object.freeze({
   octaves: 1,
   heightMultiplier: 1,
   algorithmVersion: ALGORITHM_VERSION,
+});
+
+const READINESS_TERRAIN: TerrainRequest = Object.freeze({
+  heightMap: READINESS_REQUEST,
+  mountainStrength: 0.55,
+  warpStrength: 2,
+  iterations: 0,
+  rainfall: 0.05,
+  evaporation: 0.1,
+  algorithmVersion: TERRAIN_ALGORITHM,
 });
 
 @Injectable({ providedIn: 'root' })
@@ -148,9 +163,10 @@ export class OfflineReadinessService {
         );
       }
       const runtime = await this.wasm.getRuntime();
-      decodeHeightMap(
-        JSON.parse(runtime.generateHeightMapJson(JSON.stringify(READINESS_REQUEST))),
+      decodeTerrain(
+        JSON.parse(await runtime.generateTerrainJson(JSON.stringify(READINESS_TERRAIN))),
         READINESS_REQUEST,
+        READINESS_TERRAIN,
       );
       if (worker.controller !== controller)
         throw new Error('The service worker changed. Reload and prepare again.');

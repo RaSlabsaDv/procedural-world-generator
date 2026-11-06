@@ -1,7 +1,7 @@
 <main>
   <header>
     <p class="eyebrow">Procedural World Generator</p>
-    <h1>Heightmap explorer</h1>
+    <h1>Terrain explorer</h1>
     <p>Generate the same deterministic terrain in your browser or on the server.</p>
   </header>
 
@@ -45,7 +45,7 @@
         Reload to update
       </button>
       @if (busy()) {
-        <small>Finish the active heightmap or probe operation before reloading.</small>
+        <small>Finish the active terrain operation before reloading.</small>
       }
     </section>
   }
@@ -54,6 +54,74 @@
     <p class="error" role="alert">{{ updateProblem }}</p>
   }
 
+  <form [formGroup]="terrainForm">
+    <fieldset [disabled]="busy()">
+      <legend>Terrain and simulation parameters</legend>
+      <div class="parameters">
+        <label
+          >Mountain strength
+          <input
+            id="mountainStrength"
+            type="number"
+            min="0"
+            max="1"
+            step="0.05"
+            formControlName="mountainStrength"
+          /><small class="field-error">{{ fieldError('mountainStrength') }}</small></label
+        >
+        <label
+          >Warp strength
+          <input
+            id="warpStrength"
+            type="number"
+            min="0"
+            max="8"
+            step="0.1"
+            formControlName="warpStrength"
+          /><small class="field-error">{{ fieldError('warpStrength') }}</small></label
+        >
+        <label
+          >Simulation iterations
+          <input
+            id="iterations"
+            type="number"
+            min="0"
+            max="2048"
+            step="1"
+            formControlName="iterations"
+          /><small class="field-error">{{ fieldError('iterations') }}</small></label
+        >
+        <label
+          >Rainfall per time unit
+          <input
+            id="rainfall"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            formControlName="rainfall"
+          /><small class="field-error">{{ fieldError('rainfall') }}</small></label
+        >
+        <label
+          >Evaporation per time unit
+          <input
+            id="evaporation"
+            type="number"
+            min="0"
+            max="1"
+            step="0.01"
+            formControlName="evaporation"
+          /><small class="field-error">{{ fieldError('evaporation') }}</small></label
+        >
+      </div>
+      <p>
+        Work: {{ form.controls.width.value }} × {{ form.controls.height.value }} ×
+        {{ terrainForm.controls.iterations.value }} cell-iterations. Maximum: 33,554,432. More
+        iterations evolve the terrain without increasing mesh size. Heavy runs can take time;
+        progress and cancellation are unavailable.
+      </p>
+    </fieldset>
+  </form>
   <form [formGroup]="form" (ngSubmit)="generate('local')" novalidate>
     <fieldset [disabled]="busy()">
       <legend>Generation parameters</legend>
@@ -65,12 +133,16 @@
         <label
           >Width
           <input id="width" type="number" min="2" max="512" step="1" formControlName="width" />
-          <small class="field-error">{{ fieldError('width') }}</small></label
+          <small class="field-error">{{
+            fieldError('heightMap.width') || fieldError('width')
+          }}</small></label
         >
         <label
           >Height
           <input id="height" type="number" min="2" max="512" step="1" formControlName="height" />
-          <small class="field-error">{{ fieldError('height') }}</small></label
+          <small class="field-error">{{
+            fieldError('heightMap.height') || fieldError('height')
+          }}</small></label
         >
         <label
           >Noise scale
@@ -122,19 +194,7 @@
       <strong>{{ problem.message }}</strong>
       @if (problem.kind === 'validation') {
         <ul>
-          @for (
-            field of [
-              'seed',
-              'width',
-              'height',
-              'width * height',
-              'noiseScale',
-              'octaves',
-              'heightMultiplier',
-              'algorithmVersion',
-            ];
-            track field
-          ) {
+          @for (field of errorFields(); track field) {
             @if (problem.fields[field]; as message) {
               <li>{{ field }}: {{ message }}</li>
             }
@@ -180,26 +240,6 @@
     </section>
   }
 
-  <fieldset class="view-controls" [disabled]="busy()">
-    <legend>Terrain view</legend>
-    <button
-      id="view-2d"
-      type="button"
-      [attr.aria-pressed]="view() === '2d'"
-      (click)="view.set('2d')"
-    >
-      2D heights
-    </button>
-    <button
-      id="view-3d"
-      type="button"
-      [attr.aria-pressed]="view() === '3d'"
-      (click)="view.set('3d')"
-    >
-      3D biomes
-    </button>
-    <p>Biome palette: water (blue), plains (light green), forest (dark green), mountains (gray).</p>
-  </fieldset>
   <div class="maps">
     @for (
       entry of [
@@ -216,14 +256,10 @@
             {{ run.request.noiseScale }} · {{ run.request.octaves }} octaves · Height
             {{ run.request.heightMultiplier }}
           </p>
-          @if (view() === '3d') {
-            @defer (on immediate) {
-              <app-terrain-preview [run]="run" [paused]="busy()" />
-            } @placeholder {
-              <p>Loading 3D preview…</p>
-            }
-          } @else {
-            <app-heightmap-preview [run]="run" />
+          @defer (on immediate) {
+            <app-terrain-preview [run]="run" [paused]="busy()" />
+          } @placeholder {
+            <p>Loading 3D preview…</p>
           }
           <dl>
             <div>
@@ -236,23 +272,36 @@
             </div>
             @if (run.initMs !== null) {
               <div>
-                <dt>Runtime initialization (once)</dt>
+                <dt>Worker + runtime initialization (once)</dt>
                 <dd>{{ run.initMs.toFixed(2) }} ms</dd>
               </div>
             }
           </dl>
+          <p>
+            Workload: {{ run.response.workload }} · Algorithm:
+            {{ run.response.result.algorithmVersion }}
+          </p>
+          @if (run.terrain; as terrain) {
+            <p class="simulation-snapshot">
+              Iterations {{ terrain.iterations }} · Rainfall {{ terrain.rainfall }} · Evaporation
+              {{ terrain.evaporation }} · Mountains {{ terrain.mountainStrength }} · Warp
+              {{ terrain.warpStrength }}
+            </p>
+          }
+          @if (run.response.simulation; as simulation) {
+            <p>
+              Completed {{ simulation.cellIterations }} cell-iterations. Suspended sediment:
+              {{ simulation.suspendedSediment.toFixed(3) }}. Remaining water:
+              {{ simulation.waterRemaining.toFixed(3) }}.
+            </p>
+          }
           <p class="build-id">Core: {{ run.response.coreBuildId }}</p>
         </section>
       }
     }
   </div>
   <p class="caption">
-    2D: black = zero height; white = the selected height multiplier. Both previews use the same
-    scale. Request timing excludes rendering and comparison. Core computation includes biome
-    classification.
+    Rich terrain with hydraulic erosion. Both 3D previews use the same scale. Request timing
+    excludes rendering and comparison. Core computation includes biome classification.
   </p>
-  <details class="diagnostics">
-    <summary>Probe diagnostics</summary>
-    <app-probe-diagnostics [disabled]="busy()" />
-  </details>
 </main>

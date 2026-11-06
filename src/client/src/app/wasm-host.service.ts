@@ -1,19 +1,21 @@
-import { Injectable } from '@angular/core';
+import { DestroyRef, inject, Injectable } from '@angular/core';
 
 export interface WorldGeneratorRuntime {
-  add(left: number, right: number): number;
-  generateSamplesJson(seed: number, count: number): string;
-  generateHeightMapJson(requestJson: string): string;
+  generateTerrainJson(requestJson: string): Promise<string>;
 }
 
 export interface RuntimeInfo {
   initCount: number;
   initMs: number | null;
+  runtimeMs: number | null;
+  execution: 'worker';
+  protocol: string;
 }
 
 interface HostModule {
   getWorldGenerator(): Promise<WorldGeneratorRuntime>;
   getRuntimeInfo(): RuntimeInfo;
+  disposeWorldGenerator(): void;
 }
 
 let hostModulePromise: Promise<HostModule> | null = null;
@@ -23,7 +25,10 @@ export class WasmHostService {
   private runtime: WorldGeneratorRuntime | null = null;
   private runtimePromise: Promise<WorldGeneratorRuntime> | null = null;
   private hostModule: HostModule | null = null;
-  private initMs: number | null = null;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => this.hostModule?.disposeWorldGenerator());
+  }
 
   async getRuntime(): Promise<WorldGeneratorRuntime> {
     if (this.runtime) {
@@ -35,10 +40,15 @@ export class WasmHostService {
   }
 
   getInfo(): RuntimeInfo {
-    return {
-      initCount: this.hostModule?.getRuntimeInfo().initCount ?? 0,
-      initMs: this.initMs,
-    };
+    return (
+      this.hostModule?.getRuntimeInfo() ?? {
+        initCount: 0,
+        initMs: null,
+        runtimeMs: null,
+        execution: 'worker',
+        protocol: 'worker-rpc-v1',
+      }
+    );
   }
 
   private async initialize(): Promise<WorldGeneratorRuntime> {
@@ -49,7 +59,6 @@ export class WasmHostService {
     try {
       this.hostModule = await hostModulePromise;
       this.runtime = await this.hostModule.getWorldGenerator();
-      this.initMs = this.hostModule.getRuntimeInfo().initMs;
       return this.runtime;
     } catch (error) {
       hostModulePromise = null;

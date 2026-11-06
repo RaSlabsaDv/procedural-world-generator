@@ -3,7 +3,8 @@ import { vi } from 'vitest';
 import { BufferGeometry, MeshLambertMaterial } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TerrainPreview, TERRAIN_RENDERER_FACTORY } from './terrain-preview';
-import { HeightMapRun } from './heightmap.models';
+import { testTerrain, testWire } from './terrain-test-fixture';
+import { TerrainRun } from './terrain.models';
 
 const state = {
   render: vi.fn(),
@@ -13,7 +14,7 @@ const state = {
   fail: false,
 };
 
-function run(): HeightMapRun {
+function run(): TerrainRun {
   return {
     request: {
       seed: 42,
@@ -24,18 +25,17 @@ function run(): HeightMapRun {
       heightMultiplier: 30,
       algorithmVersion: 'value-noise-fbm-v1',
     },
+    terrain: testTerrain(),
     response: {
+      ...testWire(),
       result: {
         width: 2,
         height: 2,
         values: new Float32Array([0, 10, 20, 30]),
         biomes: new Uint8Array([0, 1, 2, 3]),
         resultVersion: 'heightmap-biomes-v1',
-        algorithmVersion: 'value-noise-fbm-v1',
+        algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
-      computeMs: 1,
-      coreBuildId: 'test',
-      workload: 'heightmap+biomes',
     },
     requestMs: 2,
     initMs: null,
@@ -119,6 +119,6 @@ describe('terrain preview lifecycle', () => {
     fixture.componentRef.setInput('run', run());
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain('No WebGL');
-    expect(fixture.nativeElement.textContent).toContain('2D view remains available');
+    expect(fixture.nativeElement.textContent).toContain('Numerical results remain available');
   });
 });

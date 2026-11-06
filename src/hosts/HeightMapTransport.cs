@@ -1,5 +1,3 @@
-using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
 using WorldGenerator.Core;
 
 namespace WorldGenerator.Hosts;
@@ -23,57 +21,6 @@ public sealed record HeightMapHostPreparation(
 /// </summary>
 public static class HeightMapTransport
 {
-    /// <summary>
-    /// Parses a JSON stream and prepares a validated Core request.
-    /// </summary>
-    public static async Task<HeightMapHostPreparation> ParseAndPrepareAsync(
-        Stream json,
-        JsonTypeInfo<HeightMapWireRequest> typeInfo,
-        CancellationToken cancellationToken = default)
-    {
-        HeightMapWireRequest? request;
-
-        try
-        {
-            request = await JsonSerializer.DeserializeAsync(
-                json,
-                typeInfo,
-                cancellationToken);
-        }
-        catch (JsonException)
-        {
-            return Failure(ErrorResponse.InvalidJson());
-        }
-
-        return Prepare(request);
-    }
-
-    /// <summary>
-    /// Parses a JSON string and prepares a validated Core request.
-    /// </summary>
-    public static HeightMapHostPreparation ParseAndPrepare(
-        string json,
-        JsonTypeInfo<HeightMapWireRequest> typeInfo)
-    {
-        if (json is null)
-        {
-            return Failure(ErrorResponse.InvalidJson());
-        }
-
-        HeightMapWireRequest? request;
-
-        try
-        {
-            request = JsonSerializer.Deserialize(json, typeInfo);
-        }
-        catch (JsonException)
-        {
-            return Failure(ErrorResponse.InvalidJson());
-        }
-
-        return Prepare(request);
-    }
-
     /// <summary>
     /// Rejects omitted inputs, then applies the canonical Core validation.
     /// </summary>
