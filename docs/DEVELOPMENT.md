@@ -2,7 +2,7 @@
 
 ## Supported application
 
-The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Evolution capture/playback is the next planned extension. README is intentionally empty.
+The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. The next planned work is staged surface, lighting and landscape detailing; evolution capture/playback remains a later extension. README is intentionally empty.
 
 ## Frontend structure
 
@@ -149,7 +149,7 @@ Use the same environment with `node tests/browser/editor.cjs` for the editor (re
 
 Evidence is written under ignored `artifacts/`. Software WebGL smoke timings are not controlled comparative performance evidence. Reserved WASM linear memory is not live managed memory or total browser RAM. Maximum settings are a desktop smoke workload, not a mobile guarantee.
 
-Next implementation: bounded evolution capture and Three.js playback for this generator, following [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Next implementation: surface materials, smooth transitions and lighting, followed by forests, rocks, local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
 
 ## Diverse terrain controls and forests
 

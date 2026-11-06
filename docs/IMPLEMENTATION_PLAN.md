@@ -28,6 +28,72 @@ Unused Angular routing and the duplicate hydraulic browser script were removed. 
 
 V3 specifies required globalWarmth, vegetationDensity and landformRegionScale controls; broadleaf/conifer forests, sparse savanna, tundra and static highland snow; and Core-owned tree kinds. Strict host/client contracts reject missing fields and invalid categories. Density does not change biome coverage, and the existing hydraulic kernel, ocean connectivity and resource caps are preserved. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for precedence, arithmetic and timing. Historical v2 sources and fixtures remain test-only. Production browser evidence covers category/field parity, heavy limits and offline operation.
 
+## Next: landscape detail — planned
+
+Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. These are planned changes, not implemented features.
+
+Before each stage, capture representative normal/cold/warm views with fixed requests and camera framing. Define its resource limits and acceptance checks before implementation. Preserve the historical v3 specification and fixtures when introducing a new semantic contract. Keep README empty and documentation in English.
+
+### 1. Surface materials
+
+Implementation instructions: [SURFACE_MATERIALS_PROMPT.md](SURFACE_MATERIALS_PROMPT.md).
+
+Add reusable grass, soil, sand, rock and snow textures, with consistent world-space tiling across seeds, map sizes and both execution modes. Use small, locally bundled assets with documented provenance/licenses. Choose an approach compatible with the current Three.js terrain material before adding dependencies. Keep heights and Core biome IDs unchanged in this stage; sand becomes a visible coastal surface once stage 7 supplies coastal data.
+
+Acceptance: textures resolve at overview and close-up distances without per-map stretching, work after an offline reload, and share resources within a viewport. Record texture/download/GPU resource budgets; release owned resources on replacement and destruction. Visualization costs remain outside Core time.
+
+### 2. Smooth surface transitions
+
+Specify normalized surface coverage weights in Core for grass, exposed soil, sand, rock and snow. Derive them from the authoritative terrain/environment data with documented thresholds and operation order. Retain categorical biome IDs for ecological decisions; visual blending must not silently change biome classification or tree eligibility. Preserve heights and hydraulic results.
+
+Version the result/workload and, if generation semantics change, the algorithm before extending both hosts, strict TypeScript decoding and full-result comparisons together. Three.js interpolates and blends supplied weights; it does not reproduce the ecological rules. Define bounded fields/encoding before allocating additional full-map arrays; unused sand coverage remains zero until coastal classification exists.
+
+Acceptance: supplied weights are finite, bounded and normalized; categorical rules still hold. Verify complete Local/Remote weight parity and smooth transitions on forest edges, rock slopes and snow boundaries. Record added memory, JSON bytes and Core work.
+
+### 3. Lighting, shadows and atmosphere
+
+Improve terrain shading, add bounded directional shadows from terrain and trees, and use subtle atmospheric fog for depth. Keep a fixed reproducible lighting setup and the same settings for Local/Remote views. Start with the existing Three.js capabilities. Atmosphere changes presentation only; it does not alter climate or introduce a day/night simulation.
+
+Acceptance: terrain shape and tree silhouettes remain readable at overview and close range, without excessive shadow artifacts or obscuring the biome palette. Define shadow resolution, distance and rendering budgets for one/two views. Preserve camera behavior, offline rendering, pause during computation and complete resource disposal. Report scene setup separately from ongoing rendering; CPU submission is not GPU completion.
+
+### 4. Forest structure and tree variation
+
+Extend deterministic Core placement with groves, clearings and spatial density variation within suitable biomes. Add bounded tree appearance variants for young/tall trees, crown shapes and shades within the existing broadleaf/conifer/savanna categories. Define variants as illustrative size/appearance, not a simulated biological age. Keep category, suitability, positions and seeded variation authoritative in Core; the renderer maps returned variant data to shared geometry/materials.
+
+Specify/version the changed placement contract before implementation. Preserve the 16384 total tree cap unless separately justified. Define a bounded variant count and mesh/draw-call budget before expanding beyond the current maximum of six vegetation meshes. Preserve density-zero behavior and document/test how clustering interacts with monotonic density and priority capping.
+
+Acceptance: fixed seeds reproduce groves and clearings; unsuitable cells remain empty; all returned placements/variants match across hosts. Render every returned instance without per-tree components/materials, with stable retained transforms and bounded resources.
+
+### 5. Rocks, boulders and scree
+
+Add Core-owned deterministic placement of isolated boulders, rocky outcrops and scree near suitable steep slopes. Specify slope/biome suitability, distribution, terrain-triangle grounding, instance transforms and bounded appearance variants. Avoid placing decorative stones in ocean or overlapping trees unconditionally; define any spacing/exclusion rule explicitly.
+
+Use a separately capped rock instance collection, shared geometry/materials and instanced rendering. Freeze its output schema/version and both host/client contracts together. Decorative rocks do not alter the terrain or hydraulic solver.
+
+Acceptance: positions are reproducible and grounded on the displayed terrain, Local/Remote instances agree, and empty/maximum cases respect instance, memory and draw-call budgets. Verify replacement, failure cleanup and offline presentation.
+
+### 6. Local geometric relief
+
+Add biome/landform-sensitive small hills, subtle plain irregularities and slope grooves while preserving broad flat regions. First specify grid spacing, intended feature size and the resolution required to represent it; a 128x128 grid cannot represent arbitrarily fine geometry. Assess the current 512x512 and cell-iteration caps before proposing higher resolution. Keep visual normal/bump detail distinct from actual height changes.
+
+Specify a new algorithm version for mathematical height changes, with deterministic seeds, amplitude bounds, operation order and an explicit position in the composition/erosion pipeline. Derive slopes, ecology and grounded instances from the final authoritative heights. Do not perturb the mesh independently in TypeScript. Retain the existing hydraulic kernel unless separately specified.
+
+Acceptance: plains remain usable flat areas, fine relief does not introduce uniform mountain noise, heights stay finite/bounded, and complete Local/Remote output agrees. Test small/large grids, zero height and erosion extremes; measure real additional Core work and resource use.
+
+### 7. Coastal detail
+
+Add sandy, grassy and rocky coastal surfaces using Core-derived shoreline proximity, relative elevation and slope. Base coastline detection on the existing boundary-connected ocean mask, including its equality rule. Define coastal distance in documented grid/world units and blend it into the stage 2 surface weights. Version changed outputs and any settings explicitly.
+
+Preserve dry inland depressions and the current sea level semantics. Shore classification changes surface appearance; it does not fill valleys, raise terrain, simulate tides or add a flat water overlay.
+
+Acceptance: contrasting coast types follow the documented rules, inland low areas do not become beaches solely because they lie below sea level, and edge/zero-height/no-ocean cases are deterministic. Verify complete host parity, offline rendering and bounded additional work.
+
+### Completion gate for each stage
+
+Run checks appropriate to the affected layers: Core determinism/fixtures, host validation and serialization parity, strict frontend contracts, rendering lifecycle and production browser checks. Preserve identical immutable requests across execution modes and keep compute, initialization, transport/decoding, comparison and rendering timings separate. Include new Core-owned fields/instances in full-result comparisons. Browser evidence should retain exact requests and representative screenshots; smoke timings are not a controlled benchmark campaign.
+
+Update the current specification, development instructions and stage status only after verification. Do not introduce placeholder controls for later stages or implement several mathematical extensions in one unreviewable change.
+
 ## Later: evolution of the selected terrain
 
 1. Specify bounded snapshot capture for the existing hydraulic model: initial state, interval frames, final state, no duplicate final frame, and overflow-safe storage budgets.
