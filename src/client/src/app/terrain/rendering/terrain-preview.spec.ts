@@ -39,7 +39,7 @@ function run(): TerrainRun {
         height: 2,
         values: new Float32Array([0, 10, 20, 30]),
         biomes: new Uint8Array([0, 1, 2, 3]),
-        resultVersion: 'landscape-ecology-v2',
+        resultVersion: 'landscape-ecology-v3',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },
@@ -94,13 +94,13 @@ describe('terrain preview lifecycle', () => {
     expect(fixture.nativeElement.textContent).toContain('CPU');
     fixture.componentRef.setInput('run', run());
     await fixture.whenStable();
-    expect(geometry).toHaveBeenCalledTimes(3);
-    expect(material).toHaveBeenCalledTimes(3);
+    expect(geometry).toHaveBeenCalledTimes(1);
+    expect(material).toHaveBeenCalledTimes(1);
     expect(controls).toHaveBeenCalledTimes(1);
     expect(state.dispose).toHaveBeenCalledTimes(1);
     fixture.destroy();
-    expect(geometry).toHaveBeenCalledTimes(6);
-    expect(material).toHaveBeenCalledTimes(6);
+    expect(geometry).toHaveBeenCalledTimes(2);
+    expect(material).toHaveBeenCalledTimes(2);
     expect(state.disconnect).toHaveBeenCalledTimes(2);
     expect(state.dispose).toHaveBeenCalledTimes(2);
     expect(state.lose).toHaveBeenCalledTimes(1);

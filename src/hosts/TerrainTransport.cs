@@ -5,7 +5,7 @@ using WorldGenerator.Core;
 namespace WorldGenerator.Hosts;
 
 public sealed record TerrainWireRequest(HeightMapWireRequest? HeightMap, double? MountainStrength,
-    double? WarpStrength, int? Iterations, double? Rainfall, double? Evaporation, double? PlainsCoverage, double? MountainCoverage, double? GlobalMoisture, double? SeaLevel, string? AlgorithmVersion);
+    double? WarpStrength, int? Iterations, double? Rainfall, double? Evaporation, double? PlainsCoverage, double? MountainCoverage, double? GlobalMoisture, double? SeaLevel, double? GlobalWarmth, double? VegetationDensity, double? LandformRegionScale, string? AlgorithmVersion);
 
 public sealed record TerrainHostPreparation(ValidatedTerrainRequest? ValidatedRequest,
     TerrainRequest? Parameters, ErrorResponse? Error)
@@ -39,7 +39,7 @@ public static class TerrainTransport
     private static TerrainHostPreparation Prepare(TerrainWireRequest? wire)
     {
         if (wire is null) return new(null, null, ErrorResponse.InvalidJson());
-        if (new[] { wire.MountainStrength, wire.WarpStrength, wire.Rainfall, wire.Evaporation, wire.PlainsCoverage, wire.MountainCoverage, wire.GlobalMoisture, wire.SeaLevel }
+        if (new[] { wire.MountainStrength, wire.WarpStrength, wire.Rainfall, wire.Evaporation, wire.PlainsCoverage, wire.MountainCoverage, wire.GlobalMoisture, wire.SeaLevel, wire.GlobalWarmth, wire.VegetationDensity, wire.LandformRegionScale }
             .Any(v => v is { } number && !double.IsFinite(number)))
             return new(null, null, ErrorResponse.InvalidJson());
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -59,13 +59,16 @@ public static class TerrainTransport
         Required("mountainCoverage", wire.MountainCoverage is null);
         Required("globalMoisture", wire.GlobalMoisture is null);
         Required("seaLevel", wire.SeaLevel is null);
+        Required("globalWarmth", wire.GlobalWarmth is null);
+        Required("vegetationDensity", wire.VegetationDensity is null);
+        Required("landformRegionScale", wire.LandformRegionScale is null);
         Required("algorithmVersion", wire.AlgorithmVersion is null);
         if (fields.Count > 0) return new(null, null, ErrorResponse.Validation(fields));
         var map = wire.HeightMap!;
         var request = new TerrainRequest(new(map.Seed!.Value, map.Width!.Value, map.Height!.Value,
             map.NoiseScale!.Value, map.Octaves!.Value, map.HeightMultiplier!.Value, map.AlgorithmVersion!),
             wire.MountainStrength!.Value, wire.WarpStrength!.Value, wire.Iterations!.Value,
-            wire.Rainfall!.Value, wire.Evaporation!.Value, wire.PlainsCoverage!.Value, wire.MountainCoverage!.Value, wire.GlobalMoisture!.Value, wire.SeaLevel!.Value, wire.AlgorithmVersion!);
+            wire.Rainfall!.Value, wire.Evaporation!.Value, wire.PlainsCoverage!.Value, wire.MountainCoverage!.Value, wire.GlobalMoisture!.Value, wire.SeaLevel!.Value, wire.GlobalWarmth!.Value, wire.VegetationDensity!.Value, wire.LandformRegionScale!.Value, wire.AlgorithmVersion!);
         var preparation = TerrainValidator.Prepare(request);
         if (!preparation.IsValid)
         {

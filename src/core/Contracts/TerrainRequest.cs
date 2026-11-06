@@ -11,5 +11,8 @@ public sealed record TerrainRequest(
     double MountainCoverage,
     double GlobalMoisture,
     double SeaLevel,
+    double GlobalWarmth,
+    double VegetationDensity,
+    double LandformRegionScale,
     string AlgorithmVersion);
 

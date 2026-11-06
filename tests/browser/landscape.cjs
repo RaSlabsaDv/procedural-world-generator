@@ -1,4 +1,4 @@
-// Full v2 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
+// Full v3 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
 const {
   base,
   launchBrowser,
@@ -33,13 +33,25 @@ const assert = require("node:assert/strict"),
       const host = await import("/wasm/world-generator-host.js"),
         runtime = await host.getWorldGenerator();
       const rows = [];
-      for (const [w, h, steps, seed, height, p, m, moisture, sea] of [
-        [2, 2, 0, 2147483647, 0, 0.45, 0.3, 0.65, 0.16],
-        [3, 2, 2, -2147483648, 30, 0.45, 0.3, 0.65, 0.16],
-        [129, 129, 32, 42, 30, 0.45, 0.3, 0.65, 0.16],
-        [128, 128, 16, 2026, 30, 0.45, 0.3, 0.65, 0.22],
-        [128, 128, 0, -7, 30, 0.45, 0.3, 0.35, 0],
-        [512, 512, 128, -7, 80, 1, 0, 1, 0],
+      for (const [
+        w,
+        h,
+        steps,
+        seed,
+        height,
+        p,
+        m,
+        moisture,
+        sea,
+        warmth,
+        regionScale,
+      ] of [
+        [2, 2, 0, 2147483647, 0, 0.45, 0.3, 0.65, 0.16, 0.6, 1],
+        [3, 2, 2, -2147483648, 30, 0.45, 0.3, 0.65, 0.16, 0.35, 2],
+        [129, 129, 32, 42, 30, 0.45, 0.3, 0.65, 0.16, 0.6, 1],
+        [128, 128, 16, 2026, 30, 0.35, 0.4, 0.8, 0.16, 0.25, 1],
+        [128, 128, 0, -7, 30, 0.45, 0.3, 0.45, 0, 0.9, 0.5],
+        [512, 512, 128, -7, 80, 1, 0, 1, 0, 0.6, 4],
       ]) {
         const request = {
           heightMap: {
@@ -60,7 +72,10 @@ const assert = require("node:assert/strict"),
           mountainCoverage: m,
           globalMoisture: moisture,
           seaLevel: sea,
-          algorithmVersion: "diverse-landscape-v2",
+          globalWarmth: warmth,
+          vegetationDensity: 1,
+          landformRegionScale: regionScale,
+          algorithmVersion: "diverse-landscape-v3",
         };
         let ticks = 0,
           last = performance.now(),
@@ -90,9 +105,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v2" ||
-            result.executionProfile !== "landscape-worker-json-v2" ||
-            result.result.resultVersion !== "landscape-ecology-v2" ||
+            result.workload !== "landscape-ecology-hydraulic-v3" ||
+            result.executionProfile !== "landscape-worker-json-v3" ||
+            result.result.resultVersion !== "landscape-ecology-v3" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )
@@ -151,13 +166,14 @@ const assert = require("node:assert/strict"),
               throw Error("Field range");
           }
         }
-        const counts = [0, 0, 0, 0, 0];
+        const counts = Array(9).fill(0),
+          treeKinds = Array(3).fill(0);
         for (let i = 0; i < w * h; i++) {
           const id = local.result.biomes[i];
           if (
             !Number.isInteger(id) ||
             id < 0 ||
-            id > 4 ||
+            id > 8 ||
             id !== remote.result.biomes[i]
           )
             throw Error("Biome mismatch");
@@ -169,9 +185,17 @@ const assert = require("node:assert/strict"),
         for (let i = 0; i < local.result.trees.length; i++) {
           const a = local.result.trees[i],
             b = remote.result.trees[i];
-          if (a.cellIndex !== b.cellIndex || a.cellIndex <= previous)
+          if (
+            a.kind !== b.kind ||
+            !Number.isInteger(a.kind) ||
+            a.kind < 0 ||
+            a.kind > 2 ||
+            a.cellIndex !== b.cellIndex ||
+            a.cellIndex <= previous
+          )
             throw Error("Tree index");
           previous = a.cellIndex;
+          treeKinds[a.kind]++;
           for (const key of ["x", "y", "z", "scale", "rotation"])
             check(Math.fround(a[key]), Math.fround(b[key]));
         }
@@ -180,6 +204,7 @@ const assert = require("node:assert/strict"),
         rows.push({
           request,
           biomeCounts: counts,
+          treeKindCounts: treeKinds,
           trees: local.result.trees.length,
           responseBytes: new TextEncoder().encode(text).length,
           localComputeMs: local.computeMs,
@@ -198,17 +223,28 @@ const assert = require("node:assert/strict"),
       .workers()[0]
       .evaluate(() => getDotnetRuntime(0).Module.HEAPU8.buffer.byteLength);
     assert.ok(matrix.at(-1).heartbeatTicks > 10);
+    for (const kind of [0, 1, 2])
+      assert.ok(
+        matrix.some((row) => row.treeKindCounts[kind] > 0),
+        "Missing tree kind " + kind,
+      );
+    for (const id of [5, 6, 7, 8])
+      assert.ok(
+        matrix.some((row) => row.biomeCounts[id] > 0),
+        "Missing biome " + id,
+      );
     assert.equal(matrix.at(-1).trees, 16384);
     const artifact = (name) =>
       path.resolve(__dirname, "../../artifacts/" + name);
-    for (const [seed, moisture, sea] of [
-      [42, 0.65, 0.16],
-      [2026, 0.65, 0.22],
-      [-7, 0.35, 0],
+    for (const [seed, moisture, sea, warmth] of [
+      [42, 0.65, 0.16, 0.6],
+      [2026, 0.8, 0.16, 0.25],
+      [-7, 0.45, 0, 0.9],
     ]) {
       await page.locator("#seed").fill(String(seed));
       await page.locator("#globalMoisture").fill(String(moisture));
       await page.locator("#seaLevel").fill(String(sea));
+      await page.locator("#globalWarmth").fill(String(warmth));
       await page.locator("#iterations").fill("16");
       await page.locator("#generate-local").click();
       await complete();
@@ -230,6 +266,8 @@ const assert = require("node:assert/strict"),
       plainsCoverage: 1,
       mountainCoverage: 0,
       globalMoisture: 1,
+      globalWarmth: 0.6,
+      vegetationDensity: 1,
       seaLevel: 0,
     }))
       await page.locator("#" + id).fill(String(value));

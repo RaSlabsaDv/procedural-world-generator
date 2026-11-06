@@ -1,5 +1,7 @@
 # Diverse landscape v2
 
+Historical specification: the public generator now uses [LANDSCAPE_V3.md](LANDSCAPE_V3.md). V2 sources and golden fixtures remain in tests/core/Historical/V2; its equations and recorded evidence below are retained unchanged.
+
 Status: implemented and verified; v2 equations are frozen for this implementation. This replaces public v1 generation in the existing editor, not a second mode. Historical v1 equations, Python reference and literal fixtures remain separate evidence.
 
 ## Identities and contract

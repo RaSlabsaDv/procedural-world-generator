@@ -2,7 +2,7 @@ import { Matrix4 } from 'three';
 import { decodeTerrain, compareTerrains } from '../data/terrain.contract';
 import { terrainForest } from './terrain-forest';
 import { testTerrain, testWire, testMap } from '../testing/terrain-test-fixture';
-import { MAX_TREES } from '../data/terrain.models';
+import { MAX_TREES, TreeKindId } from '../data/terrain.models';
 
 function fixture() {
   const request = { ...testMap, width: 2, height: 2 };
@@ -11,7 +11,7 @@ function fixture() {
   wire.result.values = [1, 2, 3, 4];
   wire.result.biomes.fill(2);
   wire.result.vegetationDensity.fill(1);
-  const tree = { cellIndex: 0, x: 0.25, y: 1.75, z: 0.25, scale: 1, rotation: 0 };
+  const tree = { cellIndex: 0, x: 0.25, y: 1.75, z: 0.25, scale: 1, rotation: 0, kind: 0 };
   return { request, terrain, wire: { ...wire, result: { ...wire.result, trees: [tree] } } };
 }
 
@@ -63,6 +63,60 @@ describe('landscape forest contract and instancing', () => {
     }
   });
 
+  it.each([undefined, null, 3, -1, 0.5, '0', 1, 2])(
+    'rejects missing, unsupported or biome-inconsistent kind %j',
+    (kind) => {
+      const { request, terrain, wire } = fixture();
+      Object.assign(wire.result.trees[0], { kind });
+      expect(() => decodeTerrain(wire, request, terrain)).toThrow();
+    },
+  );
+
+  it('compares categories exactly even when placements agree', () => {
+    const { request, terrain, wire } = fixture();
+    const a = {
+      request,
+      terrain,
+      response: decodeTerrain(wire, request, terrain),
+      requestMs: 1,
+      initMs: null,
+    };
+    const b = {
+      ...a,
+      response: {
+        ...a.response,
+        result: {
+          ...a.response.result,
+          trees: [{ ...a.response.result.trees[0], kind: 1 as const }],
+        },
+      },
+    };
+    expect(compareTerrains(a, b).vegetationMismatchCount).toBe(1);
+  });
+
+  it('renders all categories with at most six meshes and disposes every group', () => {
+    const { request, terrain, wire } = fixture();
+    const map = decodeTerrain(wire, request, terrain).result;
+    const forest = terrainForest({
+      ...map,
+      trees: [0, 1, 2].map((kind) => ({ ...map.trees[0], kind: kind as TreeKindId })),
+    });
+    expect(forest.groups.map((group) => group.kind)).toEqual([0, 1, 2]);
+    const spies = forest.groups.flatMap(({ trunks, crowns }) =>
+      [trunks, crowns].flatMap((mesh) => [
+        vi.spyOn(mesh, 'dispose'),
+        vi.spyOn(mesh.geometry, 'dispose'),
+        vi.spyOn(mesh.material, 'dispose'),
+      ]),
+    );
+    expect(forest.groups.flatMap(({ trunks, crowns }) => [trunks.count, crowns.count])).toEqual([
+      1, 1, 1, 1, 1, 1,
+    ]);
+    forest.dispose();
+    for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+    expect(terrainForest({ ...map, trees: [] }).groups).toEqual([]);
+  });
+
   it('compares environmental and tree differences independently of height agreement', () => {
     const { request, terrain, wire } = fixture();
     const run = () => ({
@@ -99,12 +153,12 @@ describe('landscape forest contract and instancing', () => {
     const response = decodeTerrain(wire, request, terrain);
     const forest = terrainForest(response.result);
     const matrix = new Matrix4();
-    forest.trunks.getMatrixAt(0, matrix);
-    expect(forest.trunks.count).toBe(1);
-    expect(forest.crowns.count).toBe(1);
+    forest.groups[0].trunks.getMatrixAt(0, matrix);
+    expect(forest.groups[0].trunks.count).toBe(1);
+    expect(forest.groups[0].crowns.count).toBe(1);
     expect(matrix.elements.slice(12, 15)).toEqual([-0.25, 1.75, -0.25]);
-    const geometry = vi.spyOn(forest.trunks.geometry, 'dispose'),
-      material = vi.spyOn(forest.crowns.material, 'dispose');
+    const geometry = vi.spyOn(forest.groups[0].trunks.geometry, 'dispose'),
+      material = vi.spyOn(forest.groups[0].crowns.material, 'dispose');
     forest.dispose();
     expect(geometry).toHaveBeenCalledTimes(1);
     expect(material).toHaveBeenCalledTimes(1);

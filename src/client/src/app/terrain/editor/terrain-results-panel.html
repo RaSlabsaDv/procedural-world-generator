@@ -147,7 +147,8 @@
           Evaporation {{ run.terrain.evaporation }} · Mountains {{ run.terrain.mountainStrength }} ·
           Warp {{ run.terrain.warpStrength }} · Plains {{ run.terrain.plainsCoverage }} · Mountain
           coverage {{ run.terrain.mountainCoverage }} · Moisture {{ run.terrain.globalMoisture }} ·
-          Sea level {{ run.terrain.seaLevel }}
+          Sea level {{ run.terrain.seaLevel }} · Warmth {{ run.terrain.globalWarmth }} · Vegetation
+          {{ run.terrain.vegetationDensity }} · Region scale {{ run.terrain.landformRegionScale }}
         </p>
       </details>
       <details>
@@ -185,6 +186,17 @@
   } @empty {
     <p class="no-measurements">Generation timings and validation results will appear here.</p>
   }
+  <details class="biome-legend">
+    <summary>Biome legend</summary>
+    <ul>
+      @for (biome of biomeLegend; track biome.label) {
+        <li>
+          <span [style.background-color]="biome.cssColor" aria-hidden="true"></span
+          >{{ biome.label }}
+        </li>
+      }
+    </ul>
+  </details>
   <p class="metric-note">
     Request time includes transport and decoding. Rendering and comparison are separate. These
     individual runs are not a benchmark campaign.

@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace WorldGenerator.Core.Tests;
+namespace WorldGenerator.Core.Tests.Historical.V2;
 
 public sealed class LandscapeTests
 {

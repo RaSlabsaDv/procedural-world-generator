@@ -2,6 +2,7 @@ import { Component, computed, effect, input, signal, untracked } from '@angular/
 import { TerrainComparison } from '../data/terrain.contract';
 import { TerrainRequest, TerrainRun, MAX_TREES } from '../data/terrain.models';
 import { sameTerrainParameters } from './terrain-parameters';
+import { BIOME_PRESENTATION } from '../data/biome-presentation';
 import { TerrainPreview } from '../rendering/terrain-preview';
 
 type Source = 'local' | 'remote';
@@ -18,6 +19,10 @@ interface Entry {
   styleUrls: ['../../shared/panel.css', './terrain-results-panel.css'],
 })
 export class TerrainResultsPanel {
+  protected readonly biomeLegend = Object.values(BIOME_PRESENTATION).map((entry) => ({
+    ...entry,
+    cssColor: '#' + entry.color.toString(16).padStart(6, '0'),
+  }));
   protected readonly maxTrees = MAX_TREES;
   readonly local = input<TerrainRun | null>(null);
   readonly remote = input<TerrainRun | null>(null);

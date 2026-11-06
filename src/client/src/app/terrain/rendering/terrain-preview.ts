@@ -187,7 +187,7 @@ export class TerrainPreview {
           );
           scene.add(mesh);
           forest = terrainForest(run.response.result);
-          scene.add(forest.trunks, forest.crowns);
+          for (const group of forest.groups) scene.add(group.trunks, group.crowns);
           scene.add(new AmbientLight(0xffffff, 1.6));
           const sunlight = new DirectionalLight(0xffffff, 1.8);
           sunlight.position.set(-1, 2, 1);

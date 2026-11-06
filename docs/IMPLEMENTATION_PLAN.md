@@ -10,23 +10,23 @@ Baseline/probe interfaces, the experimental regional generator, and all 2D views
 
 The editor provides a large central Three.js viewport, grouped parameter sidebar, measurements sidebar and compact PWA header. Numeric/slider controls share values; Random seed and Reset affect drafts only. One result is shown by default, with explicit Local/Remote selection and comparison views. Captured labels distinguish previous results from draft edits. Generation/errors retain prior terrain; stale or destroyed-component responses are discarded without releasing the lock before real completion.
 
-Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Full-result comparisons, worker ownership and safe PWA updates remain supported; generation now uses the v2 ecology contract below. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
+Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Full-result comparisons, worker ownership and safe PWA updates remain supported; generation now uses the v3 ecology contract below. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
 
 No new dependencies, presets, brushes, 2D views, simulation history or placeholder timeline controls were added. Bounded capture is a later extension; its player will occupy a bottom timeline after real frame data exists.
 
 ## Diverse terrain and vegetation
 
-Current generation uses diverse-landscape-v2 with landscape-ecology-v2 results: regional plains/hills/mountain composition, explicit boundary-connected ocean, environment-based biomes, density and capped deterministic trees. Both hosts share Core; the editor adds four required controls. Two instanced meshes per viewport render every returned tree. Hydraulic-grid-v1 arithmetic and closed boundaries are unchanged. Historical v1 fixtures remain test-only evidence, not another public mode. See [LANDSCAPE_V2.md](LANDSCAPE_V2.md) for exact rules and limits.
+Current generation uses diverse-landscape-v3 with landscape-ecology-v3 results: regional plains/hills/mountain composition, explicit boundary-connected ocean, environment-based biomes, density and capped deterministic trees. Both hosts share Core. Up to six instanced meshes per viewport render every returned tree across three categories. Hydraulic-grid-v1 arithmetic and closed boundaries are unchanged. Historical v1/v2 fixtures remain test-only evidence, not another public mode. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for exact rules and limits.
 
 ## Organization and polishing: complete
 
 Core is split into Contracts, Validation, Generation and Ecology, with separate composition, sea, biome and vegetation responsibilities. Angular separates platform, terrain data/editor/rendering and shared styles. Pure defaults no longer couple PWA readiness to Angular forms. Wire biome IDs and their palette are explicit and centralized. Decoder and comparison implementations are separate behind the contract entry point. A stale display-timing reset was corrected; updating one mode preserves the other mode's measurement.
 
-Unused Angular routing and the duplicate hydraulic browser script were removed. The landscape, editor and PWA browser scenarios share setup/readiness helpers. Existing v2 mathematics, contracts, limits and workload identities remain the baseline; new biome behavior is not implemented in this cleanup.
+Unused Angular routing and the duplicate hydraulic browser script were removed. The landscape, editor and PWA browser scenarios share setup/readiness helpers. That cleanup preserved v2 mathematics, contracts, limits, workload identities and fixtures. The separately versioned v3 feature now builds on it.
 
-## Next planning priority: climate and vegetation diversity
+## Climate and vegetation diversity: implemented
 
-Specify the next version before implementing additional biome types or controls. Candidate scope is differentiated leaf/conifer forests, savanna, tundra and high-altitude snow, with global warmth, vegetation density and independent landform-region scale. Final rules, limits and output identity are still to be defined. Keep v2 as the reproducible comparison baseline until a replacement is explicitly specified.
+V3 specifies required globalWarmth, vegetationDensity and landformRegionScale controls; broadleaf/conifer forests, sparse savanna, tundra and static highland snow; and Core-owned tree kinds. Strict host/client contracts reject missing fields and invalid categories. Density does not change biome coverage, and the existing hydraulic kernel, ocean connectivity and resource caps are preserved. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for precedence, arithmetic and timing. Historical v2 sources and fixtures remain test-only. Production browser evidence covers category/field parity, heavy limits and offline operation.
 
 ## Later: evolution of the selected terrain
 
@@ -44,6 +44,6 @@ Preserve the preferred terrain appearance. Develop diagnostic layers for slope/e
 
 ## Architecture Race and research campaign
 
-Build a sequential runner with immutable inputs, alternating execution order, warm-up, raw trial retention, statistics and JSON/CSV export. Use `landscape-ecology-hydraulic-v2` and `landscape-worker-json-v2` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
+Build a sequential runner with immutable inputs, alternating execution order, warm-up, raw trial retention, statistics and JSON/CSV export. Use `landscape-ecology-hydraulic-v3` and `landscape-worker-json-v3` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
 
 Run a controlled size/iteration/seed matrix under documented network profiles. Keep compute, initialization, request overhead and rendering separate. Report failures and environment limits; browser smoke checks are correctness evidence, not a performance campaign.

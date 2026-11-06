@@ -1,14 +1,8 @@
 import { BufferAttribute, BufferGeometry, Color } from 'three';
-import { TerrainResponse, LANDSCAPE_BIOME, LandscapeBiomeId } from '../data/terrain.models';
+import { TerrainResponse } from '../data/terrain.models';
 
-// Presentation only: numeric biome IDs are supplied by Core; no classification here.
-export const BIOME_PALETTE = {
-  [LANDSCAPE_BIOME.Ocean]: 0x37768b,
-  [LANDSCAPE_BIOME.Grassland]: 0xa7b976,
-  [LANDSCAPE_BIOME.Forest]: 0x56835c,
-  [LANDSCAPE_BIOME.DryGrassland]: 0xc1ac78,
-  [LANDSCAPE_BIOME.Rock]: 0xa6a397,
-} satisfies Record<LandscapeBiomeId, number>;
+import { BIOME_PALETTE } from '../data/biome-presentation';
+export { BIOME_PALETTE } from '../data/biome-presentation';
 
 export function terrainGeometry(
   result: Pick<TerrainResponse['result'], 'width' | 'height' | 'values' | 'biomes'>,

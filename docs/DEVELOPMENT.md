@@ -25,6 +25,7 @@ python3 -m unittest discover -s tests/build -v
 node --test tests/build/worker-rpc.test.mjs
 python3 tests/reference/terrain_reference.py
 python3 tests/reference/landscape_reference.py
+python3 tests/reference/climate_reference.py
 ```
 
 If MSBuild worker nodes fail in the local environment, retry the native build with `--disable-build-servers -m:1`, and use `-m:1` for tests. When intentionally changing package references, regenerate NuGet lockfiles with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review them.
@@ -61,15 +62,15 @@ The SDK may emit “Publishing without optimizations…” with the installed wo
 
 Defaults: seed 42, 128×128, noise scale 0.03, four octaves, height 30, mountain strength 0.55, warp 2, 64 iterations, rainfall 0.05 and evaporation 0.1.
 
-Use **Generate Local**, **Generate Remote**, or **Verify equivalence**. Verification runs both locations sequentially with the same frozen request, compares all heights and biome IDs, and reports build compatibility separately. Dirty/unversioned builds remain unverifiable even when outputs agree. Missing or invalid inputs show structured errors; Remote unavailability does not silently invoke Local.
+Use **Generate Local**, **Generate Remote**, or **Verify equivalence**. Verification runs both locations sequentially with the same frozen request, compares all heights, environment fields, biome IDs, tree kinds/transforms and summaries, and reports build compatibility separately. Dirty/unversioned builds remain unverifiable even when outputs agree. Missing or invalid inputs show structured errors; Remote unavailability does not silently invoke Local.
 
 Drag to orbit, scroll/pinch to zoom, right-drag to pan. Heights and biome IDs come from Core. Ocean is boundary-connected terrain below the explicit relative sea level; low interior valleys remain dry. Forests contain Core-placed instanced trees. No flat lake/ocean overlay is added. A WebGL error leaves numeric results available. No 2D fallback exists. Heavy requests run in the worker; the UI does not offer simulated progress or cancellation.
 
-Current limits and exact arithmetic are specified in [LANDSCAPE_V2.md](LANDSCAPE_V2.md). [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md) and the test-only Historical sources preserve v1 fixtures. The work budget is 33,554,432 cell-iterations; at 512×512, at most 128 iterations are allowed. Model units are illustrative and are not geological years.
+Current climate/vegetation rules build on the frozen v2 equations and are specified in [LANDSCAPE_V3.md](LANDSCAPE_V3.md). [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md) and the test-only Historical sources preserve v1 fixtures. The work budget is 33,554,432 cell-iterations; at 512×512, at most 128 iterations are allowed. Model units are illustrative and are not geological years.
 
 ## Editor interactions
 
-Terrain contains seed, dimensions, height multiplier and mountain strength. Erosion contains iterations, rainfall and evaporation. Expand Advanced noise for noise scale, octaves and warp strength. Sliders and numeric fields share values. Random seed and Reset parameters affect drafts only; use an explicit generation action to run computation.
+Terrain contains seed, dimensions, height multiplier, mountain strength, coverage, sea level and region scale. Climate & vegetation contains warmth, moisture and vegetation density. Erosion contains iterations, rainfall and evaporation. Expand Advanced noise for noise scale, octaves and warp strength. Sliders and numeric fields share values. Random seed and Reset parameters affect drafts only; use an explicit generation action to run computation.
 
 The previous successful terrain remains visible during work and failures. Captured labels identify earlier settings when drafts differ. One result is visible by default; select Local/Remote or use Compare views to display both. Different captured requests are flagged; Verify equivalence is the sequential full-array check for an identical snapshot. Editing drafts clears its old comparison state. Technical details and captured settings are expandable in the results sidebar.
 
@@ -101,13 +102,16 @@ PWA readiness is compact in the header. Expand it for detail; failures and avail
   "mountainCoverage": 0.3,
   "globalMoisture": 0.65,
   "seaLevel": 0.16,
-  "algorithmVersion": "diverse-landscape-v2"
+  "globalWarmth": 0.6,
+  "vegetationDensity": 1,
+  "landformRegionScale": 1,
+  "algorithmVersion": "diverse-landscape-v3"
 }
 ```
 
 Every member is required; missing numeric values are not defaulted. The nested heightmap settings are a composition contract, not an independent public generator. Strict JSON rejects unexpected fields, wrong case/types and non-finite overflow. Both hosts share preparation and `{ "error", "fields" }` failures. API validation/JSON failures return 400; terrain responses use `Cache-Control: no-store`. Health is `GET /api/health`. Removed generation/probe routes return 404.
 
-Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v2` and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v2`. Result `landscape-ecology-v2` includes moisture, temperature, slope, vegetationDensity and bounded tree records; all arrays/transforms participate in equivalence checks. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
+Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v3` and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v3`. Result `landscape-ecology-v3` includes moisture, temperature, slope, vegetationDensity and bounded tree records; all arrays/transforms participate in equivalence checks. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
 
 The WASM proxy creates one module worker with one runtime per document. Always await `generateTerrainJson`. `getRuntimeInfo()` reports initialization count, worker+runtime initialization time, runtime-only time, execution and protocol. Initialization is excluded from Core timing. Startup/crash rejects pending work; a later attempt can retry. Application destruction terminates the worker.
 
@@ -151,7 +155,7 @@ Next implementation: bounded evolution capture and Three.js playback for this ge
 
 Plains coverage and Mountain coverage are regional tendencies, not exact percentages per seed. Their sum cannot exceed 1; the remainder favors hills. Mountain strength controls relief in mountain regions independently of their coverage. Global moisture affects vegetation, independently of erosion rainfall. Sea level is a fraction of the height bound; only four-connected low samples reaching a boundary become ocean.
 
-Core uses illustrative grid/world units and a normalized temperature proxy. There are no calibrated weather, lakes, rivers, seasons or marine erosion. Trees occupy eligible forest quads and follow the exact rendered triangles. Core caps output at 16384 instances using independent hash priorities, avoiding a row-major cut-off. All returned trees are rendered with two shared instanced meshes per viewport. Density and forest coverage are retained independently of this output cap. Request/serialization/rendering costs should be measured separately from Core work. Native historical v1 fixtures remain unchanged in tests/core/Historical and the independent v1 Python reference; the public endpoint accepts v2 only.
+Core uses illustrative grid/world units and a normalized temperature proxy. There are no calibrated weather, lakes, rivers, seasons or marine erosion. Trees occupy eligible forest quads and follow the exact rendered triangles. Core caps output at 16384 instances using independent hash priorities, avoiding a row-major cut-off. All returned trees are rendered with two shared instanced meshes per nonempty category, at most six per viewport. Density and forest coverage are retained independently of this output cap. Request/serialization/rendering costs should be measured separately from Core work. Native historical v1 fixtures remain unchanged in tests/core/Historical and the independent v1 Python reference; the public endpoint accepts v3 only.
 
 ## Repository layout and maintenance
 
@@ -171,8 +175,18 @@ src/client/src/app/
   terrain/testing/ reusable frontend test fixtures
 ```
 
-Core namespaces and host references remain unchanged. Keep numerical operation order frozen for v2; a semantic biome change requires a new result version. Before extending biomes, update Core rules and the explicit client wire-ID/palette declarations together. UI defaults never substitute for missing host fields. Frontend tests remain colocated; historical v1 tests/reference code stay separate.
+Core namespaces and host references remain unchanged. Historical v2 sources and golden fixtures live in tests/core/Historical/V2. Keep numerical operation order frozen for v3; a semantic biome change requires a new result version. Before extending biomes, update Core rules and the explicit client wire-ID/palette declarations together. UI defaults never substitute for missing host fields. Frontend tests remain colocated; historical v1 tests/reference code stay separate.
 
-The browser suite has three maintained entry points: `landscape.cjs` for complete v2 fields/trees and heavy limits, `editor.cjs` for UI transitions, and `pwa.cjs` for offline/safe-update lifecycle. They share launch configuration and readiness diagnostics in `tests/browser/support/browser.cjs`. The weaker duplicate hydraulic-only script has been removed; its current-workload coverage is included in the landscape/editor suite. Keep the existing PWG_* environment overrides. Packaging and worker RPC tests retain their separate build checks.
+The browser suite has three maintained entry points: `landscape.cjs` for complete v3 fields/trees and heavy limits, `editor.cjs` for UI transitions, and `pwa.cjs` for offline/safe-update lifecycle. They share launch configuration and readiness diagnostics in `tests/browser/support/browser.cjs`. The weaker duplicate hydraulic-only script has been removed; its current-workload coverage is included in the landscape/editor suite. Keep the existing PWG_* environment overrides. Packaging and worker RPC tests retain their separate build checks.
 
-`@angular/router` was removed because this single-screen editor does not use Angular routing. No dependencies were added. Reset values and readiness settings now share the same pure defaults module. Formatting and file layout changes preserve v2 results; existing fixtures and full pre/post-refactor numerical fingerprints are used for verification.
+`@angular/router` was removed because this single-screen editor does not use Angular routing. No dependencies were added. Reset values and readiness settings now share the same pure defaults module. The earlier organization pass preserved v2 results using fixtures and pre/post-refactor numerical fingerprints. V3 now has a separate specification, independent climate literals and explicit comparisons showing region scale 1 preserves historical terrain/hydraulic results.
+
+## Climate and vegetation controls (v3)
+
+Global warmth (0..1, default .6) is normalized warmth, not Celsius; elevation and deterministic spatial noise influence the final field. It selects broadleaf/conifer forests, warm savanna, tundra and cold elevated snow according to the ordered Core rules. Increasing warmth modestly dries the illustrative moisture field.
+
+Vegetation density (0..1, default 1) changes candidate density without changing terrain, simulation or biome coverage. Zero removes trees. Increasing it preserves candidates and their transforms before the 16384 cap; above the cap fixed priorities can replace candidates. Landform region scale (.25..4, default 1) changes only the regional mask, independently of noise/detail sampling; larger values produce larger regions. Pure plains do not change with this control.
+
+The Climate & vegetation group contains warmth, moisture and density. Region scale is in Terrain. Captured parameters include all three fields; the expandable biome legend uses the same presentation colors as the terrain mesh. Core supplies Broadleaf, Conifer and Savanna tree kinds; the renderer uses rounded, conical and flat crowns without generating placements. Snow is a static terrain classification. A single seed need not show every biome. There is no added hydrology, dynamic snow, season model or repeated-trial runner.
+
+Frozen v1/v2 references remain test-only, including tests/reference/landscape_reference.py. The independent climate_reference.py computes the literal v3 composition/climate fixture without importing production code. Never update historical expectations to make current changes pass.

@@ -111,7 +111,7 @@ describe('App terrain workflow', () => {
 
   it('renders only the rich terrain workflow and 3D preview', () => {
     expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Terrain editor');
-    expect(fixture.nativeElement.querySelectorAll('input[type=number]').length).toBe(15);
+    expect(fixture.nativeElement.querySelectorAll('input[type=number]').length).toBe(18);
     expect(fixture.nativeElement.querySelector('#workload')).toBeNull();
     expect(fixture.nativeElement.querySelector('#view-2d')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-heightmap-preview')).toBeNull();

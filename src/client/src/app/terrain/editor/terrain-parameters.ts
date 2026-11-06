@@ -56,6 +56,27 @@ export const MAP_PARAMETERS = {
 } as const satisfies Record<keyof Omit<HeightMapRequest, 'algorithmVersion'>, ParameterDefinition>;
 
 export const SIMULATION_PARAMETERS = {
+  globalWarmth: {
+    label: 'Global warmth',
+    defaultValue: DEFAULT_SIMULATION_PARAMETERS.globalWarmth,
+    step: '0.05',
+    description:
+      'Normalized climate warmth, not Celsius. Elevation and regional variation still apply.',
+  },
+  vegetationDensity: {
+    label: 'Vegetation density',
+    defaultValue: DEFAULT_SIMULATION_PARAMETERS.vegetationDensity,
+    step: '0.05',
+    description:
+      'Desired abundance in suitable biomes. Zero removes trees; the 16,384 cap stays separate.',
+  },
+  landformRegionScale: {
+    label: 'Landform region scale',
+    defaultValue: DEFAULT_SIMULATION_PARAMETERS.landformRegionScale,
+    step: '0.25',
+    description:
+      '0.25–4. Larger values create larger natural regions without rescaling fine noise.',
+  },
   plainsCoverage: {
     label: 'Plains coverage',
     defaultValue: DEFAULT_SIMULATION_PARAMETERS.plainsCoverage,

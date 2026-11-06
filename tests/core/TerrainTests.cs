@@ -6,7 +6,7 @@ public sealed class TerrainTests
 {
     internal static TerrainRequest Request(int iterations = 8) => new(
         new(42, 5, 3, .37, 3, 30, HeightMapLimits.SupportedAlgorithmVersion),
-        .55, 2, iterations, .05, .1, .45, .3, .65, .16, TerrainLimits.AlgorithmVersion);
+        .55, 2, iterations, .05, .1, .45, .3, .65, .16, .6, 1, 1, TerrainLimits.AlgorithmVersion);
 
     [Theory]
     [InlineData(0)]

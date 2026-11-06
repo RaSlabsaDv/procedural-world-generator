@@ -26,6 +26,9 @@ const terrain: TerrainRequest = Object.freeze({
   heightMap: map,
   plainsCoverage: 0.45,
   mountainCoverage: 0.3,
+  globalWarmth: 0.6,
+  vegetationDensity: 1,
+  landformRegionScale: 1,
   globalMoisture: 0.65,
   seaLevel: 0.16,
   mountainStrength: 0.55,
@@ -53,7 +56,7 @@ function wire() {
     parameters: terrain,
     simulationVersion: SIMULATION_VERSION,
     workload: TERRAIN_WORKLOAD,
-    executionProfile: 'landscape-worker-json-v2',
+    executionProfile: 'landscape-worker-json-v3',
     computeMs: 2,
     coreBuildId: 'test',
     simulation: {

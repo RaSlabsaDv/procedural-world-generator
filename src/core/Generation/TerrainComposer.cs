@@ -1,13 +1,13 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Frozen v2 composition. Keep arithmetic order aligned with LANDSCAPE_V2.md.</summary>
+/// <summary>Versioned v3 composition. Keep arithmetic order aligned with LANDSCAPE_V3.md.</summary>
 internal static class TerrainComposer
 {
     internal static double Compose(double x, double y, uint seed, TerrainRequest input)
     {
         var wx = x + input.WarpStrength * (2 * Fbm(x * .35 + 17, y * .35 + 31, seed ^ 0xA341316Cu, 3) - 1);
         var wy = y + input.WarpStrength * (2 * Fbm(x * .35 + 47, y * .35 + 13, seed ^ 0xC8013EA4u, 3) - 1);
-        var region = Math.Clamp(2 * (Fbm(wx * .65, wy * .65, seed ^ 0xD1B54A35u, 3) - .25), 0, 1);
+        var region = Region(wx, wy, seed, input.LandformRegionScale);
         var (plains, hills, mountains) = Weights(region, input.PlainsCoverage, input.MountainCoverage);
         var basis = .08 + .26 * Fbm(wx * .18, wy * .18, seed ^ 0xAD90777Du, input.HeightMap.Octaves);
         var rolling = Fbm(wx * .6, wy * .6, seed ^ 0x68E31DA4u, input.HeightMap.Octaves);
@@ -16,6 +16,9 @@ internal static class TerrainComposer
         ridge = ridge * ridge * ridge;
         return Blend(basis, rolling, detail, ridge, plains, hills, mountains, input.MountainStrength);
     }
+
+    internal static double Region(double x, double y, uint seed, double scale) =>
+        Math.Clamp(2 * (Fbm(x * .65 / scale, y * .65 / scale, seed ^ 0xD1B54A35u, 3) - .25), 0, 1);
 
     internal static double Blend(double basis, double rolling, double detail, double ridge,
         double plains, double hills, double mountains, double strength) => Math.Clamp(

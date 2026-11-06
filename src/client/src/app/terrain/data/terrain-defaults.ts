@@ -13,6 +13,9 @@ export const DEFAULT_MAP_PARAMETERS = Object.freeze({
 export const DEFAULT_SIMULATION_PARAMETERS = Object.freeze({
   plainsCoverage: 0.45,
   mountainCoverage: 0.3,
+  globalWarmth: 0.6,
+  vegetationDensity: 1,
+  landformRegionScale: 1,
   globalMoisture: 0.65,
   seaLevel: 0.16,
   mountainStrength: 0.55,

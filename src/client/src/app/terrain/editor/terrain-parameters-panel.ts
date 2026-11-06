@@ -53,7 +53,16 @@ export class TerrainParametersPanel {
           simulation('plainsCoverage'),
           simulation('mountainCoverage'),
           simulation('seaLevel'),
+          simulation('landformRegionScale'),
+        ],
+      },
+      {
+        title: 'Climate & vegetation',
+        advanced: false,
+        fields: [
+          simulation('globalWarmth'),
           simulation('globalMoisture'),
+          simulation('vegetationDensity'),
         ],
       },
       {

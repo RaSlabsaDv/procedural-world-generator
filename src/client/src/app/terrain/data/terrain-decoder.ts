@@ -1,6 +1,9 @@
 import { sameObject, object } from './contract-utils';
 import {
   RESULT_VERSION,
+  TREE_KIND_IDS,
+  TREE_KIND_BIOME,
+  VEGETATED_BIOME_IDS,
   LANDSCAPE_BIOME,
   LANDSCAPE_BIOME_IDS,
   MAX_TREES,
@@ -105,18 +108,18 @@ export function decodeTerrain(
     slope = field('slope', Math.fround(Math.SQRT2 * upper)),
     vegetationDensity = field('vegetationDensity', 1);
   for (let i = 0; i < normalized.length; i++)
-    if (biomeIds[i] !== LANDSCAPE_BIOME.Forest && vegetationDensity[i] !== 0) return fail();
+    if (!VEGETATED_BIOME_IDS.has(biomeIds[i]) && vegetationDensity[i] !== 0) return fail();
   const rawTrees = result['trees'];
   if (!Array.isArray(rawTrees) || rawTrees.length > MAX_TREES) return fail();
   let previous = -1;
   const trees: TreeInstance[] = rawTrees.map((tree) => {
     if (
       !object(tree) ||
-      Object.keys(tree).length !== 6 ||
-      !['cellIndex', 'x', 'y', 'z', 'scale', 'rotation'].every((key) => key in tree)
+      Object.keys(tree).length !== 7 ||
+      !['cellIndex', 'x', 'y', 'z', 'scale', 'rotation', 'kind'].every((key) => key in tree)
     )
       return fail();
-    // Six required members; rejecting extras keeps the versioned instance contract explicit.
+    // Seven required members; rejecting extras keeps the versioned instance contract explicit.
     if (
       !['x', 'y', 'z', 'scale', 'rotation'].every(
         (key) => typeof tree[key] === 'number' && Number.isFinite(tree[key]),
@@ -124,6 +127,7 @@ export function decodeTerrain(
     )
       return fail();
     return Object.freeze({
+      kind: tree['kind'],
       cellIndex: tree['cellIndex'],
       x: Math.fround(tree['x'] as number),
       y: Math.fround(tree['y'] as number),
@@ -133,8 +137,10 @@ export function decodeTerrain(
     }) as unknown as TreeInstance;
   });
   for (const tree of trees) {
-    const { cellIndex: i, x, y, z, scale, rotation } = tree;
+    const { cellIndex: i, x, y, z, scale, rotation, kind } = tree;
     if (
+      !Number.isInteger(kind) ||
+      !TREE_KIND_IDS.has(kind) ||
       !Number.isSafeInteger(i) ||
       i <= previous ||
       i < 0 ||
@@ -155,7 +161,7 @@ export function decodeTerrain(
     )
       return fail();
     const corners = [i, i + 1, i + request.width, i + request.width + 1];
-    if (corners.some((j) => biomeIds[j] !== LANDSCAPE_BIOME.Forest || slope[j] >= 0.5))
+    if (corners.some((j) => biomeIds[j] !== TREE_KIND_BIOME[kind] || slope[j] >= 0.5))
       return fail();
     const fx = x - (i % request.width),
       fz = z - Math.floor(i / request.width);

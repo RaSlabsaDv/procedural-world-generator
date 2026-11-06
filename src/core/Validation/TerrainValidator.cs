@@ -8,6 +8,9 @@ public static class TerrainValidator
             return new(null, [new("request.required", "request", "A terrain request is required.")]);
         var errors = HeightMapValidator.Validate(request.HeightMap)
             .Select(error => error with { Field = "heightMap." + error.Field }).ToList();
+        Range("globalWarmth", request.GlobalWarmth, 0, 1);
+        Range("vegetationDensity", request.VegetationDensity, 0, 1);
+        Range("landformRegionScale", request.LandformRegionScale, TerrainLimits.MinLandformRegionScale, TerrainLimits.MaxLandformRegionScale);
         Range("plainsCoverage", request.PlainsCoverage, 0, 1);
         Range("mountainCoverage", request.MountainCoverage, 0, 1);
         Range("globalMoisture", request.GlobalMoisture, 0, 1);

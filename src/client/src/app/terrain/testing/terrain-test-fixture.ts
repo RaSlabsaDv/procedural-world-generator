@@ -21,6 +21,9 @@ export function testTerrain(heightMap = testMap): TerrainRequest {
     heightMap,
     plainsCoverage: 0.45,
     mountainCoverage: 0.3,
+    globalWarmth: 0.6,
+    vegetationDensity: 1,
+    landformRegionScale: 1,
     globalMoisture: 0.65,
     seaLevel: 0.16,
     mountainStrength: 0.55,
@@ -50,7 +53,7 @@ export function testWire(terrain = testTerrain()) {
     parameters: terrain,
     workload: TERRAIN_WORKLOAD as typeof TERRAIN_WORKLOAD,
     simulationVersion: SIMULATION_VERSION as typeof SIMULATION_VERSION,
-    executionProfile: 'landscape-worker-json-v2' as const,
+    executionProfile: 'landscape-worker-json-v3' as const,
     computeMs: 1,
     coreBuildId: 'git:123456789abc',
     simulation: {

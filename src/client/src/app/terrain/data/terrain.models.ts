@@ -1,4 +1,4 @@
-export const RESULT_VERSION = 'landscape-ecology-v2';
+export const RESULT_VERSION = 'landscape-ecology-v3';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -30,7 +30,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v2';
+  readonly executionProfile: 'landscape-worker-json-v3';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -52,8 +52,8 @@ export class TerrainError extends Error {
   }
 }
 
-export const TERRAIN_ALGORITHM = 'diverse-landscape-v2';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v2';
+export const TERRAIN_ALGORITHM = 'diverse-landscape-v3';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v3';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -63,6 +63,9 @@ export interface TerrainRequest {
   readonly iterations: number;
   readonly plainsCoverage: number;
   readonly mountainCoverage: number;
+  readonly globalWarmth: number;
+  readonly vegetationDensity: number;
+  readonly landformRegionScale: number;
   readonly globalMoisture: number;
   readonly seaLevel: number;
   readonly rainfall: number;
@@ -82,6 +85,7 @@ export interface SimulationSummary {
 }
 
 export interface TreeInstance {
+  readonly kind: TreeKindId;
   readonly cellIndex: number;
   readonly x: number;
   readonly y: number;
@@ -90,15 +94,30 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v2';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v3';
 
-/** Wire IDs for landscape-ecology-v2; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v3; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,
-  Forest: 2,
+  BroadleafForest: 2,
   DryGrassland: 3,
   Rock: 4,
+  ConiferForest: 5,
+  Savanna: 6,
+  Tundra: 7,
+  SnowHighlands: 8,
 } as const;
 export type LandscapeBiomeId = (typeof LANDSCAPE_BIOME)[keyof typeof LANDSCAPE_BIOME];
 export const LANDSCAPE_BIOME_IDS: ReadonlySet<number> = new Set(Object.values(LANDSCAPE_BIOME));
+
+export const TREE_KIND = { Broadleaf: 0, Conifer: 1, Savanna: 2 } as const;
+export type TreeKindId = (typeof TREE_KIND)[keyof typeof TREE_KIND];
+export const TREE_KIND_IDS: ReadonlySet<number> = new Set(Object.values(TREE_KIND));
+/** Wire consistency relationships, not ecological classification. */
+export const TREE_KIND_BIOME: Record<TreeKindId, LandscapeBiomeId> = {
+  [TREE_KIND.Broadleaf]: LANDSCAPE_BIOME.BroadleafForest,
+  [TREE_KIND.Conifer]: LANDSCAPE_BIOME.ConiferForest,
+  [TREE_KIND.Savanna]: LANDSCAPE_BIOME.Savanna,
+};
+export const VEGETATED_BIOME_IDS: ReadonlySet<number> = new Set(Object.values(TREE_KIND_BIOME));

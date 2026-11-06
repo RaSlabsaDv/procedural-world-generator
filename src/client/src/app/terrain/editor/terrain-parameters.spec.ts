@@ -12,6 +12,12 @@ describe('terrain parameter capture', () => {
     const snapshot = captureTerrainRequest(map, simulation);
     map.controls.seed.setValue(-99);
     simulation.controls.iterations.setValue(128);
+    simulation.controls.globalWarmth.setValue(0.1);
+    simulation.controls.vegetationDensity.setValue(0);
+    simulation.controls.landformRegionScale.setValue(4);
+    expect(snapshot.globalWarmth).toBe(0.6);
+    expect(snapshot.vegetationDensity).toBe(1);
+    expect(snapshot.landformRegionScale).toBe(1);
     expect(snapshot.heightMap.seed).toBe(42);
     expect(snapshot.iterations).toBe(64);
     expect(Object.isFrozen(snapshot)).toBe(true);
@@ -47,10 +53,14 @@ describe('terrain parameter capture', () => {
     map.controls.width.setValue(1);
     simulation.controls.iterations.setValue(0);
     simulation.controls.rainfall.setValue(0);
+    simulation.controls.globalWarmth.setValue(0);
+    simulation.controls.vegetationDensity.setValue(0);
     const snapshot = captureTerrainRequest(map, simulation);
     expect(snapshot.heightMap.heightMultiplier).toBe(0);
     expect(snapshot.heightMap.width).toBe(1);
     expect(snapshot.iterations).toBe(0);
     expect(snapshot.rainfall).toBe(0);
+    expect(snapshot.globalWarmth).toBe(0);
+    expect(snapshot.vegetationDensity).toBe(0);
   });
 });
