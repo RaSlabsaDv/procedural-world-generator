@@ -8,12 +8,12 @@ The interoperability PoC is implemented for both execution paths:
 - `src/hosts`: shared host transport, strict JSON options, build identity, error envelope, and `GenerationResponse`, linked into both the WASM and API projects.
 - `src/wasm/WorldGenerator.Wasm.csproj`: a standalone browser WebAssembly host that references Core and exposes `[JSExport]` methods.
 - `src/api/WorldGenerator.Api.csproj`: an ASP.NET Core minimal API that references the same Core project.
-- `src/client`: a minimal standalone Angular application that runs scalar and bulk-array checks through WASM and the API.
+- `src/client`: an Angular heightmap explorer with parameter controls, Local/Remote generation, sequential equivalence checks, real timings, Canvas 2D previews, and collapsed probe diagnostics.
 - `tests/core/WorldGenerator.Core.Tests.csproj`: xUnit tests for the probe, heightmap contracts, preparation and validated-request immutability, validation boundaries, and deterministic generator output.
 - `tests/api/WorldGenerator.Api.Tests.csproj`: HTTP and native WASM-export contract tests for the API endpoints, heightmap success/error JSON, build identity, and the shared host serialization contract.
 - `ProceduralWorldGenerator.slnx`: the solution containing the .NET projects.
 
-The app does not contain an Architecture Race or a performance comparison view. `README.md` remains empty. Phase 2 now includes the heightmap contracts, canonical validation, shared host transport envelope, deterministic Core generator, and matching WASM/API heightmap endpoints; the Angular heightmap UI, 2D MVP, Three.js, and PWA support belong to later steps.
+Phase 2 is complete, including the Angular heightmap UI and 2D MVP. Architecture Race, Three.js, and PWA support remain later phases. `README.md` remains empty.
 
 ## Prerequisites and commands
 
@@ -39,7 +39,7 @@ dotnet build ProceduralWorldGenerator.slnx --configuration Release --no-restore
 dotnet test ProceduralWorldGenerator.slnx --configuration Release --no-build --no-restore
 ```
 
-The test projects' `packages.lock.json` files record their resolved dependencies. When intentionally changing package references, regenerate the lockfiles with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review the changes.
+The WASM/API hosts and test projects have checked-in `packages.lock.json` files recording resolved dependencies. When intentionally changing package references, regenerate the lockfiles with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review the changes.
 
 ## WASM host and Angular PoC
 
@@ -53,7 +53,7 @@ The WASM host contains three exports:
 
 `src/wasm/wwwroot/world-generator-host.js` imports `_framework/dotnet.js`, initializes the runtime once, memoizes the exports, and exposes the init duration and initialization count. The Angular service keeps one host module and runtime per page.
 
-`scripts/publish-wasm.sh` runs a Release publish, then copies `_framework` and the host loader into `src/client/public/wasm/`. That directory is generated and ignored by Git. The client's `prebuild` script invokes the publish script.
+`scripts/publish-wasm.sh` performs an explicit locked restore with Release configuration, then Release publish with `--no-restore`. It checks the expected loader files before replacing the generated `src/client/public/wasm/` assets. That directory is ignored by Git. The client's `prebuild` hook invokes this script. `publish-app.sh` likewise restores the API in locked mode before publishing without restore. Host lockfiles pin NuGet dependencies; the SDK and installed workload remain separate toolchain prerequisites.
 
 ## API and production deployment
 
@@ -66,7 +66,7 @@ The API exposes the probe operations and the heightmap endpoint:
 | `POST /api/v1/heightmaps` | v1 heightmap request | `GenerationResponse` |
 | `GET /api/health` | none | `{ "status": "ok" }` |
 
-All endpoints use `WorldGenerator.Core`. Probe endpoints reject missing or unexpected fields, invalid counts, and integer overflow with `400`; heightmap endpoints use strict JSON and return `400` with the shared `{ "error", "fields" }` envelope for `invalid_json` or `validation`. Unexpected failures return `500`. `computeMs` measures only the Core call in the host; for heightmaps it measures `GenerateValidated` after preparation. It is not displayed as an in-app comparison. Heightmap responses, including errors, use `Cache-Control: no-store`.
+All endpoints use `WorldGenerator.Core`. Probe endpoints reject missing or unexpected fields, invalid counts, and integer overflow with `400`; heightmap endpoints use strict JSON and return `400` with the shared `{ "error", "fields" }` envelope for `invalid_json` or `validation`. Unexpected failures return `500`. `computeMs` measures only the Core call in the host; for heightmaps it measures `GenerateValidated` after preparation. The heightmap cards display this alongside browser request-to-data timing; neither metric includes preview rendering. Heightmap responses, including errors, use `Cache-Control: no-store`.
 
 For development, start the API and Angular separately; the Angular proxy forwards `/api` to port 5180:
 
@@ -88,7 +88,7 @@ For a single-origin production bundle, `scripts/publish-app.sh` builds Angular (
 dotnet artifacts/app/WorldGenerator.Api.dll --urls http://localhost:8080
 ```
 
-Open `http://localhost:8080/` and select **Run local checks** and **Run remote checks**. Both paths verify the scalar result, the five-value fixture, an empty array, the maximum 262,144-value array, and a repeated call. Both maximum-array results are hashed as little-endian float32 data and compared with the native fixture value. The local section also checks runtime reuse; the remote section checks the API's invalid-input response. If the API is unreachable, the remote section reports a clear availability error.
+Open `http://localhost:8080/` and use **Generate Local**, **Generate Remote**, or **Verify equivalence**. The latter runs the same snapshot sequentially and displays both maps and full-array error statistics. For the original probe checks, expand **Probe diagnostics** and select **Run local checks** and **Run remote checks**. Both paths verify the scalar result, the five-value fixture, an empty array, the maximum 262,144-value array, and a repeated call. Both maximum-array results are hashed as little-endian float32 data and compared with the native fixture value. The local section also checks runtime reuse; the remote section checks the API's invalid-input response. If the API is unreachable, the remote section reports a clear availability error.
 
 Verified in the current environment:
 
@@ -96,9 +96,35 @@ Verified in the current environment:
 - Angular CLI 22.2.6, Node.js 24.20.0, npm 11.19.0.
 - Release WASM publish and the single-origin production bundle load from `http://localhost:8090/` without a development server.
 - All local and remote page checks pass. Both maximum-array digests equal `cbd49d9128202d264bddde63406dd224d2a0d4f0d841bed3697a1f17ff424dd8`.
-- Native build has zero warnings; all 98 Core tests and all 78 API/host tests pass, including build-identity fallback and double-overflow regressions. Both Angular unit tests passed during the earlier UI verification.
+- Native build has zero warnings; all 98 Core tests and all 78 API/host tests pass, including build-identity fallback and double-overflow regressions. All 43 Angular tests pass, covering response validation, adapters, comparison, pixel mapping, immutable snapshots, stale-result handling, errors, and the shared operation lock.
 - A blocked `/api` request produces the expected remote availability error.
 - Headless Firefox verification of the published WASM and API hosts matched the 3×2 golden fixture, reused the runtime for repeated calls, returned identical 37×23 results (maximum absolute error 0), produced matching `validation` envelopes for a missing field, and reported the same `coreBuildId`.
+
+## Angular heightmap UI and verification
+
+The page defaults to seed `42`, a `128×128` map, scale `0.03`, four octaves, and height `30`. Host validation errors appear beside the corresponding fields and in an alert. Blank/unparseable inputs are rejected before execution without substituting zero. A single operation lock covers generation and probe checks; results show their original inputs after edits, and changed inputs clear comparison state.
+
+Both previews use the same grayscale scale defined by the captured height multiplier; zero height renders black. Equivalence uses every float32 height and the tolerance in [BENCHMARKING.md](BENCHMARKING.md). Matching numerical output and compatible build identity are reported separately. Matching dirty or unversioned IDs cannot establish build compatibility.
+
+Run frontend checks from the repository root:
+
+```sh
+npm --prefix src/client ci
+npm --prefix src/client run build
+npm --prefix src/client test -- --watch=false
+```
+
+The normal `npm run build` and `./scripts/publish-app.sh` paths both completed. The earlier restore hang did not reproduce outside the sandbox: the initial sandbox attempt reported inaccessible NuGet audit data and an MSBuild task-host communication failure. The updated scripts separate restore/publish and fail on errors; they do not bypass network failures, suppress auditing, or fall back to stale assets. Publish still emits an informational message that optional WASM binary optimizations are unavailable in this environment; no AOT or optimization settings were changed.
+
+Production UI smoke checks used headless Chromium 153 against the single-origin API bundle on localhost, without an Angular development server:
+
+- Seed `42`, `3×2`, scale `0.37`, three octaves, height `30`: both maps matched the golden fixture; row-major grayscale values were `[25, 31, 58, 54, 59, 55]`.
+- Seed `-7`, `37×23`, scale `0.07`, five octaves, height `123.5`: full-array numerical comparison and both canvas images matched.
+- Zero height rendered black, repeated Local calls kept initialization count at one, invalid width showed structured validation, and a blocked API request showed availability failure.
+- An intercepted response with a different build ID was flagged as incompatible despite numerical agreement. No browser page errors occurred.
+- The supported maximum `512×512`, eight octaves, scale `1`, height `1000`, and seed `Int32.MinValue` matched across both modes on a 390-pixel viewport without horizontal overflow.
+
+These are correctness and usability checks, not controlled performance findings. Main-thread WASM can still block during computation. PWA/offline availability is not implemented yet.
 
 ## Heightmap contracts, hosts, validation, and generator
 
@@ -201,6 +227,6 @@ This probe supplies test data for calls and bulk transfer. It is not the terrain
 
 ## Next integration step
 
-Integrate the implemented heightmap workload into the Angular local/remote checks and add a minimal 2D preview. Keep the probe tests and use the same request, validation, and response envelope in both execution modes.
+The heightmap MVP is complete. The next planned step is Phase 3A PWA/offline support, including caching all required runtime assets and verifying offline reload plus generation with a new seed. Keep probe diagnostics and the existing generation contracts.
 
 Keep mathematical algorithms in Core, keep transport and timers in the thin hosts, and preserve identical parameters and validation for both execution paths. Do not add the Architecture Race or a performance comparison view yet. See the [architecture](ARCHITECTURE.md), [roadmap](IMPLEMENTATION_PLAN.md), and [measurement protocol](BENCHMARKING.md).

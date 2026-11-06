@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** the shared `WorldGenerator.Core` computation probe, native/API tests, standalone WASM host, ASP.NET Core API, and minimal Angular local/remote paths are implemented. A single-origin Release build loads the WASM bundle and API, and scalar, bulk-array, runtime-reuse, API-error, and publishing checks pass. Phase 2 now provides the canonical heightmap request/result contracts, canonical validation, a shared host-owned `GenerationResponse` envelope, the deterministic `value-noise-fbm-v1` Core generator, and matching WASM/API heightmap endpoints with strict JSON, shared errors, build identity, and computation timing. The 2D MVP and Race/benchmark UI remain planned. See [development instructions](DEVELOPMENT.md) for the current code and commands. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
+**Status:** Phases 0–2 are implemented: the shared deterministic C# core, WASM/API heightmap hosts, and Angular heightmap MVP provide parameter controls, Local/Remote execution, sequential equivalence checks, timings, and Canvas 2D previews. The single-origin production build and browser behavior are verified. Probe checks remain available in collapsed diagnostics. PWA/offline, 3D/biomes, and Architecture Race remain planned. See [development instructions](DEVELOPMENT.md) for commands and verification details. The [Project Brief](PROJECT_BRIEF.md) defines the required scope.
 
 ## 1. Components and dependencies
 
@@ -8,7 +8,7 @@ One monorepo, one Angular application, two thin execution hosts, and one algorit
 
 ```mermaid
 flowchart TD
-    UI[Angular: controls and results] --> G[GenerationService]
+    UI[Angular: controls and results] --> G[HeightMapService]
     R[Race / benchmark runner] --> G
     G --> L[Local adapter]
     G --> H[Remote adapter]
@@ -45,7 +45,7 @@ A separate `Contracts` project is not needed yet: pure input and output models b
 | Core | Deterministic generator, canonical validation, models, algorithm version; biome classification later |
 | WASM host | One-time runtime initialization, batched JS/.NET calls, data adaptation, Core timer |
 | API | A generation request, HTTP input validation, Core invocation, timer, response |
-| GenerationService | Adapter selection, input snapshot, request state, browser timings, common result format |
+| HeightMapService | Adapter selection, input snapshot, request state, browser timings, common result format |
 | Renderer | Map → pixels or mesh, palette, camera, Three.js resource cleanup |
 | Runner | Execution order, output comparison, statistics, and export |
 
@@ -174,6 +174,16 @@ The API returns `400` with an error code and field errors for invalid input; an 
 - Three.js reuses or disposes of geometry/materials; continuous animation stops during measurement series. Geometry and palettes are identical for Local and Remote.
 
 A Web Worker is an optional future execution change, not a required MVP dependency. If a supported size blocks the UI for too long, first lower the limit and document the restriction.
+
+### Implemented Angular heightmap MVP
+
+`HeightMapService.local` and `.remote` use the existing WASM runtime and HTTP endpoint. Both pass responses through `heightmap.contract.ts`, which checks the envelope, request dimensions/version, workload, timings, identity, and every height before returning independent `Float32Array` storage. Structured host errors are distinguished from protocol and availability failures. Canonical parameter validation remains in Core; the form only rejects empty or unparseable numbers and provides HTML input guidance.
+
+`App` captures a frozen request and uses one operation lock across heightmap actions and `ProbeDiagnostics`. Changed inputs invalidate comparison state; obsolete asynchronous results are discarded. Existing maps retain their original parameter labels. The Local path permits a browser frame before synchronous computation; it can still block the main thread.
+
+“Verify equivalence” runs Local then Remote using one snapshot and renders after the pair. It compares every height with the documented tolerance, reports maximum/mean absolute error and mismatch count, and distinguishes numerical agreement from build compatibility. Different IDs are incompatible; matching dirty/unversioned IDs remain unverifiable. This is a correctness check without repeated trials, winner rankings, or performance charts.
+
+`HeightMapPreview` builds row-major grayscale Canvas 2D pixels on the CPU. Both maps use zero as black and the captured height multiplier as white, with an explicit zero-height case. It does not normalize each map by its own extrema or modify heights. `computeMs` comes from the host; browser `requestMs` ends after decoding and normalization, before comparison/rendering. Runtime initialization is displayed separately.
 
 ## 6. Deployment and offline support
 
