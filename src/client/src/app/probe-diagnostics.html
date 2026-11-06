@@ -1,0 +1,67 @@
+<section>
+  <h2>Interop diagnostics</h2>
+  <p>Runs the same shared C# probe through local WebAssembly and the remote ASP.NET Core API.</p>
+
+  <div class="actions">
+    <button
+      type="button"
+      (click)="runLocalChecks()"
+      [disabled]="disabled() || remoteState() === 'running' || localState() === 'running'"
+    >
+      {{ localState() === 'running' ? 'Running...' : 'Run local checks' }}
+    </button>
+    <button
+      type="button"
+      (click)="runRemoteChecks()"
+      [disabled]="disabled() || localState() === 'running' || remoteState() === 'running'"
+    >
+      {{ remoteState() === 'running' ? 'Running...' : 'Run remote checks' }}
+    </button>
+  </div>
+
+  <p class="status">
+    WASM runtime initializations: {{ init().initCount }}
+    @if (init().initMs !== null) {
+      ({{ init().initMs!.toFixed(1) }} ms)
+    }
+    · WASM calls: {{ localCalls() }} · Remote API calls: {{ remoteCalls() }}
+  </p>
+
+  <section>
+    <h2>Local WebAssembly</h2>
+
+    @if (localError(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+
+    @if (localChecks().length > 0) {
+      <ul class="checks">
+        @for (check of localChecks(); track check.name) {
+          <li [class.failed]="!check.passed">
+            <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
+            {{ check.name }} — {{ check.detail }}
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section>
+    <h2>Remote ASP.NET Core API</h2>
+
+    @if (remoteError(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+
+    @if (remoteChecks().length > 0) {
+      <ul class="checks">
+        @for (check of remoteChecks(); track check.name) {
+          <li [class.failed]="!check.passed">
+            <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
+            {{ check.name }} — {{ check.detail }}
+          </li>
+        }
+      </ul>
+    }
+  </section>
+</section>

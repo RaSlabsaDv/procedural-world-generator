@@ -9,7 +9,10 @@ export function getRuntimeInfo() {
 }
 
 export function getWorldGenerator() {
-    runtimePromise ??= initialize();
+    runtimePromise ??= initialize().catch((error) => {
+        runtimePromise = null;
+        throw error;
+    });
     return runtimePromise;
 }
 

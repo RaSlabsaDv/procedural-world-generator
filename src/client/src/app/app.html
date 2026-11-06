@@ -1,59 +1,176 @@
 <main>
-  <h1>WorldGenerator PoC</h1>
-  <p>Runs the same shared C# probe through local WebAssembly and the remote ASP.NET Core API.</p>
+  <header>
+    <p class="eyebrow">Procedural World Generator</p>
+    <h1>Heightmap explorer</h1>
+    <p>Generate the same deterministic terrain in your browser or on the server.</p>
+  </header>
 
-  <div class="actions">
-    <button type="button" (click)="runLocalChecks()" [disabled]="localState() === 'running'">
-      {{ localState() === 'running' ? 'Running...' : 'Run local checks' }}
-    </button>
-    <button type="button" (click)="runRemoteChecks()" [disabled]="remoteState() === 'running'">
-      {{ remoteState() === 'running' ? 'Running...' : 'Run remote checks' }}
-    </button>
+  <form [formGroup]="form" (ngSubmit)="generate('local')" novalidate>
+    <fieldset [disabled]="busy()">
+      <legend>Generation parameters</legend>
+      <div class="parameters">
+        <label
+          >Seed <input id="seed" type="number" step="1" formControlName="seed" />
+          <small class="field-error">{{ fieldError('seed') }}</small></label
+        >
+        <label
+          >Width
+          <input id="width" type="number" min="2" max="512" step="1" formControlName="width" />
+          <small class="field-error">{{ fieldError('width') }}</small></label
+        >
+        <label
+          >Height
+          <input id="height" type="number" min="2" max="512" step="1" formControlName="height" />
+          <small class="field-error">{{ fieldError('height') }}</small></label
+        >
+        <label
+          >Noise scale
+          <input
+            id="noiseScale"
+            type="number"
+            min="0.0001"
+            max="1"
+            step="any"
+            formControlName="noiseScale"
+          />
+          <small class="field-error">{{ fieldError('noiseScale') }}</small></label
+        >
+        <label
+          >Octaves
+          <input id="octaves" type="number" min="1" max="8" step="1" formControlName="octaves" />
+          <small class="field-error">{{ fieldError('octaves') }}</small></label
+        >
+        <label
+          >Height multiplier
+          <input
+            id="heightMultiplier"
+            type="number"
+            min="0"
+            max="1000"
+            step="any"
+            formControlName="heightMultiplier"
+          />
+          <small class="field-error">{{ fieldError('heightMultiplier') }}</small></label
+        >
+      </div>
+      <div class="actions">
+        <button id="generate-local" type="button" (click)="generate('local')">
+          Generate Local
+        </button>
+        <button id="generate-remote" type="button" (click)="generate('remote')">
+          Generate Remote
+        </button>
+        <button id="verify-equivalence" type="button" (click)="generate('verify')">
+          Verify equivalence
+        </button>
+      </div>
+    </fieldset>
+  </form>
+
+  <p class="status" role="status" aria-live="polite">{{ status() }}</p>
+  @if (error(); as problem) {
+    <div class="error" role="alert">
+      <strong>{{ problem.message }}</strong>
+      @if (problem.kind === 'validation') {
+        <ul>
+          @for (
+            field of [
+              'seed',
+              'width',
+              'height',
+              'width * height',
+              'noiseScale',
+              'octaves',
+              'heightMultiplier',
+              'algorithmVersion',
+            ];
+            track field
+          ) {
+            @if (problem.fields[field]; as message) {
+              <li>{{ field }}: {{ message }}</li>
+            }
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  @if (comparison(); as check) {
+    <section class="comparison" aria-label="Equivalence result">
+      <h2>Equivalence check</h2>
+      <p id="numeric-match">
+        {{
+          check.numericMatch
+            ? 'All heights match within tolerance.'
+            : 'Height differences exceed tolerance.'
+        }}
+      </p>
+      <p id="build-identity">
+        @switch (check.identity) {
+          @case ('compatible') {
+            Matching build identity.
+          }
+          @case ('different') {
+            Build identities differ: these results are incompatible.
+          }
+          @case ('unverifiable') {
+            Build identity is unverifiable (dirty or unversioned); numerical agreement alone does
+            not confirm build compatibility.
+          }
+        }
+      </p>
+      <p>
+        Maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Mean error:
+        {{ check.meanAbsoluteError.toExponential(3) }} · Outside tolerance:
+        {{ check.mismatchCount }}
+      </p>
+    </section>
+  }
+
+  <div class="maps">
+    @for (
+      entry of [
+        { name: 'Local WebAssembly', run: local() },
+        { name: 'Remote API', run: remote() },
+      ];
+      track entry.name
+    ) {
+      @if (entry.run; as run) {
+        <section class="map-card" [attr.aria-label]="entry.name">
+          <h2>{{ entry.name }}</h2>
+          <p class="snapshot">
+            Seed {{ run.request.seed }} · {{ run.request.width }} × {{ run.request.height }} · Scale
+            {{ run.request.noiseScale }} · {{ run.request.octaves }} octaves · Height
+            {{ run.request.heightMultiplier }}
+          </p>
+          <app-heightmap-preview [run]="run" />
+          <dl>
+            <div>
+              <dt>Core computation</dt>
+              <dd>{{ run.response.computeMs.toFixed(2) }} ms</dd>
+            </div>
+            <div>
+              <dt>Request to data ready</dt>
+              <dd>{{ run.requestMs.toFixed(2) }} ms</dd>
+            </div>
+            @if (run.initMs !== null) {
+              <div>
+                <dt>Runtime initialization (once)</dt>
+                <dd>{{ run.initMs.toFixed(2) }} ms</dd>
+              </div>
+            }
+          </dl>
+          <p class="build-id">Core: {{ run.response.coreBuildId }}</p>
+        </section>
+      }
+    }
   </div>
-
-  <p class="status">
-    WASM runtime initializations: {{ init().initCount }}
-    @if (init().initMs !== null) {
-      ({{ init().initMs!.toFixed(1) }} ms)
-    }
-    · WASM calls: {{ localCalls() }} · Remote API calls: {{ remoteCalls() }}
+  <p class="caption">
+    Black = zero height; white = the selected height multiplier. Both previews use the same scale.
+    Request timing excludes rendering and comparison.
   </p>
-
-  <section>
-    <h2>Local WebAssembly</h2>
-
-    @if (localError(); as message) {
-      <p class="error" role="alert">{{ message }}</p>
-    }
-
-    @if (localChecks().length > 0) {
-      <ul class="checks">
-        @for (check of localChecks(); track check.name) {
-          <li [class.failed]="!check.passed">
-            <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
-            {{ check.name }} — {{ check.detail }}
-          </li>
-        }
-      </ul>
-    }
-  </section>
-
-  <section>
-    <h2>Remote ASP.NET Core API</h2>
-
-    @if (remoteError(); as message) {
-      <p class="error" role="alert">{{ message }}</p>
-    }
-
-    @if (remoteChecks().length > 0) {
-      <ul class="checks">
-        @for (check of remoteChecks(); track check.name) {
-          <li [class.failed]="!check.passed">
-            <strong>{{ check.passed ? 'PASS' : 'FAIL' }}</strong>
-            {{ check.name }} — {{ check.detail }}
-          </li>
-        }
-      </ul>
-    }
-  </section>
+  <details class="diagnostics">
+    <summary>Probe diagnostics</summary>
+    <app-probe-diagnostics [disabled]="busy()" (busyChange)="setDiagnosticsBusy($event)" />
+  </details>
 </main>
