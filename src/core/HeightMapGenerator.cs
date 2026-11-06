@@ -42,6 +42,8 @@ public static class HeightMapGenerator
     private static HeightMapResult GenerateCore(HeightMapRequest request)
     {
         var values = new float[request.Width * request.Height];
+        var biomes = new BiomeId[values.Length];
+        var heightBound = (float)request.HeightMultiplier;
         var seed = unchecked((uint)request.Seed);
 
         for (var y = 0; y < request.Height; y++)
@@ -66,7 +68,9 @@ public static class HeightMapGenerator
                 }
 
                 var normalized = Math.Clamp(sum / amplitudeSum, 0.0, 1.0);
-                values[y * request.Width + x] = (float)(normalized * request.HeightMultiplier);
+                var index = y * request.Width + x;
+                values[index] = (float)(normalized * request.HeightMultiplier);
+                biomes[index] = BiomeClassifier.Classify(values[index], heightBound);
             }
         }
 
@@ -74,7 +78,9 @@ public static class HeightMapGenerator
             request.Width,
             request.Height,
             values,
-            request.AlgorithmVersion);
+            request.AlgorithmVersion,
+            biomes,
+            HeightMapResult.CurrentVersion);
     }
 
     private static double ValueNoise(double x, double y, uint seed)

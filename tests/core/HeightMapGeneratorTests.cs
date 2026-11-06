@@ -85,6 +85,8 @@ public sealed class HeightMapGeneratorTests
         Assert.Equal(width, result.Width);
         Assert.Equal(height, result.Height);
         Assert.Equal(width * height, result.Values.Length);
+        Assert.Equal(result.Values.Length, result.Biomes.Length);
+        Assert.All(result.Biomes, biome => Assert.InRange((int)biome, 0, 3));
         Assert.All(result.Values, value =>
         {
             Assert.True(float.IsFinite(value));

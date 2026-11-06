@@ -20,7 +20,7 @@ public sealed class HostSerializationContractTests
             TestComputeMs,
             TestCoreBuildId);
 
-        Assert.Equal("heightmap", response.Workload);
+        Assert.Equal("heightmap+biomes", response.Workload);
 
         var json = JsonSerializer.Serialize(
             response,
@@ -56,7 +56,9 @@ public sealed class HostSerializationContractTests
         Width: 2,
         Height: 1,
         Values: [1.25f, 2.5f],
-        AlgorithmVersion: HeightMapLimits.SupportedAlgorithmVersion);
+        AlgorithmVersion: HeightMapLimits.SupportedAlgorithmVersion,
+        Biomes: [BiomeId.Plains, BiomeId.Forest],
+        ResultVersion: HeightMapResult.CurrentVersion);
 
     private static void AssertContract(string json)
     {
@@ -71,12 +73,14 @@ public sealed class HostSerializationContractTests
                 .ToArray());
         Assert.Equal(TestCoreBuildId, root.GetProperty("coreBuildId").GetString());
         Assert.Equal(TestComputeMs, root.GetProperty("computeMs").GetDouble());
-        Assert.Equal("heightmap", root.GetProperty("workload").GetString());
+        Assert.Equal("heightmap+biomes", root.GetProperty("workload").GetString());
 
         var result = root.GetProperty("result");
+        Assert.Equal("heightmap-biomes-v1", result.GetProperty("resultVersion").GetString());
+        Assert.Equal(new[] { 1, 2 }, result.GetProperty("biomes").EnumerateArray().Select(v => v.GetInt32()).ToArray());
 
         Assert.Equal(
-            ["algorithmVersion", "height", "values", "width"],
+            ["algorithmVersion", "biomes", "height", "resultVersion", "values", "width"],
             result.EnumerateObject()
                 .Select(property => property.Name)
                 .OrderBy(name => name, StringComparer.Ordinal)

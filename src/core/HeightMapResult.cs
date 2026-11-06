@@ -15,9 +15,16 @@ namespace WorldGenerator.Core;
 /// <param name="Width">Map width in cells.</param>
 /// <param name="Height">Map height in cells.</param>
 /// <param name="Values">Height values in row-major order.</param>
+/// <param name="Biomes">Numeric biome IDs, one per height, using the same row-major order.</param>
+/// <param name="ResultVersion">Version of the extended result and classification rules.</param>
 /// <param name="AlgorithmVersion">Algorithm version that produced the result.</param>
 public sealed record HeightMapResult(
     int Width,
     int Height,
     float[] Values,
-    string AlgorithmVersion);
+    string AlgorithmVersion,
+    BiomeId[] Biomes,
+    string ResultVersion)
+{
+    public const string CurrentVersion = "heightmap-biomes-v1";
+}

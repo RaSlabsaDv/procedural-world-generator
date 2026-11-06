@@ -38,9 +38,11 @@ public sealed class WasmHeightMapExportTests
         Assert.Equal(CoreBuildId.Value, root.GetProperty("coreBuildId").GetString());
         Assert.True(double.IsFinite(root.GetProperty("computeMs").GetDouble()));
         Assert.True(root.GetProperty("computeMs").GetDouble() >= 0);
-        Assert.Equal("heightmap", root.GetProperty("workload").GetString());
+        Assert.Equal("heightmap+biomes", root.GetProperty("workload").GetString());
 
         var result = root.GetProperty("result");
+        Assert.Equal("heightmap-biomes-v1", result.GetProperty("resultVersion").GetString());
+        Assert.Equal(new[] { 0, 0, 0, 0, 0, 0 }, result.GetProperty("biomes").EnumerateArray().Select(v => v.GetInt32()).ToArray());
         Assert.Equal(3, result.GetProperty("width").GetInt32());
         Assert.Equal(2, result.GetProperty("height").GetInt32());
         Assert.Equal(AlgorithmVersion, result.GetProperty("algorithmVersion").GetString());

@@ -18,5 +18,5 @@ public sealed record GenerationResponse(HeightMapResult Result, double ComputeMs
     /// <summary>
     /// Fixed workload identifier. This is metadata, not a user-controlled request parameter.
     /// </summary>
-    public string Workload => "heightmap";
+    public string Workload => "heightmap+biomes";
 }

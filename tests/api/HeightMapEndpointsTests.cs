@@ -76,7 +76,9 @@ public sealed class HeightMapEndpointsTests : IClassFixture<WebApplicationFactor
         Assert.Equal(2, body.Result.Height);
         Assert.Equal(AlgorithmVersion, body.Result.AlgorithmVersion);
         Assert.Equal(GoldenValues, body.Result.Values);
-        Assert.Equal("heightmap", body.Workload);
+        Assert.Equal(new WorldGenerator.Core.BiomeId[6], body.Result.Biomes);
+        Assert.Equal(WorldGenerator.Core.HeightMapResult.CurrentVersion, body.Result.ResultVersion);
+        Assert.Equal("heightmap+biomes", body.Workload);
         Assert.True(double.IsFinite(body.ComputeMs));
         Assert.True(body.ComputeMs >= 0);
         Assert.Equal(CoreBuildId.Value, body.CoreBuildId);
@@ -101,7 +103,7 @@ public sealed class HeightMapEndpointsTests : IClassFixture<WebApplicationFactor
 
         var result = root.GetProperty("result");
         Assert.Equal(
-            ["algorithmVersion", "height", "values", "width"],
+            ["algorithmVersion", "biomes", "height", "resultVersion", "values", "width"],
             result.EnumerateObject()
                 .Select(property => property.Name)
                 .OrderBy(name => name, StringComparer.Ordinal)
