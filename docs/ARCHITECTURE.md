@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** Phases 0–3A are implemented: shared deterministic C# computation, WASM/API hosts, the Angular heightmap MVP, and production PWA/offline support. Offline readiness verifies a complete version-specific asset cache and Local execution; updates reload only between operations. Real browser tests cover offline reload, new-tab generation, API unavailability/recovery, and updating to another offline-capable version. 3D/biomes and Architecture Race remain planned. See [development instructions](DEVELOPMENT.md) for commands and verification evidence.
+**Status:** Phases 0–3B are implemented: shared deterministic C# computation, WASM/API hosts, the Angular heightmap MVP, and production PWA/offline support. Offline readiness verifies a complete version-specific asset cache and Local execution; updates reload only between operations. Real browser tests cover offline reload, new-tab generation, API unavailability/recovery, and updating to another offline-capable version. Three.js renders the shared heights and Core biome IDs; Architecture Race remains planned. See [development instructions](DEVELOPMENT.md) for commands and verification evidence.
 
 ## 1. Components and dependencies
 
@@ -42,7 +42,7 @@ A separate `Contracts` project is not needed yet: pure input and output models b
 
 | Component | Responsibility |
 | --- | --- |
-| Core | Deterministic generator, canonical validation, models, algorithm version; biome classification later |
+| Core | Deterministic generator, canonical validation, models, algorithm/result versions and deterministic biome classification |
 | WASM host | One-time runtime initialization, batched JS/.NET calls, data adaptation, Core timer |
 | API | A generation request, HTTP input validation, Core invocation, timer, response |
 | HeightMapService | Adapter selection, input snapshot, request state, browser timings, common result format |
@@ -51,9 +51,9 @@ A separate `Contracts` project is not needed yet: pure input and output models b
 
 Core has no dependencies on HTTP, JSON, the DOM, Three.js, or timers. TypeScript may convert formats, build meshes, and calculate comparison statistics; the generation algorithm and biome rules remain in C#.
 
-## 2. Contract v1
+## 2. Request v1 and extended result
 
-The request and result contracts and the Core generator are implemented in `WorldGenerator.Core`. Host integration is implemented through the WASM export `GenerateHeightMapJson` and the API endpoint `POST /api/v1/heightmaps`; the 2D MVP is the next Phase 2 step. Tests establish the contract before measurements begin.
+The request and result contracts and the Core generator are implemented in `WorldGenerator.Core`. Host integration is implemented through the WASM export `GenerateHeightMapJson` and the API endpoint `POST /api/v1/heightmaps`; Angular provides 2D and 3D views. Tests establish the contract before measurements begin.
 
 ```json
 {
@@ -91,24 +91,26 @@ These are initial limits, not a verified memory or performance budget. The PoC o
 | `cell_count.exceeded` | `width × height` exceeds 262144, using overflow-safe arithmetic |
 | `algorithm_version.unsupported` | The version is nonempty but not exactly `value-noise-fbm-v1` |
 
-Hosts must call this validator rather than duplicate the limits or comparison rules. Transport parsing and detection of missing wire fields remain host concerns and must not turn omitted fields into valid default values. The shared host path parses a nullable wire request, reports missing fields in canonical order, then calls Core `Prepare`; it does not create a `HeightMapRequest` with substituted defaults. `HeightMapResult` contains `width`, `height`, `values` (`float[]`), and `algorithmVersion`.
+Hosts must call this validator rather than duplicate the limits or comparison rules. Transport parsing and detection of missing wire fields remain host concerns and must not turn omitted fields into valid default values. The shared host path parses a nullable wire request, reports missing fields in canonical order, then calls Core `Prepare`; it does not create a `HeightMapRequest` with substituted defaults. `HeightMapResult` contains `width`, `height`, `values` (`float[]`), `algorithmVersion`, `biomes` (`BiomeId[]`), and `resultVersion`.
 
 ```text
 HeightMapResult:
   width, height: int
   values: float[]                # IEEE 754 float32; heights 0…heightMultiplier
-  algorithmVersion: string
+  algorithmVersion: string       # unchanged value-noise-fbm-v1
+  biomes: BiomeId[]               # numeric JSON array; client Uint8Array
+  resultVersion: "heightmap-biomes-v1"
 
 GenerationResponse:
   result: HeightMapResult
   computeMs: double             # GenerateValidated time only, measured in this host
   coreBuildId: string           # build-time Git revision shared by WASM and API
-  workload: "heightmap"         # scope of the measured computation
+  workload: "heightmap+biomes"         # scope of the measured computation
 ```
 
 Data is flattened as `values[y * width + x]`, with `x` increasing within each row. The length equals `width × height`, and all values are finite. Core has already scaled the heights; the renderer must not apply the multiplier a second time.
 
-`GenerationResponse` is a host transport envelope, not a Core model: it belongs outside `WorldGenerator.Core` because it carries host measurement and build metadata. It is implemented as `src/hosts/GenerationResponse.cs`, a host-owned source file linked into both `WorldGenerator.Wasm` and `WorldGenerator.Api`; no separate project or package is required. The positional record contains `Result`, `ComputeMs`, and `CoreBuildId`, while `Workload` is a getter-only property fixed to `"heightmap"`. The WASM host registers the envelope in its JSON source-generation context, and both hosts serialize the camelCase names `result`, `computeMs`, `coreBuildId`, and `workload`. `computeMs` measures generation after parsing and preparation and excludes serialization, interop, transport, and rendering. `coreBuildId` identifies the shared Core revision used by each host, not the host build. `workload` is metadata describing the measured computation, not a user-controlled generation parameter.
+`GenerationResponse` is a host transport envelope, not a Core model: it belongs outside `WorldGenerator.Core` because it carries host measurement and build metadata. It is implemented as `src/hosts/GenerationResponse.cs`, a host-owned source file linked into both `WorldGenerator.Wasm` and `WorldGenerator.Api`; no separate project or package is required. The positional record contains `Result`, `ComputeMs`, and `CoreBuildId`, while `Workload` is a getter-only property fixed to `"heightmap+biomes"`. The WASM host registers the envelope in its JSON source-generation context, and both hosts serialize the camelCase names `result`, `computeMs`, `coreBuildId`, and `workload`. `computeMs` measures generation after parsing and preparation and excludes serialization, interop, transport, and rendering. `coreBuildId` identifies the shared Core revision used by each host, not the host build. `workload` is metadata describing the measured computation, not a user-controlled generation parameter.
 
 Shared transport behavior lives in `src/hosts`: `HeightMapWireRequest` distinguishes missing fields from zero values, `HeightMapTransport` parses and prepares the request, and `HostJson` applies the same strict JSON options to both hosts. JSON is camelCase, case-sensitive, rejects unknown members, numeric strings, comments, trailing commas, and non-finite numbers. The API uses `DefaultJsonTypeInfoResolver` for internal requests; the WASM host uses the source-generated `HostJsonContext`. Transport failures use the shared `{ "error", "fields" }` envelope: `invalid_json` means malformed or incompatible JSON, and `validation` contains canonical field errors. `error` is a category and `fields` maps request field names to details. API failures return HTTP 400 and successful or failed generation responses use `Cache-Control: no-store`.
 
@@ -116,7 +118,18 @@ Shared transport behavior lives in `src/hosts`: `HeightMapWireRequest` distingui
 
 Transport overflow such as `1e400` or `-1e400` in either double field returns `invalid_json` before Core preparation. A finite representable number outside the parameter limits still returns `validation`. Direct Core callers retain canonical non-finite validation.
 
-In phase 3B, the result gains a `biomeIds` array in the same order: `byte[]` in C#, a JSON array of integer codes at the boundary, and `Uint8Array` in the client. Classification belongs to Core and is included in `computeMs` in both modes; `workload` becomes `heightmap+biomes`. The codes, thresholds, and a new version of the extended contract/algorithm must be defined by that phase. The final campaign uses this same workload in both modes.
+The extended result uses `resultVersion = "heightmap-biomes-v1"` and `workload = "heightmap+biomes"`. The request, endpoint, transport profile `json-v1`, and frozen height algorithm `value-noise-fbm-v1` are unchanged. Previous height fixtures remain valid, but previous height-only responses are rejected by the current client. The separate result version identifies the added contract and classification rules. Any future change to these rules requires a new result version.
+
+`biomes` has exactly `width × height` entries in the same row-major order as heights. C# uses `BiomeId[]` (numeric enum values serialized as a JSON array, not `byte[]`, which System.Text.Json serializes as base64). The client validates every ID before copying to `Uint8Array`; TypeScript never classifies heights. IDs and rules are frozen:
+
+| ID | Biome | Relative final height |
+| --- | --- | --- |
+| 0 | Water | `[0, 0.25)` |
+| 1 | Plains | `[0.25, 0.5)` |
+| 2 | Forest | `[0.5, 0.75)` |
+| 3 | Mountains | `[0.75, 1]` |
+
+Core first stores the generated height as float32. It casts `heightMultiplier` to float32 for the bound, then compares the stored height against `(double)bound * threshold`, in ascending order. Equality belongs to the higher band. An exactly zero float32 bound (including a tiny positive multiplier that rounds to zero) yields water for every cell. Binary-exact thresholds avoid division and boundary ambiguity. Classification and allocation of biome IDs occur inside `GenerateValidated` and are included in both hosts' `computeMs`; validation, serialization, rendering, and comparison remain outside.
 
 All request fields are required. Invalid values are neither rounded nor replaced with defaults. The UI provides guidance, but Core performs the same authoritative validation in both modes. Both hosts reject unexpected fields and invalid types at the transport boundary. Missing numeric fields must not silently become C# zeros, and zero is accepted only where the canonical range permits it, such as `heightMultiplier`. The native API and WASM export tests verify that both hosts produce the same error categories and field errors.
 
@@ -155,7 +168,7 @@ Numerical tolerance and full-array comparison are described in the [measurement 
 
 The initial baseline is `json-v1`: one call for the entire map. The WASM export accepts a JSON request string and returns a JSON response string; the API accepts and returns JSON through `POST /api/v1/heightmaps`. Both paths use the same JSON rules and Core models. This is a deliberately simple starting point, and its overhead is included in the research results.
 
-Adapters convert `values` to `Float32Array` and validate the contract. Parsing, copying, and result validation are included in adapter time, but excluded from `computeMs`. The UI, Race, and renderer receive the same result type regardless of mode.
+Adapters convert `values` to `Float32Array` and `biomes` to `Uint8Array` and validate the contract. Parsing, copying, and result validation are included in adapter time, but excluded from `computeMs`. The UI, Race, and renderer receive the same result type regardless of mode.
 
 For the PoC, begin with an exact integer scalar, then an array through the same batched path. Do not assume that an arbitrary C# DTO automatically supports `[JSExport]`: check supported types and marshalling against the [interop documentation](https://learn.microsoft.com/en-us/aspnet/core/client-side/dotnet-interop/?view=aspnetcore-10.0).
 
@@ -177,13 +190,23 @@ A Web Worker is an optional future execution change, not a required MVP dependen
 
 ### Implemented Angular heightmap MVP
 
-`HeightMapService.local` and `.remote` use the existing WASM runtime and HTTP endpoint. Both pass responses through `heightmap.contract.ts`, which checks the envelope, request dimensions/version, workload, timings, identity, and every height before returning independent `Float32Array` storage. Structured host errors are distinguished from protocol and availability failures. Canonical parameter validation remains in Core; the form only rejects empty or unparseable numbers and provides HTML input guidance.
+`HeightMapService.local` and `.remote` use the existing WASM runtime and HTTP endpoint. Both pass responses through `heightmap.contract.ts`, which checks the envelope, request dimensions/version, workload, timings, identity, the result version, and every height/biome ID before returning independent `Float32Array` storage. Structured host errors are distinguished from protocol and availability failures. Canonical parameter validation remains in Core; the form only rejects empty or unparseable numbers and provides HTML input guidance.
 
 `App` captures a frozen request and uses the shared `OperationLock` across heightmap actions, `ProbeDiagnostics`, offline preparation, and update reloads. Changed inputs invalidate comparison state; obsolete asynchronous results are discarded. Existing maps retain their original parameter labels. The Local path permits a browser frame before synchronous computation; it can still block the main thread.
 
-“Verify equivalence” runs Local then Remote using one snapshot and renders after the pair. It compares every height with the documented tolerance, reports maximum/mean absolute error and mismatch count, and distinguishes numerical agreement from build compatibility. Different IDs are incompatible; matching dirty/unversioned IDs remain unverifiable. This is a correctness check without repeated trials, winner rankings, or performance charts.
+“Verify equivalence” runs Local then Remote using one snapshot and renders after the pair. It compares every biome ID exactly and every height with the documented tolerance, reports maximum/mean absolute error and mismatch count, and distinguishes numerical agreement from build compatibility. Different IDs are incompatible; matching dirty/unversioned IDs remain unverifiable. This is a correctness check without repeated trials, winner rankings, or performance charts.
 
 `HeightMapPreview` builds row-major grayscale Canvas 2D pixels on the CPU. Both maps use zero as black and the captured height multiplier as white, with an explicit zero-height case. It does not normalize each map by its own extrema or modify heights. `computeMs` comes from the host; browser `requestMs` ends after decoding and normalization, before comparison/rendering. Runtime initialization is displayed separately.
+
+### Implemented Three.js view
+
+The default view remains Canvas 2D. Selecting **3D biomes** loads `TerrainPreview` through Angular `@defer`; the production service worker prefetches its chunk along with the shell, so it is available offline even before the first 3D selection. Three.js and its TypeScript types are pinned in the npm lockfile. No renderer library is added to Core or either host.
+
+`terrainGeometry` uses one vertex per sample: `(x - (width - 1)/2, values[y * width + x], y - (height - 1)/2)`. It builds two consistently wound triangles per grid quad, uses `Uint32Array` indices for the 512×512 limit, computes normals, and assigns a fixed visualization palette by Core ID. Vertex colors interpolate across triangle surfaces; discrete biome IDs remain unchanged. Both modes use identical geometry, palette, lighting, initial camera, and scale based on their captured request. Heights remain in world units without a second multiplier. OrbitControls provides orbit, zoom, and pan; there is no continuous animation loop. Controls and rendering pause while the shared operation lock is held.
+
+The geometry's position/color/normal/index arrays use about 15 MiB per maximum-size map, excluding transport, scene/driver overhead, and GPU copies. The shared 512×512 limit was retained after a Chromium smoke check; this is not a device-independent memory/latency guarantee. On replacement/destruction, the component disposes geometry, material, controls, resize observer, and renderer; destruction also releases the WebGL context. Unsupported/lost WebGL shows a recoverable presentation error; switching to 2D remains possible.
+
+The displayed **3D setup and first render submission (CPU)** measures scene/geometry preparation through the first `renderer.render` return. It excludes deferred module download and Angular scheduling, and is neither GPU completion nor time until pixels are visible. Ordinary resize/orbit draws are not benchmark samples. This value is separate from host `computeMs` and adapter request-to-data time. Cleanup follows the [Three.js resource disposal guidance](https://threejs.org/manual/en/cleanup.html).
 
 ## 6. Deployment and offline support
 

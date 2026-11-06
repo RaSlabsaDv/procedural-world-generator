@@ -1,6 +1,6 @@
 # Implementation Roadmap
 
-**Status:** Phases 0–3A are complete. Core generation, the WASM/API hosts, and the Angular heightmap MVP are implemented. PWA support now verifies version-specific cached assets and Local execution, supports production offline reload/new-tab generation, and applies updates by safe reload between operations. Publishing uses clean staged WASM output with rollback. Actual browser evidence and reproduction commands are in [DEVELOPMENT.md](DEVELOPMENT.md). Phase 3B (Three.js and simple biomes) is next; Architecture Race and controlled benchmarks follow later.
+**Status:** Phases 0–3B are complete. Core generation, the WASM/API hosts, and the Angular heightmap MVP are implemented. PWA support now verifies version-specific cached assets and Local execution, supports production offline reload/new-tab generation, and applies updates by safe reload between operations. Publishing uses clean staged WASM output with rollback. Actual browser evidence and reproduction commands are in [DEVELOPMENT.md](DEVELOPMENT.md). Phase 3B now provides Three.js terrain and deterministic Core biomes. Phase 4 (Architecture Race and repeated trials) is next; controlled experiments follow later.
 
 Phases are completed based on verified outcomes. Calendar estimates should follow the PoC, once the cost of WASM integration is clearer. Timing boundaries are introduced early; the full Race and experiments follow visualization and PWA support, as required by AGENTS.md. Keep `README.md` empty for now and record setup instructions in `docs/`.
 
@@ -66,6 +66,8 @@ Step 1 is complete: `HeightMapRequest`, `HeightMapLimits`, `HeightMapValidator`/
 
 **Done when:** Both modes return equivalent heights and identical biome IDs, and the renderer displays both consistently. Repeated generation releases old Three.js resources. Mesh construction/CPU display time is separate from core execution. Before further measurements, update contract fixtures and set `workload = heightmap+biomes`: biome classification is included in compute time in both modes.
 
+**Verified:** Core returns numeric biome IDs and `resultVersion = heightmap-biomes-v1`, preserving the frozen height algorithm and golden heights. Both hosts time the full `heightmap+biomes` workload. Angular validates every ID, compares IDs exactly, and provides a deferred Three.js view with shared palette/camera rules, separate CPU display timing, and resource cleanup. Unit tests and a production Chromium check cover rectangular/maximum maps, zero height, extreme seeds, WASM/API parity, orbit/zoom, replacement, and offline 3D. The existing production PWA update regression also passed, including deferred reload while busy and offline generation after updating.
+
 ## Phase 4 — Architecture Race, repeated trials, and export
 
 **Work:** Run both modes from an immutable parameter snapshot, execute them sequentially, and display the maps side by side. Add full-value comparisons, alternating Local/Remote order, warm-up, repeated trials, median/IQR, and JSON/CSV export. The runner uses the same adapters and endpoint as ordinary generation.
@@ -90,6 +92,6 @@ Adaptive Mode, AOT, Web Workers, binary transport, richer biomes/erosion, preset
 
 ## Next implementation task
 
-> Start Phase 3B when requested: add Three.js visualization of the existing heightmap and deterministic biome IDs in Core. Preserve PWA/offline behavior, probe diagnostics, identical execution-mode inputs, and separate compute/render timing. Version the extended workload and contracts before measuring it. Keep README.md empty.
+> Start Phase 4 when requested: add Architecture Race and the repeated-trial runner using immutable requests, alternating sequential order, warm-up, error retention, median/IQR, and raw JSON/CSV export. Use the existing adapters with `heightmap+biomes` and preserve result/build identity checks, PWA/offline behavior, diagnostics, and separate timing boundaries. Keep README.md empty.
 
 Work on one acceptance criterion at a time, update documentation alongside decisions, and distinguish verified results from assumptions. Add new dependencies only when the relevant phase begins.

@@ -8,12 +8,12 @@ The interoperability PoC is implemented for both execution paths:
 - `src/hosts`: shared host transport, strict JSON options, build identity, error envelope, and `GenerationResponse`, linked into both the WASM and API projects.
 - `src/wasm/WorldGenerator.Wasm.csproj`: a standalone browser WebAssembly host that references Core and exposes `[JSExport]` methods.
 - `src/api/WorldGenerator.Api.csproj`: an ASP.NET Core minimal API that references the same Core project.
-- `src/client`: an Angular heightmap explorer with parameter controls, Local/Remote generation, sequential equivalence checks, real timings, Canvas 2D previews, and collapsed probe diagnostics.
+- `src/client`: an Angular heightmap explorer with parameter controls, Local/Remote generation, sequential equivalence checks, real timings, Canvas 2D and Three.js biome previews, and collapsed probe diagnostics.
 - `tests/core/WorldGenerator.Core.Tests.csproj`: xUnit tests for the probe, heightmap contracts, preparation and validated-request immutability, validation boundaries, and deterministic generator output.
 - `tests/api/WorldGenerator.Api.Tests.csproj`: HTTP and native WASM-export contract tests for the API endpoints, heightmap success/error JSON, build identity, and the shared host serialization contract.
 - `ProceduralWorldGenerator.slnx`: the solution containing the .NET projects.
 
-Phases 2 and 3A are complete, including the Angular heightmap UI, 2D MVP, and verified PWA/offline support. Architecture Race and Three.js remain later phases. `README.md` remains empty.
+Phases 2, 3A, and 3B are complete, including the Angular heightmap UI, verified PWA/offline support, and Three.js with Core biome classification. Architecture Race is next. `README.md` remains empty.
 
 ## Prerequisites and commands
 
@@ -96,7 +96,7 @@ Verified in the current environment:
 - Angular CLI 22.2.6, Node.js 24.20.0, npm 11.19.0.
 - Release WASM publish and the single-origin production bundle load from `http://localhost:8090/` without a development server.
 - All local and remote page checks pass. Both maximum-array digests equal `cbd49d9128202d264bddde63406dd224d2a0d4f0d841bed3697a1f17ff424dd8`.
-- Native build has zero warnings; all 98 Core tests and all 78 API/host tests pass, including build-identity fallback and double-overflow regressions. All 70 Angular tests pass, covering response validation, adapters, comparison, pixel mapping, immutable snapshots, stale-result handling, errors, and the shared operation lock.
+- Native build has zero warnings; all 114 Core tests and all 78 API/host tests pass, including build-identity fallback and double-overflow regressions. All 83 Angular tests pass, covering response validation, adapters, comparison, pixel mapping, immutable snapshots, stale-result handling, errors, and the shared operation lock.
 - A blocked `/api` request produces the expected remote availability error.
 - Headless Firefox verification of the published WASM and API hosts matched the 3×2 golden fixture, reused the runtime for repeated calls, returned identical 37×23 results (maximum absolute error 0), produced matching `validation` envelopes for a missing field, and reported the same `coreBuildId`.
 
@@ -203,13 +203,13 @@ HeightMapResult result = HeightMapGenerator.GenerateValidated(preparation.Valida
 | `HeightMapValidator.Prepare` | Returns a `HeightMapPreparation` with either a `ValidatedHeightMapRequest` snapshot or the canonical errors |
 | `ValidatedHeightMapRequest` | Opaque immutable snapshot with an internal constructor and no public mutation path; created only by `Prepare` |
 | `ValidationError` | Immutable record with `Code`, `Field`, and English `Message` |
-| `HeightMapResult` | Result contract with `Width`, `Height`, `Values`, and `AlgorithmVersion`; values are row-major finite float32 heights after the height multiplier |
+| `HeightMapResult` | Result contract with `Width`, `Height`, `Values`, `AlgorithmVersion`, `Biomes`, and `ResultVersion`; values are row-major finite float32 heights after the height multiplier |
 | `HeightMapGenerator.Generate` | Validates, then generates `value-noise-fbm-v1`; throws `ArgumentNullException` or `ArgumentException` instead of returning an invalid map |
 | `HeightMapGenerator.GenerateValidated` | Generates from an already prepared request without validation or allocation of a new request |
 | `HeightMapTransport` | Shared host parsing, missing-field detection, Core preparation, and error mapping |
 | `HostJson` | Shared strict JSON options and type-info enforcement used by both hosts |
 | `CoreBuildId` | Build-time Git revision shared by the WASM and API hosts |
-| `GenerationResponse` | Host-owned positional record with `Result`, `ComputeMs`, `CoreBuildId`, and a getter-only `Workload` fixed to `"heightmap"` |
+| `GenerationResponse` | Host-owned positional record with `Result`, `ComputeMs`, `CoreBuildId`, and a getter-only `Workload` fixed to `"heightmap+biomes"` |
 
 Validation error codes are `request.required`, `field.required`, `value.out_of_range`, `value.not_finite`, `cell_count.exceeded`, and `algorithm_version.unsupported`. The validator checks the algorithm version with ordinal, case-sensitive equality and computes `width * height` with `long` arithmetic. Invalid values are reported, never rounded, clamped, or replaced with defaults; hosts must consume this validator instead of duplicating its rules.
 
@@ -221,7 +221,7 @@ The golden fixture uses seed `42`, a `3×2` map, `noiseScale = 0.37`, `octaves =
 [2.9216370582580566, 3.6088085174560547, 6.840007781982422, 6.314371109008789, 6.954989910125732, 6.4931135177612305]
 ```
 
-The fixture was established with an independent implementation and is stored as literal values in the Core tests. Generator tests also cover repeated and interleaved calls, negative and extreme seeds, rectangular and boundary dimensions, zero height, independent storage, finite ranges, invalid requests, and row-major positions.
+The extended fixture has `resultVersion = "heightmap-biomes-v1"`, `biomes = [0, 0, 0, 0, 0, 0]`, and `workload = "heightmap+biomes"`. Its original heights were established with an independent implementation and is stored as literal values in the Core tests. Generator tests also cover repeated and interleaved calls, negative and extreme seeds, rectangular and boundary dimensions, zero height, independent storage, finite ranges, invalid requests, and row-major positions.
 
 `GenerationResponse` is defined in `src/hosts/GenerationResponse.cs` and linked into both hosts, so no separate transport project or package is needed. The WASM host registers it in its JSON source-generation context, and both hosts serialize the camelCase names `result`, `computeMs`, `coreBuildId`, and `workload`. `computeMs` measures `GenerateValidated` after preparation and excludes serialization, interop, transport, and rendering. `coreBuildId` is generated from the Git revision at build time and identifies the shared Core inputs, not the host build. `workload` describes the measured computation and is not a request input.
 
@@ -269,6 +269,35 @@ This probe supplies test data for calls and bulk transfer. It is not the terrain
 
 ## Next integration step
 
-The heightmap MVP and PWA/offline phase are complete. The next planned step is Phase 3B: Three.js rendering and simple Core biome classification, with a versioned extended result/workload. Preserve offline behavior, diagnostics, and separate compute/render timing.
+Phases 0–3B are complete. The next planned step is Phase 4: Architecture Race, sequential alternating trials, warm-up, statistics, and raw JSON/CSV export. Preserve offline behavior, diagnostics, and separate compute/render timing.
 
 Keep mathematical algorithms in Core, keep transport and timers in the thin hosts, and preserve identical parameters and validation for both execution paths. Do not add the Architecture Race or a performance comparison view yet. See the [architecture](ARCHITECTURE.md), [roadmap](IMPLEMENTATION_PLAN.md), and [measurement protocol](BENCHMARKING.md).
+
+## Three.js and biome verification (Phase 3B)
+
+Use the existing start/publish commands. Generate Local, Remote, or Verify equivalence, then select **3D biomes**. Drag to orbit, scroll/pinch to zoom, and right-drag to pan. **2D heights** restores the grayscale preview. Biome IDs come exclusively from Core; the fixed bands, zero-height behavior, numeric JSON representation, and result version are specified in [ARCHITECTURE.md](ARCHITECTURE.md). Existing request parameters and the height algorithm are unchanged. This is an extended result contract: an older frontend/host pair must be rebuilt and deployed together.
+
+`computeMs` now includes biome allocation and classification in both hosts. CPU scene setup/first draw submission is displayed separately; it is not GPU timing. The Three.js chunk is deferred by the UI but included in the complete PWA prefetch cache. WebGL failures affect presentation only and leave the 2D view available.
+
+Verification commands (from the repository root, after installing frontend dependencies):
+
+```bash
+dotnet restore ProceduralWorldGenerator.slnx --locked-mode
+dotnet build ProceduralWorldGenerator.slnx --configuration Release --no-restore
+dotnet test ProceduralWorldGenerator.slnx --configuration Release --no-build --no-restore
+npm --prefix src/client test -- --watch=false
+python3 -m unittest discover -s tests/build -v
+./scripts/publish-app.sh
+dotnet artifacts/app/WorldGenerator.Api.dll --urls http://127.0.0.1:8080
+```
+
+With the production server running, the optional browser test uses the same externally supplied Playwright Core/Chromium setup as the PWA test:
+
+```bash
+PWG_PLAYWRIGHT_MODULE=/path/to/node_modules/playwright-core \
+PWG_BROWSER_EXECUTABLE=/path/to/chromium \
+PWG_BASE_URL=http://127.0.0.1:8080 \
+node tests/browser/terrain.cjs
+```
+
+The Chromium 153 production check verified full WASM/API arrays for a 3×2 golden request, a 17×9 map with Int32 minimum seed and fractional height, a zero-height 2×2 map with Int32 maximum seed, and 512×512 at height 1000. Maximum observed height error was zero; all biome IDs matched exactly. UI checks cover side-by-side 3D, orbit/zoom, repeated replacement/view switching, maximum mesh size, zero height, and a new Local seed with 3D after offline reload. Evidence goes to ignored `artifacts/terrain-verification.json` and `artifacts/terrain-preview.png`; software WebGL in this smoke test is not representative performance evidence. Unit tests verify resource disposal and unsupported WebGL independently. The existing production PWA update/reload scenario also passed after this change: offline reload/new tab, Remote failure/recovery without cached results, deferred reload while busy, and offline generation after updating.

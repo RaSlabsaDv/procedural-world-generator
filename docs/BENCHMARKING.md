@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- `baselineVersion`: `json-v1`; initial `algorithmVersion`: `value-noise-fbm-v1`, `workload`: `heightmap`. After adding biomes, freeze the extended contract/algorithm version and `workload = heightmap+biomes`; both modes perform the same fixed workload throughout a campaign.
+- `baselineVersion`: `json-v1`; `algorithmVersion`: `value-noise-fbm-v1`, `resultVersion`: `heightmap-biomes-v1`, `workload`: `heightmap+biomes`; both modes perform the same fixed workload throughout a campaign.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core, without Web Workers, parallel generation, or caching of computed maps.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -33,7 +33,7 @@ Freeze the code version (`coreBuildId`, preferably a commit, plus a separate app
 
 The Angular PWA displays host `computeMs`, browser `requestMs`, and the existing loader's one-time `initMs`. The loader measures `dotnet.create()` through export lookup; importing the loader ES module is outside that timer. This is not a complete cold page-load measurement. Offline preparation verifies the cached version and eagerly initializes Local under the shared operation lock before interactive generation. Record this startup/preparation cost and cache state separately; the displayed first interactive Local request is not a cold-runtime measurement. The sequential UI equivalence check performs no repeated trials and excludes comparison and Canvas drawing from `requestMs`. Matching dirty or unversioned identities do not establish build compatibility even when numerical values match.
 
-In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. For `heightmap+biomes`, the timer also covers classification and biome ID allocation in both hosts. The timer belongs in thin host code; Core does not depend on browser or HTTP telemetry.
+In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. The `heightmap+biomes` timer covers classification and biome ID allocation in both hosts. The timer belongs in thin host code; Core does not depend on browser or HTTP telemetry.
 
 The current hosts implement this boundary with `Stopwatch`: after `HeightMapTransport` has parsed the request and `HeightMapValidator.Prepare` has produced a `ValidatedHeightMapRequest`, each host starts its timer and calls `HeightMapGenerator.GenerateValidated`. This keeps invalid requests from being timed and avoids revalidating in the generator. The JSON transport and strict error envelope are part of the baseline `json-v1` overhead and are included in `requestMs`, not `computeMs`.
 
@@ -56,7 +56,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. If the workload includes biomes, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -137,3 +137,7 @@ Report success/failure counts, median, and IQR separately by mode, size, seed, a
 Different hardware prevents attributing the entire difference solely to WASM or the server architecture. An API on loopback does not model a real remote network, and a server on the client machine shares resources with the browser. JSON overhead is a property of the chosen baseline.
 
 Synchronous WASM can block the UI; a `Promise` alone does not prevent this. Time to usable data does not fully describe interactivity. Limit conclusions to the tested sizes, configurations, and conditions; do not declare a universal winner. Do not report numerical results before conducting the experiments.
+
+## Phase 3B display boundary
+
+The interactive Three.js card reports CPU scene setup and first render submission only. It does not measure GPU completion or include the deferred module download. It must not be added to `computeMs` or request-to-data time. Biome allocation/classification is already inside Core in both execution modes. Rendering is on demand and pauses during a shared operation. The future trial runner must additionally defer scene construction until its measurement series completes; the interactive equivalence check is not that runner. Preserve `resultVersion` along with the algorithm, workload, and build identity in future trial exports. Do not combine old height-only timings with this workload.
