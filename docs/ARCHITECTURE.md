@@ -30,7 +30,7 @@ Generation preserves prior successful maps during work or errors. Display labels
 
 One primary result is visible by default; Local/Remote selection and Compare views are explicit. Comparison views can retain results from different requests, which are labelled and flagged; numerical verification is shown only for a verified identical request. Build identity remains separate from numeric agreement. Captured parameters, versions, simulation totals and startup/display details are expandable. Individual runs are not a benchmark campaign.
 
-Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v6 result contract is specified below.
+Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v7 result contract is specified below.
 
 Playback and brush editing are not implemented. Lighting, shadows and atmosphere are implemented as a presentation layer; bounded evolution capture remains later work.
 
@@ -38,9 +38,9 @@ Playback and brush editing are not implemented. Lighting, shadows and atmosphere
 
 The sole generation endpoint is `POST /api/v1/terrains`; `GET /api/health` reports availability. Unknown `/api` routes return 404 rather than the Angular shell. The sole WASM export is `GenerateTerrainJson`, exposed as the asynchronous `generateTerrainJson` worker proxy. See [development](DEVELOPMENT.md) for a complete request.
 
-`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v5`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Frozen height/climate equations are in [LANDSCAPE_V3.md](LANDSCAPE_V3.md), current vegetation in [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md) preserves historical v1.
+`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v6`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height and unchanged climate equations are in [LANDSCAPE_V3.md](LANDSCAPE_V3.md), current vegetation in [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](TERRAIN_WORKLOAD.md) preserves historical v1.
 
-The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v6`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v6`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights and rocks. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v6`. The new result/workload identities distinguish ecology from historical v1.
+The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v7`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v7`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights and rocks. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v7`. The new result/workload identities distinguish ecology from historical v1.
 
 All wire members are required. Nullable wire records distinguish missing fields from zero. JSON is camelCase and case-sensitive; unknown members, numeric strings, comments, trailing commas, malformed JSON, and overflowing/non-finite numbers are rejected. Both hosts return the same `{ error, fields }` shape: `invalid_json` for transport failures or `validation` with field errors. Canonical numeric limits live only in Core. API failures return 400; all terrain responses use `Cache-Control: no-store`.
 
@@ -56,7 +56,7 @@ Three.js builds a mesh directly from Core heights and blends its surface colors 
 
 ## Vegetation structure
 
-The current algorithm adds deterministic Core-owned groves, clearings and same-kind edge attenuation without changing the frozen height/climate/biome/surface equations. One four-connected distance pass uses two temporary int[N] arrays. Density is updated in place, with the user multiplier last; masks, candidate hashes and variants never depend on that multiplier. Candidate sets are monotonic before the 16384 cap; fixed priorities can replace entries after capping, and retained transforms remain stable.
+The vegetation policy adds deterministic Core-owned groves, clearings and same-kind edge attenuation. Stage 6 changes their height inputs while retaining the ecological equations. One four-connected distance pass uses two temporary int[N] arrays. Density is updated in place, with the user multiplier last; masks, candidate hashes and variants never depend on that multiplier. Candidate sets are monotonic before the 16384 cap; fixed priorities can replace entries after capping, and retained transforms remain stable.
 
 Every tree record now has eight required members, including numeric variant (Small=0, Mature=1). Core selects it using an independent cell/seed hash, not biological age. The client rejects legacy/malformed variants and compares variants exactly. The renderer maps kind/variant to fixed low-poly proportions/colors and renders every returned record, with no PRNG or per-tree materials. See [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md) for frozen salts, distances, operation order and memory budgets. Historical density/placement references and v3/v4 field fingerprints remain test-only.
 
@@ -105,8 +105,8 @@ Display CPU measurements are retained for an unchanged result when the other exe
 
 ## Decorative rocks (Stage 5)
 
-Core appends required `rocks` after tree placement, preserving every Stage 4 array,
-full tree record and hydraulic summary. `RockPlacement` uses independent cluster/hash
+Core appends required `rocks` after tree placement, originally preserving every Stage 4 array,
+full tree record and hydraulic summary; Stage 6 changes their height inputs under a new version. `RockPlacement` uses independent cluster/hash
 streams, exact triangular support extrema, conservative embedding, trunk clearance
 and priority-ordered spacing with bounded cell grids. Its total cap is 8192; kinds
 Boulder/Outcrop/Scree each have two numeric variants. Eleven required numeric record
@@ -121,3 +121,18 @@ shared instanced groups; geometry is unit radius and supplied axes/yaw position 
 Rocks cast/receive, trees retain their previous cast-only policy. Their actual
 bounds join the existing static shadow fit. A view has at most nineteen color and
 nineteen initial caster calls, with unchanged shadow/texture configuration.
+
+## Local geometric relief (Stage 6)
+
+TerrainComposer computes existing regional weights once, then adds bounded local
+relief in unwarped world-grid coordinates before the unchanged hydraulic simulation.
+Masked plain undulations preserve broad low-slope areas; hills receive secondary
+rolling relief and mountain ridge flanks receive shallow bent anisotropic grooves.
+Near-bound attenuation prevents additional clamping plateaus. Exact equations,
+salts, supported scales, budgets and versions are in [LOCAL_RELIEF_V1.md](LOCAL_RELIEF_V1.md).
+
+No request/schema/rendering changes or full-map temporary buffers are introduced.
+All environment, coverage and grounded instances are derived from final eroded
+heights through unchanged policies. Their outputs can change. Historical V5
+composition/orchestration plus baseline hashes retain the old numerical evidence;
+current tests validate the new mathematics and full actual-host equivalence.

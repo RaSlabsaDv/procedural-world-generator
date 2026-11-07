@@ -21,7 +21,7 @@ public static class TerrainGenerator
         var terrain = new double[map.Width * map.Height];
         for (var y = 0; y < map.Height; y++)
             for (var x = 0; x < map.Width; x++)
-                terrain[y * map.Width + x] = TerrainComposer.Compose(x * map.NoiseScale, y * map.NoiseScale, seed, input) * bound;
+                terrain[y * map.Width + x] = TerrainComposer.Compose(x, y, seed, input) * bound;
         var simulation = HydraulicSimulation.Run(terrain, map.Width, map.Height, bound,
             input.Iterations, input.Rainfall, input.Evaporation);
         var values = Array.ConvertAll(terrain, value => (float)value);

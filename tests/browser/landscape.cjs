@@ -76,7 +76,7 @@ const assert = require("node:assert/strict"),
           globalWarmth: warmth,
           vegetationDensity: 1,
           landformRegionScale: regionScale,
-          algorithmVersion: "diverse-landscape-v5",
+          algorithmVersion: "diverse-landscape-v6",
         };
         let ticks = 0,
           last = performance.now(),
@@ -112,9 +112,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v6" ||
-            result.executionProfile !== "landscape-worker-json-v6" ||
-            result.result.resultVersion !== "landscape-ecology-v6" ||
+            result.workload !== "landscape-ecology-hydraulic-v7" ||
+            result.executionProfile !== "landscape-worker-json-v7" ||
+            result.result.resultVersion !== "landscape-ecology-v7" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )

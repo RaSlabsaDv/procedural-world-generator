@@ -109,7 +109,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           body: JSON.stringify({
             ...parameters,
             heightMap,
-            algorithmVersion: "diverse-landscape-v5",
+            algorithmVersion: "diverse-landscape-v6",
           }),
         });
         if (!response.ok)
@@ -272,17 +272,17 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       await complete();
       const canvas = page.locator("app-terrain-preview canvas");
       await canvas.screenshot({
-        path: artifact(`rocks-after-${label}-overview.png`),
+        path: artifact(`relief-after-${label}-overview.png`),
       });
       await canvas.hover();
       await page.mouse.wheel(0, -650);
       await page.waitForTimeout(350);
       await canvas.screenshot({
-        path: artifact(`rocks-after-${label}-close.png`),
+        path: artifact(`relief-after-${label}-close.png`),
       });
       await page.mouse.wheel(0, -700);
       await page.waitForTimeout(200);
-      await canvas.screenshot({ path: artifact(`rocks-after-${label}-detail.png`) });
+      await canvas.screenshot({ path: artifact(`relief-after-${label}-detail.png`) });
       const parameters = await page
         .locator("input[type=number]")
         .evaluateAll((inputs) =>
@@ -299,7 +299,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       captures.push({
         label,
         parameters,
-        algorithmVersion: "diverse-landscape-v5",
+        algorithmVersion: "diverse-landscape-v6",
         wheelDelta: -650,
         resources: await assertResources(1),
         lighting: await lightingResources(page),
@@ -346,13 +346,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     const maximumLighting = await lightingResources(page);
     const maxCanvas = page.locator("app-terrain-preview canvas");
     await maxCanvas.screenshot({
-      path: artifact("rocks-maximum-overview.png"),
+      path: artifact("relief-maximum-overview.png"),
     });
     await maxCanvas.hover();
     await page.mouse.wheel(0, -900);
     await page.waitForTimeout(200);
     await maxCanvas.screenshot({
-      path: artifact("rocks-maximum-close.png"),
+      path: artifact("relief-maximum-close.png"),
     });
     await page
       .getByRole("button", { name: "Reset camera", exact: true })
@@ -406,7 +406,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       pageErrors: errors,
     };
     await fs.writeFile(
-      artifact("rocks-materials-verification.json"),
+      artifact("relief-materials-verification.json"),
       JSON.stringify(evidence, null, 2),
     );
     console.log(JSON.stringify(evidence));

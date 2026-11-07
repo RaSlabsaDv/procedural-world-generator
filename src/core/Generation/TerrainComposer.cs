@@ -1,10 +1,12 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Versioned v3 composition. Keep arithmetic order aligned with LANDSCAPE_V3.md.</summary>
+/// <summary>Versioned regional composition plus pre-erosion world-grid local relief.</summary>
 internal static class TerrainComposer
 {
-    internal static double Compose(double x, double y, uint seed, TerrainRequest input)
+    internal static double Compose(int gridX, int gridY, uint seed, TerrainRequest input)
     {
+        var x = gridX * input.HeightMap.NoiseScale;
+        var y = gridY * input.HeightMap.NoiseScale;
         var wx = x + input.WarpStrength * (2 * Fbm(x * .35 + 17, y * .35 + 31, seed ^ 0xA341316Cu, 3) - 1);
         var wy = y + input.WarpStrength * (2 * Fbm(x * .35 + 47, y * .35 + 13, seed ^ 0xC8013EA4u, 3) - 1);
         var region = Region(wx, wy, seed, input.LandformRegionScale);
@@ -14,7 +16,9 @@ internal static class TerrainComposer
         var detail = Fbm(wx * 2, wy * 2, seed ^ 0x9E3779B9u, input.HeightMap.Octaves);
         var ridge = 1 - Math.Abs(2 * Fbm(wx * .8, wy * .8, seed ^ 0x7E95761Eu, input.HeightMap.Octaves) - 1);
         ridge = ridge * ridge * ridge;
-        return Blend(basis, rolling, detail, ridge, plains, hills, mountains, input.MountainStrength);
+        var regional = Blend(basis, rolling, detail, ridge, plains, hills, mountains, input.MountainStrength);
+        var relief = LocalRelief.Sample(gridX, gridY, seed, plains, hills, mountains, ridge, input.MountainStrength);
+        return LocalRelief.Apply(regional, relief);
     }
 
     internal static double Region(double x, double y, uint seed, double scale) =>

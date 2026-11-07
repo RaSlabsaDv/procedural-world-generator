@@ -59,7 +59,7 @@ function wire() {
     parameters: terrain,
     simulationVersion: SIMULATION_VERSION,
     workload: TERRAIN_WORKLOAD,
-    executionProfile: 'landscape-worker-json-v6',
+    executionProfile: 'landscape-worker-json-v7',
     computeMs: 2,
     coreBuildId: 'test',
     simulation: {

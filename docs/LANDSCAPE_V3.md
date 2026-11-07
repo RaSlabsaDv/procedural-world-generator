@@ -1,6 +1,6 @@
 # Climate and vegetation v3
 
-Historical v3 result specification. Current height/climate/biome equations are preserved, while surface coverage and vegetation structure extend the pipeline under algorithm diverse-landscape-v4 and v5 result/workload/profile identities. See [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md) and [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md). Original equations and evidence below remain historical.
+Historical pre-relief v3 specification. Stage 6 changes height composition under diverse-landscape-v6 and v7 result/workload/profile identities; the ecological policies below remain. See [LOCAL_RELIEF_V1.md](LOCAL_RELIEF_V1.md), [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md) and [ROCK_PLACEMENT_V1.md](ROCK_PLACEMENT_V1.md). Original equations and evidence below remain historical.
 
 Status: implemented and verified. V3 replaces the public generator in the existing editor; v2 remains historical evidence, not another runtime mode. No new dependencies are needed.
 

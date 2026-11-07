@@ -34,7 +34,7 @@ public sealed class ClimateV3Tests
     public void MatchesIndependentV3CompositionAndClimateLiterals()
     {
         var r = TerrainTests.Request(0) with { HeightMap = TerrainTests.Request().HeightMap with { Width = 3, Height = 2 }, LandformRegionScale = 2, GlobalWarmth = .35 };
-        var map = TerrainGenerator.Generate(r).HeightMap;
+        var map = Historical.V5.TerrainGenerator.Generate(r).HeightMap;
         Assert.Equal(new float[] { 10.390124320983887f, 10.959811210632324f, 12.825599670410156f, 9.473161697387695f, 11.630701065063477f, 12.272018432617188f }, map.Values);
         Assert.Equal(new float[] { .8570814728736877f, .7675568461418152f, .6858873963356018f, .8013341426849365f, .7768876552581787f, .609548807144165f }, map.Moisture);
         Assert.Equal(new float[] { .2826651632785797f, .273539274930954f, .2433679699897766f, .30303436517715454f, .2656550705432892f, .2528592348098755f }, map.Temperature);
@@ -50,7 +50,7 @@ public sealed class ClimateV3Tests
         var old = new Historical.V2.TerrainRequest(r.HeightMap, r.MountainStrength, r.WarpStrength,
             r.Iterations, r.Rainfall, r.Evaporation, r.PlainsCoverage, r.MountainCoverage,
             r.GlobalMoisture, r.SeaLevel, Historical.V2.TerrainLimits.AlgorithmVersion);
-        var current = TerrainGenerator.Generate(r);
+        var current = Historical.V5.TerrainGenerator.Generate(r);
         var previous = Historical.V2.TerrainGenerator.Generate(old);
         Assert.Equal(previous.HeightMap.Values, current.HeightMap.Values);
         Assert.Equal(previous.Simulation, current.Simulation);

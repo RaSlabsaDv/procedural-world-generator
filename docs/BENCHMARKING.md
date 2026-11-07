@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v6`, algorithm `diverse-landscape-v5`, result `landscape-ecology-v6`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v6`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v7`, algorithm `diverse-landscape-v6`, result `landscape-ecology-v7`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v7`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6 timings.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7 timings.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -179,3 +179,13 @@ six extra instanced meshes, so the current color/initial shadow budget is ninete
 calls per view. Baseline tree, terrain, climate and hydraulic outputs remain exact;
 additional Core work means v5/v6 timings cannot be pooled. Trunk clearance uses the
 actual returned trees, so vegetation density can affect rock availability.
+
+Stage 6 uses algorithm diverse-landscape-v6 and result/workload/profile v7, with
+the same output schema and hydraulic-grid-v1 kernel. New local height contributions
+run before erosion, with at most eight extra ValueNoise evaluations (32 lattice
+hashes) per sample and no extra map buffers. Include this arithmetic in computeMs
+in both hosts. Downstream ecology, tree and rock policies retain their rules but
+receive different heights, so counts and JSON bytes may change. Never infer a
+performance advantage from unpaired historical/new smoke timings. Freeze version,
+request and build identity per campaign; transport, normalization/comparison and
+rendering boundaries remain unchanged. See LOCAL_RELIEF_V1.md.

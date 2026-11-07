@@ -143,7 +143,7 @@ public sealed class RockPlacementTests
         foreach(var item in fixture.RootElement.GetProperty("cases").EnumerateArray())
         {
             var request=item.GetProperty("request").Deserialize<TerrainRequest>(options)! with{AlgorithmVersion=TerrainLimits.AlgorithmVersion};
-            var result=TerrainGenerator.Generate(request); var map=result.HeightMap;
+            var result=Historical.V5.TerrainGenerator.Generate(request); var map=result.HeightMap;
             var fields=new Dictionary<string,object>{["values"]=map.Values,["biomes"]=map.Biomes,["moisture"]=map.Moisture,["temperature"]=map.Temperature,["slope"]=map.Slope,["vegetationDensity"]=map.VegetationDensity,["surfaceWeights"]=map.SurfaceWeights,["trees"]=map.Trees,["simulation"]=result.Simulation};
             foreach(var (name,value) in fields) Assert.Equal(item.GetProperty("hashes").GetProperty(name).GetString(),Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value,options))).ToLowerInvariant());
             Assert.Equal(item.GetProperty("treeCount").GetInt32(),map.Trees.Length);

@@ -15,7 +15,7 @@ internal static class FrozenLandscape
             {
                 var original = item.GetProperty("request").Deserialize<TerrainRequest>(new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
                 var request = original with { AlgorithmVersion = TerrainLimits.AlgorithmVersion };
-                var result = TerrainGenerator.Generate(request); var map = result.HeightMap;
+                var result = V5.TerrainGenerator.Generate(request); var map = result.HeightMap;
                 var hashes = item.GetProperty("hashes");
                 Check("values", w => WriteFloats(w, map.Values));
                 Check("moisture", w => WriteFloats(w, map.Moisture));

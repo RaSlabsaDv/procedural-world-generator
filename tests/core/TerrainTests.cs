@@ -142,7 +142,7 @@ public sealed class TerrainTests
         Assert.True(TerrainValidator.Prepare(r with { HeightMap = r.HeightMap with { Width = 512, Height = 512 }, Iterations = 128 }).IsValid);
     }
 
-    private static void Balance(SimulationSummary s)
+    internal static void Balance(SimulationSummary s)
     {
         Assert.InRange(Math.Abs(s.InitialTerrainMass - s.FinalTerrainMass - s.SuspendedSediment), 0,
             1e-10 * Math.Max(1, s.InitialTerrainMass));
