@@ -12,20 +12,12 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import {
-  AmbientLight,
-  Color,
-  DirectionalLight,
-  Mesh,
-  MeshLambertMaterial,
-  PerspectiveCamera,
-  Scene,
-  WebGLRenderer,
-} from 'three';
+import { Mesh, MeshLambertMaterial, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TerrainRun } from '../data/terrain.models';
 import { terrainForest } from './terrain-forest';
 import { terrainGeometry } from './terrain-geometry';
+import { terrainLighting } from './terrain-lighting';
 import { loadTerrainSurfaces, terrainSurfaceMaterial, TerrainSurfaces } from './terrain-surfaces';
 
 export const TERRAIN_SURFACES_FACTORY = new InjectionToken<() => TerrainSurfaces>(
@@ -170,6 +162,7 @@ export class TerrainPreview {
       let camera: PerspectiveCamera | undefined;
       let observer: ResizeObserver | undefined;
       let forest: ReturnType<typeof terrainForest> | undefined;
+      let lighting: ReturnType<typeof terrainLighting> | undefined;
       let mesh: Mesh<ReturnType<typeof terrainGeometry>, MeshLambertMaterial> | undefined;
       const contextLost = (event: Event) => {
         event.preventDefault();
@@ -190,6 +183,7 @@ export class TerrainPreview {
             target: controls.target.toArray() as [number, number, number],
           };
         controls?.dispose();
+        lighting?.dispose();
         forest?.dispose();
         mesh?.geometry.dispose();
         mesh?.material.dispose();
@@ -230,7 +224,6 @@ export class TerrainPreview {
             try {
               const resumed = performance.now();
               const scene = new Scene();
-              scene.background = new Color(0x18232d);
               camera = new PerspectiveCamera(45, 1, 0.01, 10000);
               mesh = new Mesh(
                 terrainGeometry(run.response.result),
@@ -243,10 +236,13 @@ export class TerrainPreview {
               scene.add(mesh);
               forest = terrainForest(run.response.result);
               for (const group of forest.groups) scene.add(group.trunks, group.crowns);
-              scene.add(new AmbientLight(0xffffff, 1.6));
-              const sunlight = new DirectionalLight(0xffffff, 1.8);
-              sunlight.position.set(-1, 2, 1);
-              scene.add(sunlight);
+              lighting = terrainLighting(
+                scene,
+                renderer!,
+                run.request,
+                mesh,
+                forest.groups.flatMap((group) => [group.trunks, group.crowns]),
+              );
               // Bound the view by the request, not by sampled min/max: both modes share the same scale.
               const span = Math.max(
                 run.request.width - 1,

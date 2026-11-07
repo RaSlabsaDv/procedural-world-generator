@@ -28,9 +28,9 @@ Unused Angular routing and the duplicate hydraulic browser script were removed. 
 
 V3 specifies required globalWarmth, vegetationDensity and landformRegionScale controls; broadleaf/conifer forests, sparse savanna, tundra and static highland snow; and Core-owned tree kinds. Strict host/client contracts reject missing fields and invalid categories. Density does not change biome coverage, and the existing hydraulic kernel, ocean connectivity and resource caps are preserved. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for precedence, arithmetic and timing. Historical v2 sources and fixtures remain test-only. Production browser evidence covers category/field parity, heavy limits and offline operation.
 
-## Landscape detail — Stages 1–2 implemented
+## Landscape detail — Stages 1–3 implemented
 
-Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. Stages 1–2 are implemented and verified; stages 3–7 remain planned.
+Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. Stages 1–3 are implemented and verified; stages 4–7 remain planned.
 
 Before each stage, capture representative normal/cold/warm views with fixed requests and camera framing. Define its resource limits and acceptance checks before implementation. Preserve the historical v3 specification and fixtures when introducing a new semantic contract. Keep README empty and documentation in English.
 
@@ -58,13 +58,19 @@ Acceptance: supplied weights are finite, bounded and normalized; categorical rul
 
 Implemented coverage v1 with a required five-channel float32 result array, strict host/client contracts and complete coverage comparisons. Core derives appearance without changing the frozen v3 heights, environment, biomes, trees or hydraulic summaries. Lambert rendering blends base colors and texture detail from supplied weights. Result/workload/profile are v4; algorithm remains diverse-landscape-v3. The old categorical vertex-color/one-hot buffers are replaced by four float channels at the same combined byte count. See [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md).
 
-Verification: 139 Angular tests, 127 Core tests, 37 API tests, four Python packaging/asset tests and worker RPC pass. Release/production builds and materials/landscape/editor/PWA browser checks pass. All six WASM/API cases, through 512x512x128, have zero observed numeric error. Maximum response in this smoke run is 17356255 bytes, including 2621441 wire bytes for coverage; the field itself is 5 MiB and its GPU attribute 4 MiB. Texture/draw-call limits and offline updates remain verified. See development/specification evidence for memory caveats. Stage 3 is next; no lighting, shadow, fog or new hydrology changes are included.
+Verification: 139 Angular tests, 127 Core tests, 37 API tests, four Python packaging/asset tests and worker RPC pass. Release/production builds and materials/landscape/editor/PWA browser checks pass. All six WASM/API cases, through 512x512x128, have zero observed numeric error. Maximum response in this smoke run is 17356255 bytes, including 2621441 wire bytes for coverage; the field itself is 5 MiB and its GPU attribute 4 MiB. Texture/draw-call limits and offline updates remain verified. See development/specification evidence for memory caveats. This is the historical Stage 2 baseline; Stage 3 completion is recorded below. No hydrology changes are included.
 
-### 3. Lighting, shadows and atmosphere
+### 3. Lighting, shadows and atmosphere — complete
+
+Implementation instructions: [LIGHTING_ATMOSPHERE_PROMPT.md](LIGHTING_ATMOSPHERE_PROMPT.md).
 
 Improve terrain shading, add bounded directional shadows from terrain and trees, and use subtle atmospheric fog for depth. Keep a fixed reproducible lighting setup and the same settings for Local/Remote views. Start with the existing Three.js capabilities. Atmosphere changes presentation only; it does not alter climate or introduce a day/night simulation.
 
 Acceptance: terrain shape and tree silhouettes remain readable at overview and close range, without excessive shadow artifacts or obscuring the biome palette. Define shadow resolution, distance and rendering budgets for one/two views. Preserve camera behavior, offline rendering, pause during computation and complete resource disposal. Report scene setup separately from ongoing rendering; CPU submission is not GPU completion.
+
+Implemented daylight-shadow-v1 with a fixed sun, hemisphere fill and span-scaled linear fog. Each preview has a static 2048x2048 PCF shadow target, fitted once to the request extent and actual tree bounds. Terrain casts/receives; existing instanced trees cast. One initial shadow pass is reused during camera movement. Idempotent ownership releases color/depth attachments on replacement, failure and view destruction. Core/transport/surface contracts and mathematical results remain unchanged. See [LIGHTING_ATMOSPHERE_V1.md](LIGHTING_ATMOSPHERE_V1.md).
+
+Verification: 147 Angular tests, 127 Core tests and 37 API tests, four Python packaging/asset tests and worker RPC pass. Production/Release builds and lighting/materials/landscape/editor/PWA Chromium scenarios pass. Shadow attachments are RGBA8 plus DEPTH_COMPONENT24, estimated 32 MiB/view and 64 MiB for comparison views; actual allocation dimensions/formats and cleanup are checked. Color and initial shadow passes each have at most seven calls. Real orbit/reset reuse, paused worker computation, minimum zero-height ocean, 512x512/16384 instances and offline version updates are covered. Full WASM/API parity remains zero-error in the six-case matrix. Stage 4 forest structure is next.
 
 ### 4. Forest structure and tree variation
 

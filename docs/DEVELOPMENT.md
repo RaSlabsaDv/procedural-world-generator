@@ -2,7 +2,7 @@
 
 ## Supported application
 
-The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Surface materials and Core-owned surface transitions are implemented; lighting and further landscape detailing remain planned. Evolution capture/playback remains a later extension. README is intentionally empty.
+The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Surface materials, Core-owned surface transitions, lighting, static directional shadows and distance fog are implemented; further landscape detailing remains planned. Evolution capture/playback remains a later extension. README is intentionally empty.
 
 ## Frontend structure
 
@@ -150,7 +150,7 @@ Use the same environment with `node tests/browser/editor.cjs` for the editor (re
 
 Evidence is written under ignored `artifacts/`. Software WebGL smoke timings are not controlled comparative performance evidence. Reserved WASM linear memory is not live managed memory or total browser RAM. Maximum settings are a desktop smoke workload, not a mobile guarantee.
 
-Next implementation: lighting, shadows and atmosphere (Stage 3), then forests, rocks, local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
+Next implementation: forest structure and tree variation (Stage 4), then rocks, local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
 
 ## Diverse terrain controls and forests
 
@@ -277,5 +277,67 @@ The maximum smoke response is 17356255 bytes, with 2621441 wire bytes for the co
 array. Reserved WASM memory reached 150470656 bytes across the matrix (not live memory
 or browser RSS). Exact requests, field sizes and diagnostic JSON parse/copy times
 are retained in artifacts/landscape-verification.json; they are not controlled
-benchmark conclusions. materials.cjs enlarges test-only CDP response buffers to inspect
-large JSON bodies before navigation; this instrumentation is not part of the product.
+benchmark conclusions. materials.cjs now validates diagnostic API response bodies inside the page and returns
+only small summaries through CDP, avoiding Chromium response-body eviction. Its extra
+API calls run after UI generation for correctness checks, outside product timings.
+
+## Lighting, shadows and atmosphere (Stage 3)
+
+The daylight-shadow-v1 presentation configuration is centralized in
+terrain/rendering/terrain-lighting.ts and specified in LIGHTING_ATMOSPHERE_V1.md.
+One hemisphere fill and one sun replace flat ambient lighting. Fog/background use
+#bcc9ce with near=2.2*span and far=7*span; foreground remains clear at the normal
+overview, and distant zoom fades intentionally. Output color space/tone mapping and
+Core v4 result identities stay unchanged. Forests/ground gain directional shadows;
+there are no new controls, sky assets, weather or generated fields.
+
+Installed Three.js 0.187.0 removes PCFSoftShadowMap and redirects it to PCFShadowMap.
+Use PCFShadowMap directly. One fixed 2048x2048 map is selected after comparing the
+1024 map at identical requests/framing: the larger map with bias=-.0005 and
+normalBias=.08 reduces visible contour-like acne and improves tree grounding.
+The request extent and actual tree bounding boxes determine light-space fitting
+once; the view camera never refits the map. Zero-height/minimum extents are padded.
+Both renderer.shadowMap and sun.shadow disable autoUpdate and request one initial
+update. Changing results/context creates a new map; orbit/zoom/pan only redraw color.
+
+The map has RGBA8 color and DEPTH_COMPONENT24 depth attachments, one mip level and
+no MSAA. Conservative aligned storage is 2048*2048*(4+4)=33554432 bytes per view
+(32 MiB), 64 MiB for comparison views, excluding surface textures, geometry, default
+framebuffers, driver overhead and browser memory. This fits the 64/128 MiB target
+budget. The light's shadow target is disposed once before renderer disposal, which
+also releases its owned depth attachment; no global or cross-view map is shared.
+
+The first render can include one <=7-call shadow pass and one <=7-call color pass;
+subsequent camera-only frames use the color pass. Shadow fitting, target setup and
+initial submission belong to the displayed CPU setup/first submission time, not
+Core/request time or measured GPU completion. Paused operations defer scene setup
+and all render passes. Existing asset wait, error/retry, stale completion and camera
+retention behavior remain.
+
+Run lighting.cjs with the documented PWG_* browser configuration for real shadow
+allocation, static reuse, pause and minimum/zero-height checks. materials.cjs uses
+the shared test-only support/lighting.cjs instrumentation to verify separate shadow
+attachments/passes, both comparison views, repeated replacement, maximum instances
+and cleanup, alongside coverage and surface-texture checks. Read large diagnostic
+JSON bodies within the page rather than relying on CDP body retention. No product
+debug API is added.
+
+Before/after fixed-request normal/cold/warm rectangular previews are retained as
+artifacts/lighting-before/after-{normal,cold,warm}-{overview,close}.png. The initial
+1024 evaluation is retained as lighting-1024-* evidence. Software-WebGL timings and
+attachment estimates are diagnostic, not controlled comparative research findings.
+Full-map shadow texel density remains finite, especially at 512x512 and close zoom;
+small residual aliasing on steep ridge silhouettes is not a geometric terrain defect.
+The fixed fog also becomes stronger when zoomed far out. No equally sharp shadows
+at all distances or mobile memory guarantee is claimed.
+
+Stage 3 verification: 147 Angular tests, 127 Core tests, 37 API tests, four Python
+packaging/asset tests and worker RPC pass. Production lighting/materials/landscape/
+editor/PWA scenarios pass in Chromium 153.0.8010.52 with no page errors. Actual
+shadow attachments match RGBA8/DEPTH_COMPONENT24 at 2048²; main and initial shadow
+passes each stay at <=7 calls. Camera movement/reset reuses the map, real worker
+computation emits no render passes, and replacement/view removal releases owned
+attachments. Exact requests and raw checks are retained in lighting-verification.json
+and lighting-materials-verification.json under ignored artifacts/. Core algorithms,
+contracts and all mathematical output fields remain unchanged; the six-case full
+WASM/API matrix still has zero observed numeric error.

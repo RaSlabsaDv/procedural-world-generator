@@ -1,7 +1,14 @@
 import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
-import { BufferGeometry, MeshLambertMaterial, Texture } from 'three';
+import {
+  BufferGeometry,
+  MeshLambertMaterial,
+  Texture,
+  DirectionalLight,
+  LightShadow,
+  Scene,
+} from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
   TerrainPreview,
@@ -93,6 +100,7 @@ describe('terrain preview lifecycle', () => {
           useValue: () => {
             if (state.fail) throw new Error('No WebGL');
             return {
+              shadowMap: { enabled: false, autoUpdate: true, needsUpdate: false },
               setPixelRatio() {},
               setSize() {},
               render: state.render,
@@ -303,11 +311,13 @@ describe('terrain preview lifecycle', () => {
   });
 
   it('reports shader failure and releases the renderer without emitting display success', async () => {
+    const disposeShadow = vi.spyOn(LightShadow.prototype, 'dispose');
     const debug = { onShaderError: () => {} };
     const dispose = vi.fn();
     TestBed.overrideProvider(TERRAIN_RENDERER_FACTORY, {
       useValue: () => ({
         debug,
+        shadowMap: { enabled: false, autoUpdate: true, needsUpdate: false },
         setPixelRatio() {},
         setSize() {},
         render() {
@@ -325,6 +335,24 @@ describe('terrain preview lifecycle', () => {
     );
     expect(fixture.nativeElement.querySelector('.display-time')).toBeNull();
     expect(dispose).toHaveBeenCalledTimes(1);
+    expect(disposeShadow).toHaveBeenCalledTimes(1);
+  });
+
+  it('disposes scene shadows on replacement and destruction', async () => {
+    const disposeShadow = vi.spyOn(LightShadow.prototype, 'dispose');
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    const scene = state.render.mock.calls[0][0] as Scene;
+    const sun = scene.children.find(
+      (object) => object instanceof DirectionalLight,
+    ) as DirectionalLight;
+    expect(sun.castShadow).toBe(true);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(disposeShadow).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+    expect(disposeShadow).toHaveBeenCalledTimes(2);
   });
 
   it('preserves the camera on same-scale replacement and resets it on request', async () => {

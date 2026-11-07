@@ -5,6 +5,10 @@ const {
   waitForOfflineReady,
 } = require("./support/browser.cjs");
 const assert = require("node:assert/strict");
+const {
+  instrumentLighting,
+  lightingResources,
+} = require("./support/lighting.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
@@ -14,6 +18,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1050 },
     });
+    await instrumentLighting(context);
     await context.addInitScript(() => {
       // Test-only instrumentation; no telemetry/debug API is added to the product.
       window.__surfaceContexts = [];
@@ -73,53 +78,72 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     });
     const page = await context.newPage(),
       errors = [];
-    // Preserve large JSON bodies for test-only CDP inspection (default resource buffers can evict them).
-    const network = await context.newCDPSession(page);
-    await network.send("Network.enable", {
-      maxTotalBufferSize: 128 * 1024 * 1024,
-      maxResourceBufferSize: 64 * 1024 * 1024,
-    });
-    const coverageChecks = [],
-      coverageErrors = [];
+    const coverageChecks = [];
+    // Read large response bodies inside the page, returning only tiny diagnostics through CDP.
+    const checkCoverage = () =>
+      page.evaluate(async () => {
+        const parameters = Object.fromEntries(
+          [...document.querySelectorAll("input[type=number]")].map((input) => [
+            input.id,
+            Number(input.value),
+          ]),
+        );
+        const heightMap = { algorithmVersion: "value-noise-fbm-v1" };
+        for (const field of [
+          "seed",
+          "width",
+          "height",
+          "noiseScale",
+          "octaves",
+          "heightMultiplier",
+        ]) {
+          heightMap[field] = parameters[field];
+          delete parameters[field];
+        }
+        const response = await fetch("/api/v1/terrains", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...parameters,
+            heightMap,
+            algorithmVersion: "diverse-landscape-v3",
+          }),
+        });
+        if (!response.ok)
+          throw Error("Coverage diagnostic API failed: " + response.status);
+        const { result } = await response.json(),
+          weights = result.surfaceWeights;
+        if (
+          !Array.isArray(weights) ||
+          weights.length !== result.width * result.height * 5
+        )
+          throw Error("Coverage shape");
+        for (let i = 0; i < result.width * result.height; i++) {
+          let sum = 0;
+          for (let j = 0; j < 5; j++) {
+            const value = weights[i * 5 + j];
+            if (
+              !Number.isFinite(value) ||
+              value < 0 ||
+              value > 1 ||
+              (j === 2 && value !== 0) ||
+              (result.biomes[i] === 0 && value !== 0)
+            )
+              throw Error("Coverage field");
+            sum += Math.fround(value);
+          }
+          if (Math.abs(sum - (result.biomes[i] === 0 ? 0 : 1)) > 1e-6)
+            throw Error("Coverage sum");
+        }
+        return {
+          samples: result.width * result.height,
+          rawBytes: weights.length * 4,
+          gpuAttributeBytes: result.width * result.height * 16,
+        };
+      });
     page.on("pageerror", (error) => errors.push(error.message));
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
-    });
-    page.on("response", (response) => {
-      if (
-        !response.url().endsWith("/api/v1/terrains") ||
-        response.status() !== 200
-      )
-        return;
-      coverageChecks.push(
-        response
-          .json()
-          .then(({ result }) => {
-            const weights = result.surfaceWeights;
-            assert.equal(weights.length, result.width * result.height * 5);
-            for (let i = 0; i < result.width * result.height; i++) {
-              let sum = 0;
-              for (let j = 0; j < 5; j++) {
-                const v = weights[i * 5 + j];
-                assert.ok(Number.isFinite(v) && v >= 0 && v <= 1);
-                if (j === 2 || result.biomes[i] === 0) assert.equal(v, 0);
-                sum += Math.fround(v);
-              }
-              assert.ok(
-                Math.abs(sum - (result.biomes[i] === 0 ? 0 : 1)) <= 1e-6,
-              );
-            }
-            return {
-              samples: result.width * result.height,
-              rawBytes: weights.length * 4,
-              gpuAttributeBytes: result.width * result.height * 16,
-            };
-          })
-          .catch((error) => {
-            coverageErrors.push(error.message);
-            return null;
-          }),
-      );
     });
     await page.goto(base);
     await waitForOfflineReady(page);
@@ -158,10 +182,40 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           "soil.png",
         ]);
         assert.equal(row.terrainCalls, 1);
-        assert.ok(row.calls <= 7, "Terrain plus at most six tree meshes");
+        assert.ok(
+          row.calls <= 7,
+          "Color pass: terrain plus at most six tree meshes",
+        );
       }
       for (const row of rows.filter((row) => row.lost))
         assert.equal(row.textures, 0);
+      const lighting = await lightingResources(page);
+      for (const row of lighting.filter(
+        (row) => !row.lost && row.detailTextures > 0,
+      )) {
+        assert.equal(row.attachments.length, 2);
+        for (const attachment of row.attachments)
+          assert.ok(
+            attachment.width <= 2048 &&
+              attachment.height <= 2048 &&
+              attachment.levels === 1,
+          );
+        assert.ok(
+          row.attachments.reduce((sum, a) => sum + a.estimatedBytes, 0) <=
+            64 * 1024 * 1024,
+        );
+        assert.equal(row.activeShadowUpdates, 1);
+        for (const pass of row.passes.filter((pass) => pass.calls > 0))
+          assert.ok(pass.calls <= 7);
+      }
+      for (const row of lighting.filter(
+        (row) => row.lost || row.detailTextures === 0,
+      ))
+        assert.equal(
+          row.attachments.length,
+          0,
+          "Destroyed view must release shadow attachments",
+        );
       return rows;
     };
     const captures = [];
@@ -184,13 +238,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       await complete();
       const canvas = page.locator("app-terrain-preview canvas");
       await canvas.screenshot({
-        path: artifact(`transitions-after-${label}-overview.png`),
+        path: artifact(`lighting-after-${label}-overview.png`),
       });
       await canvas.hover();
       await page.mouse.wheel(0, -650);
       await page.waitForTimeout(350);
       await canvas.screenshot({
-        path: artifact(`transitions-after-${label}-close.png`),
+        path: artifact(`lighting-after-${label}-close.png`),
       });
       const parameters = await page
         .locator("input[type=number]")
@@ -199,12 +253,14 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
             inputs.map((input) => [input.id, Number(input.value)]),
           ),
         );
+      coverageChecks.push(await checkCoverage());
       captures.push({
         label,
         parameters,
         algorithmVersion: "diverse-landscape-v3",
         wheelDelta: -650,
         resources: await assertResources(1),
+        lighting: await lightingResources(page),
       });
       await page
         .getByRole("button", { name: "Reset camera", exact: true })
@@ -215,6 +271,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     await page.locator("#compare-views").click();
     await page.locator("app-terrain-preview .display-time").nth(1).waitFor();
     const comparison = await assertResources(2);
+    const comparisonLighting = await lightingResources(page);
     await page.locator("#select-remote").click();
     await page.waitForFunction(
       () => document.querySelectorAll("app-terrain-preview").length === 1,
@@ -243,6 +300,21 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       /16384/,
     );
     const maximum = await assertResources(1);
+    const maximumLighting = await lightingResources(page);
+    const maxCanvas = page.locator("app-terrain-preview canvas");
+    await maxCanvas.screenshot({
+      path: artifact("lighting-maximum-overview.png"),
+    });
+    await maxCanvas.hover();
+    await page.mouse.wheel(0, -900);
+    await page.waitForTimeout(200);
+    await maxCanvas.screenshot({
+      path: artifact("lighting-maximum-close.png"),
+    });
+    await page
+      .getByRole("button", { name: "Reset camera", exact: true })
+      .click();
+    coverageChecks.push(await checkCoverage());
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(
       await page.evaluate(
@@ -251,8 +323,6 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       true,
     );
     await page.locator("#reset-parameters").click();
-    await Promise.all(coverageChecks);
-    assert.deepEqual(coverageErrors, []);
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForOfflineReady(page);
@@ -278,8 +348,11 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       pass: true,
       browser: browser.version(),
       captures,
-      coverageChecks: await Promise.all(coverageChecks),
+      coverageChecks,
       comparison,
+      comparisonLighting,
+      maximumLighting,
+      lighting: await lightingResources(page),
       maximum,
       offline,
       encodedBytes,
@@ -287,7 +360,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       pageErrors: errors,
     };
     await fs.writeFile(
-      artifact("transitions-verification.json"),
+      artifact("lighting-materials-verification.json"),
       JSON.stringify(evidence, null, 2),
     );
     console.log(JSON.stringify(evidence));

@@ -32,7 +32,7 @@ One primary result is visible by default; Local/Remote selection and Compare vie
 
 Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v4 result contract is specified below.
 
-Playback and brush editing are not implemented. Lighting, shadows and atmosphere are the next detailing stage; bounded evolution capture remains later work.
+Playback and brush editing are not implemented. Lighting, shadows and atmosphere are implemented as a presentation layer; bounded evolution capture remains later work.
 
 ## Contracts and public surface
 
@@ -61,6 +61,14 @@ Stages 1–2 use local periodic grass, soil, rock and snow detail maps, with res
 A Lambert shader blends both linear base colors and texture detail using supplied weights, with fixed four-unit triplanar projection. Four float32 values per vertex replace Stage 1 one-hot bytes and categorical colors; heights, triangles and normals remain unchanged. The ocean contribution is the nonnegative complement of interpolated land coverage. This is ordinary triangle interpolation, not coastal classification. Categorical biome rules and tree eligibility remain unchanged; the legend labels categories, not exact surface colors.
 
 Each preview owns its texture set across result replacements and releases it on destruction. Async completion guards prevent obsolete scenes, and loading failures release partial assets and permit retry on the next result. Scene setup/submission defers while generation is paused. Asset wait is reported separately; CPU setup/first textured submission excludes that wait and does not claim GPU completion. All five source PNGs are in the complete versioned offline cache. See DEVELOPMENT.md for budgets, provenance and lifecycle verification.
+
+## Lighting and atmosphere
+
+Rendering revision daylight-shadow-v1 adds one fixed-direction sun, hemisphere fill and span-scaled linear fog. The Lambert surface extension uses the installed Three.js PCF shadow and fog chunks without changing Core coverage or generation contracts. The orthographic shadow camera encloses the request-based terrain bounds and actual instanced-tree bounds with padding, computed once during setup; it does not track the viewing camera.
+
+Terrain casts/receives shadows (double-sided shadow depth for the open heightfield); existing tree instances cast without self-receiving. One 2048x2048 PCF map per view updates once on scene replacement/recreation. Both renderer and light auto-update are disabled; camera-only renders reuse it. The initial shadow pass has at most seven caster calls and the color pass at most seven terrain/tree calls. Fog uses the same request-span ratios in both execution modes.
+
+Each preview owns its light/shadow target. Cleanup disposes that target before the renderer; its attached depth texture is owned/released by the installed render-target implementation. Color RGBA8 plus conservatively aligned DEPTH_COMPONENT24 estimate 32 MiB/view, 64 MiB for comparison views, separately from four surface textures and other resources. Setup and the first shadow/color submission are display CPU work, excluded from computeMs/requestMs; no GPU completion is measured. See [LIGHTING_ATMOSPHERE_V1.md](LIGHTING_ATMOSPHERE_V1.md) for frozen settings, ownership and limitations.
 
 ## Timing, worker and build identity
 

@@ -150,3 +150,12 @@ Offline preparation normally initializes the worker/runtime before interactive g
 Historical v3 kept the v2 work/tree budgets and hydraulic kernel but changes ecological rules and adds a required tree kind. Include biome/category decisions in Core timing and all category geometry/matrices in display timing. Record actual v3 JSON bytes; the numeric field sizes alone omit categories, JSON syntax and tree records. Historical v2 timings must remain separate.
 
 Stage 2 adds a required five-channel float32 surfaceWeights array while preserving the v3 generation algorithm and hydraulic kernel. Include the coverage pass in Core time; strict decoding, comparison and four-channel GPU packing stay outside Core time. Never pool v3/v4 result/workload/profile samples. Reserved WASM memory and smoke JSON parse/copy diagnostics are not live managed memory or a controlled latency result.
+
+Rendering revision daylight-shadow-v1 adds static directional shadows and fog only.
+Record its configuration separately from the unchanged v4 Core workload identities.
+The initial shadow map/color submission can add setup time and GPU work; both remain
+excluded from computeMs and requestMs. Orbit-only frames reuse the shadow map. The
+future trial runner must continue to defer all scene construction/rendering during
+measured pairs; the static interactive renderer is not that runner. Attachment byte
+estimates, software-WebGL smoke timings and diagnostic API requests are not a
+controlled performance campaign.
