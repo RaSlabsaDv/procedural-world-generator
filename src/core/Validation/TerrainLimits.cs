@@ -2,11 +2,11 @@ namespace WorldGenerator.Core;
 
 public static class TerrainLimits
 {
-    public const string AlgorithmVersion = "diverse-landscape-v3";
+    public const string AlgorithmVersion = "diverse-landscape-v4";
     public const int MaxTrees = 16384;
-    public const string ResultVersion = "landscape-ecology-v4";
-    public const string Workload = "landscape-ecology-hydraulic-v4";
-    public const string ExecutionProfile = "landscape-worker-json-v4";
+    public const string ResultVersion = "landscape-ecology-v5";
+    public const string Workload = "landscape-ecology-hydraulic-v5";
+    public const string ExecutionProfile = "landscape-worker-json-v5";
     public const string SimulationVersion = "hydraulic-grid-v1";
     public const int MaxIterations = 2048;
     public const long MaxCellIterations = 33_554_432;

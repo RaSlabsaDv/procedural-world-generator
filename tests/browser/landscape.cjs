@@ -1,4 +1,4 @@
-// Full v4 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
+// Full v5 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
 const {
   base,
   launchBrowser,
@@ -50,6 +50,7 @@ const assert = require("node:assert/strict"),
         [3, 2, 2, -2147483648, 30, 0.45, 0.3, 0.65, 0.16, 0.35, 2],
         [129, 129, 32, 42, 30, 0.45, 0.3, 0.65, 0.16, 0.6, 1],
         [128, 128, 16, 2026, 30, 0.35, 0.4, 0.8, 0.16, 0.25, 1],
+        [128, 128, 16, 2026, 30, 0.45, 0.3, 0.8, 0.16, 0.38, 1],
         [128, 128, 0, -7, 30, 0.45, 0.3, 0.45, 0, 0.9, 0.5],
         [512, 512, 128, -7, 80, 1, 0, 1, 0, 0.6, 4],
       ]) {
@@ -75,7 +76,7 @@ const assert = require("node:assert/strict"),
           globalWarmth: warmth,
           vegetationDensity: 1,
           landformRegionScale: regionScale,
-          algorithmVersion: "diverse-landscape-v3",
+          algorithmVersion: "diverse-landscape-v4",
         };
         let ticks = 0,
           last = performance.now(),
@@ -111,9 +112,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v4" ||
-            result.executionProfile !== "landscape-worker-json-v4" ||
-            result.result.resultVersion !== "landscape-ecology-v4" ||
+            result.workload !== "landscape-ecology-hydraulic-v5" ||
+            result.executionProfile !== "landscape-worker-json-v5" ||
+            result.result.resultVersion !== "landscape-ecology-v5" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )
@@ -198,7 +199,9 @@ const assert = require("node:assert/strict"),
             Math.fround(remote.result.surfaceWeights[i]),
           );
         const counts = Array(9).fill(0),
-          treeKinds = Array(3).fill(0);
+          treeKinds = Array(3).fill(0),
+          variants = Array(2).fill(0),
+          kindVariants = Array(6).fill(0);
         for (let i = 0; i < w * h; i++) {
           const id = local.result.biomes[i];
           if (
@@ -218,6 +221,10 @@ const assert = require("node:assert/strict"),
             b = remote.result.trees[i];
           if (
             a.kind !== b.kind ||
+            a.variant !== b.variant ||
+            !Number.isInteger(a.variant) ||
+            a.variant < 0 ||
+            a.variant > 1 ||
             !Number.isInteger(a.kind) ||
             a.kind < 0 ||
             a.kind > 2 ||
@@ -227,6 +234,8 @@ const assert = require("node:assert/strict"),
             throw Error("Tree index");
           previous = a.cellIndex;
           treeKinds[a.kind]++;
+          variants[a.variant]++;
+          kindVariants[a.kind * 2 + a.variant]++;
           for (const key of ["x", "y", "z", "scale", "rotation"])
             check(Math.fround(a[key]), Math.fround(b[key]));
         }
@@ -239,6 +248,8 @@ const assert = require("node:assert/strict"),
           request,
           biomeCounts: counts,
           treeKindCounts: treeKinds,
+          variantCounts: variants,
+          kindVariantCounts: kindVariants,
           trees: local.result.trees.length,
           responseBytes: new TextEncoder().encode(text).length,
           coverageWireJsonBytes: new TextEncoder().encode(
@@ -273,6 +284,12 @@ const assert = require("node:assert/strict"),
         matrix.some((row) => row.treeKindCounts[kind] > 0),
         "Missing tree kind " + kind,
       );
+    for (let kind = 0; kind < 3; kind++)
+      for (let variant = 0; variant < 2; variant++)
+        assert.ok(
+          matrix.some((row) => row.kindVariantCounts[kind * 2 + variant] > 0),
+          "Missing kind/variant " + kind + "/" + variant,
+        );
     for (const id of [5, 6, 7, 8])
       assert.ok(
         matrix.some((row) => row.biomeCounts[id] > 0),

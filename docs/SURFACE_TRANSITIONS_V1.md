@@ -1,5 +1,7 @@
 # Surface coverage v1
 
+Historical Stage 2 identities are retained below. Coverage equations/layout remain current; Stage 4 changes vegetation and uses diverse-landscape-v4 with v5 result/workload/profile identities. See [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md).
+
 Status: implemented and verified; frozen specification for Stage 2. The height generator remains diverse-landscape-v3 and simulation hydraulic-grid-v1. Extended result: landscape-ecology-v4; workload: landscape-ecology-hydraulic-v4; execution profile: landscape-worker-json-v4. Requests and all canonical limits remain unchanged. Do not pool v3/v4 timings.
 
 ## Contract and arithmetic

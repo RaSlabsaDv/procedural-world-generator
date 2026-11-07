@@ -1,4 +1,4 @@
-export const RESULT_VERSION = 'landscape-ecology-v4';
+export const RESULT_VERSION = 'landscape-ecology-v5';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -31,7 +31,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v4';
+  readonly executionProfile: 'landscape-worker-json-v5';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -53,8 +53,8 @@ export class TerrainError extends Error {
   }
 }
 
-export const TERRAIN_ALGORITHM = 'diverse-landscape-v3';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v4';
+export const TERRAIN_ALGORITHM = 'diverse-landscape-v4';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v5';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -87,6 +87,7 @@ export interface SimulationSummary {
 
 export interface TreeInstance {
   readonly kind: TreeKindId;
+  readonly variant: TreeVariantId;
   readonly cellIndex: number;
   readonly x: number;
   readonly y: number;
@@ -95,9 +96,9 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v4';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v5';
 
-/** Wire IDs for landscape-ecology-v4; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v5; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,
@@ -127,3 +128,7 @@ export const VEGETATED_BIOME_IDS: ReadonlySet<number> = new Set(Object.values(TR
 export const SURFACE_CHANNELS = 5;
 export const SURFACE_CHANNEL = { Grass: 0, Soil: 1, Sand: 2, Rock: 3, Snow: 4 } as const;
 export const SURFACE_SUM_TOLERANCE = 1e-6;
+
+export const TREE_VARIANT = { Small: 0, Mature: 1 } as const;
+export type TreeVariantId = (typeof TREE_VARIANT)[keyof typeof TREE_VARIANT];
+export const TREE_VARIANT_IDS: ReadonlySet<number> = new Set(Object.values(TREE_VARIANT));

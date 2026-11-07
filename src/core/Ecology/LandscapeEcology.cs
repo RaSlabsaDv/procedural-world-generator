@@ -26,8 +26,9 @@ internal static class LandscapeEcology
                 var dz = ((double)values[bottom * map.Width + x] - values[top * map.Width + x]) / (bottom - top);
                 slope[i] = (float)Math.Sqrt(dx * dx + dz * dz);
                 biomes[i] = LandscapeBiomeClassifier.Classify(ocean[i], h, moisture[i], temperature[i], slope[i], patch);
-                density[i] = LandscapeBiomeClassifier.Density(biomes[i], moisture[i], slope[i], patch, request.VegetationDensity);
+                density[i] = LandscapeBiomeClassifier.Density(biomes[i], moisture[i], slope[i], patch, 1);
             }
+        VegetationStructure.Apply(density, biomes, slope, request);
         var surfaceWeights = SurfaceCoverage.Derive(values, biomes, moisture, temperature, slope, bound);
         var trees = VegetationGenerator.PlaceTrees(values, biomes, slope, density, map.Width, map.Height, seed);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,

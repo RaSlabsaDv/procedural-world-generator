@@ -104,6 +104,7 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
     if (
       left.cellIndex !== right.cellIndex ||
       left.kind !== right.kind ||
+      left.variant !== right.variant ||
       (['x', 'y', 'z', 'scale', 'rotation'] as const).some((key) => !close(left[key], right[key]))
     )
       vegetationMismatchCount++;

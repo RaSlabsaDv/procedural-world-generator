@@ -106,7 +106,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           body: JSON.stringify({
             ...parameters,
             heightMap,
-            algorithmVersion: "diverse-landscape-v3",
+            algorithmVersion: "diverse-landscape-v4",
           }),
         });
         if (!response.ok)
@@ -135,7 +135,24 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           if (Math.abs(sum - (result.biomes[i] === 0 ? 0 : 1)) > 1e-6)
             throw Error("Coverage sum");
         }
+        const kindVariants = Array(6).fill(0);
+        for (const tree of result.trees) {
+          if (
+            !Number.isInteger(tree.kind) ||
+            tree.kind < 0 ||
+            tree.kind > 2 ||
+            !Number.isInteger(tree.variant) ||
+            tree.variant < 0 ||
+            tree.variant > 1
+          )
+            throw Error("Tree kind/variant");
+          kindVariants[tree.kind * 2 + tree.variant]++;
+        }
         return {
+          treeCount: result.trees.length,
+          kindVariantCounts: kindVariants,
+          vegetationGroups: kindVariants.filter((count) => count > 0).length,
+          instanceMatrixBytes: result.trees.length * 2 * 16 * 4,
           samples: result.width * result.height,
           rawBytes: weights.length * 4,
           gpuAttributeBytes: result.width * result.height * 16,
@@ -183,8 +200,8 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         ]);
         assert.equal(row.terrainCalls, 1);
         assert.ok(
-          row.calls <= 7,
-          "Color pass: terrain plus at most six tree meshes",
+          row.calls <= 13,
+          "Color pass: terrain plus at most twelve tree meshes",
         );
       }
       for (const row of rows.filter((row) => row.lost))
@@ -206,7 +223,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         );
         assert.equal(row.activeShadowUpdates, 1);
         for (const pass of row.passes.filter((pass) => pass.calls > 0))
-          assert.ok(pass.calls <= 7);
+          assert.ok(pass.calls <= 13);
       }
       for (const row of lighting.filter(
         (row) => row.lost || row.detailTextures === 0,
@@ -219,16 +236,25 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       return rows;
     };
     const captures = [];
-    for (const [label, seed, warmth, moisture] of [
+    for (const [
+      label,
+      seed,
+      warmth,
+      moisture,
+      height = 97,
+      iterations = 16,
+    ] of [
       ["normal", 42, 0.6, 0.65],
       ["cold", 2026, 0.25, 0.8],
       ["warm", -7, 0.9, 0.45],
+      ["conifer", 2026, 0.38, 0.8],
+      ["mixed", 42, 0.6, 0.65, 129, 32],
     ]) {
       const fields = {
         seed,
         width: 129,
-        height: 97,
-        iterations: 16,
+        height,
+        iterations,
         globalWarmth: warmth,
         globalMoisture: moisture,
       };
@@ -238,13 +264,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       await complete();
       const canvas = page.locator("app-terrain-preview canvas");
       await canvas.screenshot({
-        path: artifact(`lighting-after-${label}-overview.png`),
+        path: artifact(`vegetation-after-${label}-overview.png`),
       });
       await canvas.hover();
       await page.mouse.wheel(0, -650);
       await page.waitForTimeout(350);
       await canvas.screenshot({
-        path: artifact(`lighting-after-${label}-close.png`),
+        path: artifact(`vegetation-after-${label}-close.png`),
       });
       const parameters = await page
         .locator("input[type=number]")
@@ -253,11 +279,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
             inputs.map((input) => [input.id, Number(input.value)]),
           ),
         );
-      coverageChecks.push(await checkCoverage());
+      const diagnostic = await checkCoverage();
+      if (label === "mixed") assert.equal(diagnostic.vegetationGroups, 6);
+      coverageChecks.push(diagnostic);
       captures.push({
         label,
         parameters,
-        algorithmVersion: "diverse-landscape-v3",
+        algorithmVersion: "diverse-landscape-v4",
         wheelDelta: -650,
         resources: await assertResources(1),
         lighting: await lightingResources(page),
@@ -279,6 +307,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     await page.locator("app-terrain-preview .display-time").waitFor();
     await assertResources(1);
     for (const [id, value] of Object.entries({
+      seed: -7,
       width: 512,
       height: 512,
       iterations: 0,
@@ -303,13 +332,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     const maximumLighting = await lightingResources(page);
     const maxCanvas = page.locator("app-terrain-preview canvas");
     await maxCanvas.screenshot({
-      path: artifact("lighting-maximum-overview.png"),
+      path: artifact("vegetation-maximum-overview.png"),
     });
     await maxCanvas.hover();
     await page.mouse.wheel(0, -900);
     await page.waitForTimeout(200);
     await maxCanvas.screenshot({
-      path: artifact("lighting-maximum-close.png"),
+      path: artifact("vegetation-maximum-close.png"),
     });
     await page
       .getByRole("button", { name: "Reset camera", exact: true })
@@ -360,7 +389,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       pageErrors: errors,
     };
     await fs.writeFile(
-      artifact("lighting-materials-verification.json"),
+      artifact("vegetation-materials-verification.json"),
       JSON.stringify(evidence, null, 2),
     );
     console.log(JSON.stringify(evidence));

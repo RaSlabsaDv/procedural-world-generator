@@ -54,7 +54,7 @@ export function testWire(terrain = testTerrain()) {
     parameters: terrain,
     workload: TERRAIN_WORKLOAD as typeof TERRAIN_WORKLOAD,
     simulationVersion: SIMULATION_VERSION as typeof SIMULATION_VERSION,
-    executionProfile: 'landscape-worker-json-v4' as const,
+    executionProfile: 'landscape-worker-json-v5' as const,
     computeMs: 1,
     coreBuildId: 'git:123456789abc',
     simulation: {

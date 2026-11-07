@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text.Json;
 using Xunit;
 
 namespace WorldGenerator.Core.Tests;
@@ -7,32 +5,7 @@ namespace WorldGenerator.Core.Tests;
 public sealed class SurfaceCoverageTests
 {
     [Fact]
-    public void PreservesFrozenV3FieldsForErodedVegetatedExtremeSeedRequests()
-    {
-        using var fixture = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures/landscape-v3-fingerprints.json")));
-        foreach (var item in fixture.RootElement.GetProperty("cases").EnumerateArray())
-        {
-            var request = item.GetProperty("request").Deserialize<TerrainRequest>(new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
-            var result = TerrainGenerator.Generate(request); var map = result.HeightMap;
-            var hashes = item.GetProperty("hashes");
-            Check("values", w => WriteFloats(w, map.Values));
-            Check("moisture", w => WriteFloats(w, map.Moisture));
-            Check("temperature", w => WriteFloats(w, map.Temperature));
-            Check("slope", w => WriteFloats(w, map.Slope));
-            Check("vegetationDensity", w => WriteFloats(w, map.VegetationDensity));
-            Check("biomes", w => { foreach (var biome in map.Biomes) w.Write((byte)biome); });
-            Check("trees", w => { foreach (var t in map.Trees) { w.Write(t.CellIndex); w.Write(t.X); w.Write(t.Y); w.Write(t.Z); w.Write(t.Scale); w.Write(t.Rotation); w.Write((int)t.Kind); } });
-            Check("simulation", w => { var s = result.Simulation; w.Write(s.Iterations); w.Write(s.CellIterations); w.Write(s.InitialTerrainMass); w.Write(s.FinalTerrainMass); w.Write(s.SuspendedSediment); w.Write(s.WaterAdded); w.Write(s.WaterRemaining); w.Write(s.WaterEvaporated); });
-            Assert.Equal(item.GetProperty("treeCount").GetInt32(), map.Trees.Length);
-            void Check(string name, Action<BinaryWriter> write)
-            {
-                using var buffer = new MemoryStream(); using var writer = new BinaryWriter(buffer);
-                write(writer); writer.Flush();
-                Assert.Equal(hashes.GetProperty(name).GetString(), Convert.ToHexString(SHA256.HashData(buffer.ToArray())).ToLowerInvariant());
-            }
-        }
-        static void WriteFloats(BinaryWriter writer, float[] values) { foreach (var value in values) writer.Write(value); }
-    }
+    public void PreservesFrozenV3V4TerrainAndHistoricalVegetationFixtures() => Historical.V3.FrozenLandscape.Verify();
 
     [Fact]
     public void MatchesIndependentLiteralReference()
@@ -61,8 +34,12 @@ public sealed class SurfaceCoverageTests
     }
 
     [Theory]
-    [InlineData(.45, .65)] [InlineData(.18, .30)] [InlineData(1, 1.4)]
-    [InlineData(.45, 1.05)] [InlineData(.28, .60)] [InlineData(.18, .38)]
+    [InlineData(.45, .65)]
+    [InlineData(.18, .30)]
+    [InlineData(1, 1.4)]
+    [InlineData(.45, 1.05)]
+    [InlineData(.28, .60)]
+    [InlineData(.18, .38)]
     public void SmoothEndpointsAreClampedAndContinuous(double a, double b)
     {
         Assert.Equal(0, SurfaceCoverage.Smooth(a, b, a)); Assert.Equal(1, SurfaceCoverage.Smooth(a, b, b));
@@ -72,7 +49,9 @@ public sealed class SurfaceCoverageTests
     }
 
     [Theory]
-    [InlineData(2,2,0,int.MinValue)] [InlineData(3,2,30,int.MaxValue)] [InlineData(512,512,30,-7)]
+    [InlineData(2, 2, 0, int.MinValue)]
+    [InlineData(3, 2, 30, int.MaxValue)]
+    [InlineData(512, 512, 30, -7)]
     public void CompleteMapsAreBoundedNormalizedIndependentAndDeterministic(int width, int height, double bound, int seed)
     {
         var request = TerrainTests.Request(0) with { HeightMap = TerrainTests.Request().HeightMap with { Width = width, Height = height, HeightMultiplier = bound, Seed = seed } };

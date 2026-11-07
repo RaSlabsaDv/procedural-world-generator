@@ -21,6 +21,6 @@
     <ProjectReference Include="../../src/core/WorldGenerator.Core.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Update="Fixtures/landscape-v3-fingerprints.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Fixtures/landscape-v*-fingerprints.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -17,7 +17,7 @@ internal static class VegetationGenerator
                 var tx = (float)(x + .15 + .7 * Hash(0x27D4EB2Fu));
                 var tz = (float)(z + .15 + .7 * Hash(0x165667B1u));
                 var tree = new TreeInstance(i, tx, Surface(heights, width, i, tx - x, tz - z), tz,
-                    (float)(.6 + .8 * Hash(0x94D049BBu)), (float)(2 * Math.PI * Hash(0x369DEA0Fu)), kind.Value);
+                    (float)(.6 + .8 * Hash(0x94D049BBu)), (float)(2 * Math.PI * Hash(0x369DEA0Fu)), kind.Value, Variant(x, z, seed));
                 chosen.Enqueue(tree, (-Hash(0xDB4F0B91u), -i));
                 if (chosen.Count > TerrainLimits.MaxTrees) chosen.Dequeue();
                 double Hash(uint salt) => ValueNoise.LatticeValue(x, z, seed ^ salt);
@@ -25,6 +25,11 @@ internal static class VegetationGenerator
         return chosen.UnorderedItems.Select(item => item.Element).OrderBy(tree => tree.CellIndex).ToArray();
         bool Eligible(int j, TreeKind kind) => LandscapeBiomeClassifier.Kind(biomes[j]) == kind && slopes[j] < LandscapeBiomeClassifier.MaxForestSlope;
     }
+
+    private const uint VariantSalt = 0xF1357AE5u;
+    private const double SmallFraction = .4;
+    internal static TreeVariant Variant(int x, int z, uint seed) =>
+        ValueNoise.LatticeValue(x, z, seed ^ VariantSalt) < SmallFraction ? TreeVariant.Small : TreeVariant.Mature;
 
     internal static float Surface(float[] heights, int width, int i, double x, double z) => (float)(x + z <= 1
         ? heights[i] + ((double)heights[i + 1] - heights[i]) * x + ((double)heights[i + width] - heights[i]) * z

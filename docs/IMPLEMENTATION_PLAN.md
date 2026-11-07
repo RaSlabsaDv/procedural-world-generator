@@ -10,13 +10,13 @@ Baseline/probe interfaces, the experimental regional generator, and all 2D views
 
 The editor provides a large central Three.js viewport, grouped parameter sidebar, measurements sidebar and compact PWA header. Numeric/slider controls share values; Random seed and Reset affect drafts only. One result is shown by default, with explicit Local/Remote selection and comparison views. Captured labels distinguish previous results from draft edits. Generation/errors retain prior terrain; stale or destroyed-component responses are discarded without releasing the lock before real completion.
 
-Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Full-result comparisons, worker ownership and safe PWA updates remain supported; generation now uses the v4 result contract below. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
+Same-scale preview updates preserve the camera and Reset camera restores default framing. Details expose captured parameters, versions, simulation totals and separate initialization/display timing. Full-result comparisons, worker ownership and safe PWA updates remain supported; generation now uses the v5 result contract below. Tests cover editor state transitions, camera lifecycle and responsive/offline browser behavior.
 
 No new dependencies, presets, brushes, 2D views, simulation history or placeholder timeline controls were added. Bounded capture is a later extension; its player will occupy a bottom timeline after real frame data exists.
 
 ## Diverse terrain and vegetation
 
-Current generation uses diverse-landscape-v3 with landscape-ecology-v4 results: regional plains/hills/mountain composition, explicit boundary-connected ocean, environment-based biomes, density and capped deterministic trees. Both hosts share Core. Up to six instanced meshes per viewport render every returned tree across three categories. Hydraulic-grid-v1 arithmetic and closed boundaries are unchanged. Historical v1/v2 fixtures remain test-only evidence, not another public mode. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for exact rules and limits.
+Current generation uses diverse-landscape-v4 with landscape-ecology-v5 results: regional plains/hills/mountain composition, explicit boundary-connected ocean, environment-based biomes, density and capped deterministic trees. Both hosts share Core. Up to twelve vegetation meshes per viewport render every returned tree across three kinds and two variants. Hydraulic-grid-v1 arithmetic and closed boundaries are unchanged. Historical v1/v2 fixtures remain test-only evidence, not another public mode. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for exact rules and limits.
 
 ## Organization and polishing: complete
 
@@ -28,9 +28,9 @@ Unused Angular routing and the duplicate hydraulic browser script were removed. 
 
 V3 specifies required globalWarmth, vegetationDensity and landformRegionScale controls; broadleaf/conifer forests, sparse savanna, tundra and static highland snow; and Core-owned tree kinds. Strict host/client contracts reject missing fields and invalid categories. Density does not change biome coverage, and the existing hydraulic kernel, ocean connectivity and resource caps are preserved. See [LANDSCAPE_V3.md](LANDSCAPE_V3.md) for precedence, arithmetic and timing. Historical v2 sources and fixtures remain test-only. Production browser evidence covers category/field parity, heavy limits and offline operation.
 
-## Landscape detail — Stages 1–3 implemented
+## Landscape detail — Stages 1–4 implemented
 
-Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. Stages 1–3 are implemented and verified; stages 4–7 remain planned.
+Implement the following stages incrementally in the existing editor. Stages 1–3 form the first delivery: surface materials, natural transitions and lighting. Stages 4–7 add vegetation, rocks, geometric relief and coasts. Stages 1–4 are implemented and verified; stages 5–7 remain planned.
 
 Before each stage, capture representative normal/cold/warm views with fixed requests and camera framing. Define its resource limits and acceptance checks before implementation. Preserve the historical v3 specification and fixtures when introducing a new semantic contract. Keep README empty and documentation in English.
 
@@ -70,15 +70,19 @@ Acceptance: terrain shape and tree silhouettes remain readable at overview and c
 
 Implemented daylight-shadow-v1 with a fixed sun, hemisphere fill and span-scaled linear fog. Each preview has a static 2048x2048 PCF shadow target, fitted once to the request extent and actual tree bounds. Terrain casts/receives; existing instanced trees cast. One initial shadow pass is reused during camera movement. Idempotent ownership releases color/depth attachments on replacement, failure and view destruction. Core/transport/surface contracts and mathematical results remain unchanged. See [LIGHTING_ATMOSPHERE_V1.md](LIGHTING_ATMOSPHERE_V1.md).
 
-Verification: 147 Angular tests, 127 Core tests and 37 API tests, four Python packaging/asset tests and worker RPC pass. Production/Release builds and lighting/materials/landscape/editor/PWA Chromium scenarios pass. Shadow attachments are RGBA8 plus DEPTH_COMPONENT24, estimated 32 MiB/view and 64 MiB for comparison views; actual allocation dimensions/formats and cleanup are checked. Color and initial shadow passes each have at most seven calls. Real orbit/reset reuse, paused worker computation, minimum zero-height ocean, 512x512/16384 instances and offline version updates are covered. Full WASM/API parity remains zero-error in the six-case matrix. Stage 4 forest structure is next.
+Verification: 147 Angular tests, 127 Core tests and 37 API tests, four Python packaging/asset tests and worker RPC pass. Production/Release builds and lighting/materials/landscape/editor/PWA Chromium scenarios pass. Shadow attachments are RGBA8 plus DEPTH_COMPONENT24, estimated 32 MiB/view and 64 MiB for comparison views; actual allocation dimensions/formats and cleanup are checked. Color and initial shadow passes each have at most seven calls. Real orbit/reset reuse, paused worker computation, minimum zero-height ocean, 512x512/16384 instances and offline version updates are covered. Full WASM/API parity remains zero-error in the six-case matrix. This is the historical Stage 3 verification baseline; Stage 4 completion is recorded below.
 
-### 4. Forest structure and tree variation
+### 4. Forest structure and tree variation — complete
 
 Extend deterministic Core placement with groves, clearings and spatial density variation within suitable biomes. Add bounded tree appearance variants for young/tall trees, crown shapes and shades within the existing broadleaf/conifer/savanna categories. Define variants as illustrative size/appearance, not a simulated biological age. Keep category, suitability, positions and seeded variation authoritative in Core; the renderer maps returned variant data to shared geometry/materials.
 
 Specify/version the changed placement contract before implementation. Preserve the 16384 total tree cap unless separately justified. Define a bounded variant count and mesh/draw-call budget before expanding beyond the current maximum of six vegetation meshes. Preserve density-zero behavior and document/test how clustering interacts with monotonic density and priority capping.
 
 Acceptance: fixed seeds reproduce groves and clearings; unsuitable cells remain empty; all returned placements/variants match across hosts. Render every returned instance without per-tree components/materials, with stable retained transforms and bounded resources.
+
+Implemented vegetation structure v1 in Core: independent grove/clearing masks, four-connected same-kind edge attenuation and two deterministic appearance variants per kind. The density multiplier is last; candidate sets are monotonic before the fixed 16384 cap and retained transforms/variants stay stable. Tree records require numeric variant. The renderer creates only nonempty kind/variant groups, at most twelve vegetation meshes, with current daylight/shadow ownership and actual geometry bounds. Algorithm is diverse-landscape-v4; result/workload/profile are v5. See [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md).
+
+Verification: 156 Angular tests, 137 Core tests and 38 API tests pass, including historical v3/v4 field/vegetation fingerprints, independent structure/variant literals, exact retained placement transforms, monotonicity/capping, two-buffer allocation bounds and strict eight-member tree decoding. Release/production builds, four Python packaging/asset tests, worker RPC and all five browser entry points pass. Seven WASM/API cases have zero observed numeric error and include all six kind/variant pairs. The 512x512x128 case returns 16384 trees (6439 Small, 9945 Mature in that run), response 17526721 UTF-8 bytes, reserved WASM memory 151977984 bytes across the sequence (not live memory). The mixed scene observes thirteen color/caster calls; maximum instance matrices use 2 MiB. Four surface textures and the 32 MiB/view shadow attachment estimate stay unchanged. Stage 5 rocks and scree is next.
 
 ### 5. Rocks, boulders and scree
 

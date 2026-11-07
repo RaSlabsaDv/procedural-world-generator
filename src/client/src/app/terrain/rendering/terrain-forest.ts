@@ -12,19 +12,88 @@ import {
   TREE_KIND,
   TREE_KIND_IDS,
   TreeKindId,
+  TREE_VARIANT,
+  TREE_VARIANT_IDS,
+  TreeVariantId,
 } from '../data/terrain.models';
 
-/** Presentation only. Core supplies all categories, suitability and placements. */
+/** Fixed presentation definitions, not tree age, placement or ecological rules. */
+const APPEARANCE = {
+  [TREE_KIND.Broadleaf]: {
+    [TREE_VARIANT.Small]: {
+      trunk: 0.48,
+      radius: 0.36,
+      height: 1,
+      y: 0.72,
+      scale: [0.9, 1.05, 0.95],
+      color: 0x4b8250,
+    },
+    [TREE_VARIANT.Mature]: {
+      trunk: 0.82,
+      radius: 0.58,
+      height: 1,
+      y: 1.18,
+      scale: [1.05, 0.85, 1],
+      color: 0x37744a,
+    },
+  },
+  [TREE_KIND.Conifer]: {
+    [TREE_VARIANT.Small]: {
+      trunk: 0.42,
+      radius: 0.29,
+      height: 0.95,
+      y: 0.72,
+      scale: [1, 1, 1],
+      color: 0x34634a,
+    },
+    [TREE_VARIANT.Mature]: {
+      trunk: 0.7,
+      radius: 0.48,
+      height: 1.55,
+      y: 1.18,
+      scale: [1, 1, 1],
+      color: 0x234c3a,
+    },
+  },
+  [TREE_KIND.Savanna]: {
+    [TREE_VARIANT.Small]: {
+      trunk: 0.8,
+      radius: 0.46,
+      height: 1,
+      y: 0.86,
+      scale: [1.15, 0.45, 1],
+      color: 0x889251,
+    },
+    [TREE_VARIANT.Mature]: {
+      trunk: 1.22,
+      radius: 0.72,
+      height: 1,
+      y: 1.28,
+      scale: [1.4, 0.32, 1.15],
+      color: 0x788449,
+    },
+  },
+} as const;
+
+/** Core owns categories, variants, suitability and transforms. All returned instances are rendered. */
 export function terrainForest(result: TerrainResponse['result']) {
   if (result.trees.length > MAX_TREES) throw new Error('Tree instance budget exceeded.');
-  if (result.trees.some((tree) => !TREE_KIND_IDS.has(tree.kind)))
-    throw new Error('Unsupported tree category.');
+  if (
+    result.trees.some(
+      (tree) => !TREE_KIND_IDS.has(tree.kind) || !TREE_VARIANT_IDS.has(tree.variant),
+    )
+  )
+    throw new Error('Unsupported tree category or variant.');
   const groups: {
     kind: TreeKindId;
+    variant: TreeVariantId;
     trunks: InstancedMesh<CylinderGeometry, MeshLambertMaterial>;
     crowns: InstancedMesh<ConeGeometry | IcosahedronGeometry, MeshLambertMaterial>;
   }[] = [];
+  let disposed = false;
   const dispose = () => {
+    if (disposed) return;
+    disposed = true;
     for (const { trunks, crowns } of groups) {
       trunks.dispose();
       crowns.dispose();
@@ -35,58 +104,57 @@ export function terrainForest(result: TerrainResponse['result']) {
     }
   };
   try {
-    for (const kind of Object.values(TREE_KIND)) {
-      const trees = result.trees.filter((tree) => tree.kind === kind);
-      if (!trees.length) continue;
-      const trunkHeight =
-        kind === TREE_KIND.Savanna ? 1.1 : kind === TREE_KIND.Broadleaf ? 0.7 : 0.6;
-      const trunkGeometry = new CylinderGeometry(0.045, 0.075, trunkHeight, 5).translate(
-        0,
-        trunkHeight / 2,
-        0,
-      );
-      const crownGeometry =
-        kind === TREE_KIND.Conifer
-          ? new ConeGeometry(0.42, 1.3, 6).translate(0, 1.05, 0)
-          : kind === TREE_KIND.Savanna
-            ? new IcosahedronGeometry(0.65, 0).scale(1.35, 0.32, 1.1).translate(0, 1.15, 0)
-            : new IcosahedronGeometry(0.52, 0).scale(1, 0.85, 1).translate(0, 1.05, 0);
-      const trunks = new InstancedMesh(
-        trunkGeometry,
-        new MeshLambertMaterial({ color: 0x65503b }),
-        trees.length,
-      );
-      const crowns = new InstancedMesh(
-        crownGeometry,
-        new MeshLambertMaterial({
-          color:
-            kind === TREE_KIND.Conifer
-              ? 0x234c3a
-              : kind === TREE_KIND.Savanna
-                ? 0x788449
-                : 0x37744a,
-        }),
-        trees.length,
-      );
-      groups.push({ kind, trunks, crowns });
-      const pose = new Object3D();
-      trees.forEach((tree, index) => {
-        pose.position.set(
-          tree.x - (result.width - 1) / 2,
-          tree.y,
-          tree.z - (result.height - 1) / 2,
+    for (const kind of Object.values(TREE_KIND))
+      for (const variant of Object.values(TREE_VARIANT)) {
+        const trees = result.trees.filter((tree) => tree.kind === kind && tree.variant === variant);
+        if (!trees.length) continue;
+        const appearance = APPEARANCE[kind][variant],
+          small = variant === TREE_VARIANT.Small;
+        const trunkGeometry = new CylinderGeometry(
+          small ? 0.032 : 0.045,
+          small ? 0.055 : 0.075,
+          appearance.trunk,
+          5,
+        ).translate(0, appearance.trunk / 2, 0);
+        const crownGeometry =
+          kind === TREE_KIND.Conifer
+            ? new ConeGeometry(appearance.radius, appearance.height, 6).translate(
+                0,
+                appearance.y,
+                0,
+              )
+            : new IcosahedronGeometry(appearance.radius, 0)
+                .scale(appearance.scale[0], appearance.scale[1], appearance.scale[2])
+                .translate(0, appearance.y, 0);
+        const trunks = new InstancedMesh(
+          trunkGeometry,
+          new MeshLambertMaterial({ color: small ? 0x756047 : 0x65503b }),
+          trees.length,
         );
-        pose.rotation.set(0, tree.rotation, 0);
-        pose.scale.setScalar(tree.scale);
-        pose.updateMatrix();
-        trunks.setMatrixAt(index, pose.matrix);
-        crowns.setMatrixAt(index, pose.matrix);
-      });
-      trunks.instanceMatrix.needsUpdate = true;
-      crowns.instanceMatrix.needsUpdate = true;
-      trunks.computeBoundingSphere();
-      crowns.computeBoundingSphere();
-    }
+        const crowns = new InstancedMesh(
+          crownGeometry,
+          new MeshLambertMaterial({ color: appearance.color }),
+          trees.length,
+        );
+        groups.push({ kind, variant, trunks, crowns });
+        const pose = new Object3D();
+        trees.forEach((tree, index) => {
+          pose.position.set(
+            tree.x - (result.width - 1) / 2,
+            tree.y,
+            tree.z - (result.height - 1) / 2,
+          );
+          pose.rotation.set(0, tree.rotation, 0);
+          pose.scale.setScalar(tree.scale);
+          pose.updateMatrix();
+          trunks.setMatrixAt(index, pose.matrix);
+          crowns.setMatrixAt(index, pose.matrix);
+        });
+        trunks.instanceMatrix.needsUpdate = true;
+        crowns.instanceMatrix.needsUpdate = true;
+        trunks.computeBoundingSphere();
+        crowns.computeBoundingSphere();
+      }
     return { groups, dispose };
   } catch (error) {
     dispose();

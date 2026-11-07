@@ -5,6 +5,7 @@ import {
   SURFACE_CHANNEL,
   SURFACE_SUM_TOLERANCE,
   TREE_KIND_IDS,
+  TREE_VARIANT_IDS,
   TREE_KIND_BIOME,
   VEGETATED_BIOME_IDS,
   LANDSCAPE_BIOME,
@@ -136,11 +137,13 @@ export function decodeTerrain(
   const trees: TreeInstance[] = rawTrees.map((tree) => {
     if (
       !object(tree) ||
-      Object.keys(tree).length !== 7 ||
-      !['cellIndex', 'x', 'y', 'z', 'scale', 'rotation', 'kind'].every((key) => key in tree)
+      Object.keys(tree).length !== 8 ||
+      !['cellIndex', 'x', 'y', 'z', 'scale', 'rotation', 'kind', 'variant'].every(
+        (key) => key in tree,
+      )
     )
       return fail();
-    // Seven required members; rejecting extras keeps the versioned instance contract explicit.
+    // Eight required members; rejecting extras keeps the versioned instance contract explicit.
     if (
       !['x', 'y', 'z', 'scale', 'rotation'].every(
         (key) => typeof tree[key] === 'number' && Number.isFinite(tree[key]),
@@ -149,6 +152,7 @@ export function decodeTerrain(
       return fail();
     return Object.freeze({
       kind: tree['kind'],
+      variant: tree['variant'],
       cellIndex: tree['cellIndex'],
       x: Math.fround(tree['x'] as number),
       y: Math.fround(tree['y'] as number),
@@ -158,8 +162,10 @@ export function decodeTerrain(
     }) as unknown as TreeInstance;
   });
   for (const tree of trees) {
-    const { cellIndex: i, x, y, z, scale, rotation, kind } = tree;
+    const { cellIndex: i, x, y, z, scale, rotation, kind, variant } = tree;
     if (
+      !Number.isInteger(variant) ||
+      !TREE_VARIANT_IDS.has(variant) ||
       !Number.isInteger(kind) ||
       !TREE_KIND_IDS.has(kind) ||
       !Number.isSafeInteger(i) ||

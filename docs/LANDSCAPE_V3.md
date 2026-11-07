@@ -1,6 +1,6 @@
 # Climate and vegetation v3
 
-Historical v3 result specification. Current generation preserves these terrain/ecology equations but extends the result with coverage v1 and v4 result/workload/profile identities; see [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md). The original equations and evidence below remain unchanged.
+Historical v3 result specification. Current height/climate/biome equations are preserved, while surface coverage and vegetation structure extend the pipeline under algorithm diverse-landscape-v4 and v5 result/workload/profile identities. See [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md) and [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md). Original equations and evidence below remain historical.
 
 Status: implemented and verified. V3 replaces the public generator in the existing editor; v2 remains historical evidence, not another runtime mode. No new dependencies are needed.
 

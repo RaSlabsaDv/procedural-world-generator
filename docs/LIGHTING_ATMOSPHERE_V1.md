@@ -1,5 +1,7 @@
 # Lighting and atmosphere v1
 
+Historical Stage 3 evidence is retained below. Its light/fog/shadow settings remain current; Stage 4 expands vegetation batching to at most twelve meshes and thirteen calls per color/caster pass. See [VEGETATION_STRUCTURE_V1.md](VEGETATION_STRUCTURE_V1.md).
+
 Status: implemented and verified; configuration frozen after paired visual evaluation. Rendering revision daylight-shadow-v1. All Core algorithms, v4 contracts, surface weights, transforms and workload identities remain unchanged.
 
 ## Configuration
