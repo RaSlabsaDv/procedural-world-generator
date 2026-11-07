@@ -8,6 +8,7 @@ import {
   DirectionalLight,
   LightShadow,
   Scene,
+  InstancedMesh,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
@@ -47,12 +48,13 @@ function run(): TerrainRun {
         slope: new Float32Array(4),
         vegetationDensity: new Float32Array(4),
         trees: [],
+        rocks: [],
         width: 2,
         height: 2,
         values: new Float32Array([0, 10, 20, 30]),
         biomes: new Uint8Array([0, 1, 2, 3]),
         surfaceWeights: Float32Array.from(testSurfaceWeights([0, 1, 2, 3])),
-        resultVersion: 'landscape-ecology-v5',
+        resultVersion: 'landscape-ecology-v6',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },
@@ -118,6 +120,7 @@ describe('terrain preview lifecycle', () => {
   });
 
   it('disposes geometry, material, controls and renderer on replacement and destruction', async () => {
+    const errors = vi.spyOn(console, 'error');
     const geometry = vi.spyOn(BufferGeometry.prototype, 'dispose');
     const material = vi.spyOn(MeshLambertMaterial.prototype, 'dispose');
     const controls = vi.spyOn(OrbitControls.prototype, 'dispose');
@@ -138,6 +141,7 @@ describe('terrain preview lifecycle', () => {
     expect(state.disconnect).toHaveBeenCalledTimes(2);
     expect(state.dispose).toHaveBeenCalledTimes(2);
     expect(state.lose).toHaveBeenCalledTimes(1);
+    expect(errors).not.toHaveBeenCalled();
   });
 
   it('pauses rendering during computation without rebuilding the mesh', async () => {
@@ -151,6 +155,58 @@ describe('terrain preview lifecycle', () => {
     await settlePreview(fixture);
     expect(state.render).toHaveBeenCalled();
     expect(geometry).not.toHaveBeenCalled();
+  });
+
+  it('owns rock resources during paused setup, replacement and failed submission', async () => {
+    const current = run();
+    const withRock = {
+      ...current,
+      response: {
+        ...current.response,
+        result: {
+          ...current.response.result,
+          rocks: [
+            {
+              cellIndex: 0,
+              x: 0.5,
+              y: 9,
+              z: 0.5,
+              scaleX: 0.3,
+              scaleY: 0.4,
+              scaleZ: 0.25,
+              rotation: 0,
+              groundY: 10,
+              kind: 0 as const,
+              variant: 0 as const,
+            },
+          ],
+        },
+      },
+    };
+    const instances = vi.spyOn(InstancedMesh.prototype, 'dispose');
+    const geometry = vi.spyOn(BufferGeometry.prototype, 'dispose');
+    const material = vi.spyOn(MeshLambertMaterial.prototype, 'dispose');
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', withRock);
+    fixture.componentRef.setInput('paused', true);
+    await settlePreview(fixture);
+    expect(state.render).not.toHaveBeenCalled();
+    expect(instances).not.toHaveBeenCalled();
+    fixture.componentRef.setInput('paused', false);
+    await settlePreview(fixture);
+    const scene = state.render.mock.calls.at(-1)![0] as Scene;
+    expect(scene.children.filter((child) => child instanceof InstancedMesh)).toHaveLength(1);
+    state.render.mockImplementationOnce(() => {
+      throw new Error('Submission failed');
+    });
+    fixture.componentRef.setInput('run', { ...withRock });
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Submission failed');
+    expect(instances).toHaveBeenCalledTimes(2);
+    expect(geometry).toHaveBeenCalledTimes(4);
+    expect(material).toHaveBeenCalledTimes(4);
+    fixture.destroy();
+    expect(instances).toHaveBeenCalledTimes(2);
   });
 
   it('shows a recoverable presentation error when WebGL is unavailable', async () => {

@@ -16,6 +16,7 @@ import { Mesh, MeshLambertMaterial, PerspectiveCamera, Scene, WebGLRenderer } fr
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TerrainRun } from '../data/terrain.models';
 import { terrainForest } from './terrain-forest';
+import { terrainRocks } from './terrain-rocks';
 import { terrainGeometry } from './terrain-geometry';
 import { terrainLighting } from './terrain-lighting';
 import { loadTerrainSurfaces, terrainSurfaceMaterial, TerrainSurfaces } from './terrain-surfaces';
@@ -162,6 +163,7 @@ export class TerrainPreview {
       let camera: PerspectiveCamera | undefined;
       let observer: ResizeObserver | undefined;
       let forest: ReturnType<typeof terrainForest> | undefined;
+      let rocks: ReturnType<typeof terrainRocks> | undefined;
       let lighting: ReturnType<typeof terrainLighting> | undefined;
       let mesh: Mesh<ReturnType<typeof terrainGeometry>, MeshLambertMaterial> | undefined;
       const contextLost = (event: Event) => {
@@ -185,6 +187,7 @@ export class TerrainPreview {
         controls?.dispose();
         lighting?.dispose();
         forest?.dispose();
+        rocks?.dispose();
         mesh?.geometry.dispose();
         mesh?.material.dispose();
         renderer?.dispose();
@@ -236,12 +239,14 @@ export class TerrainPreview {
               scene.add(mesh);
               forest = terrainForest(run.response.result);
               for (const group of forest.groups) scene.add(group.trunks, group.crowns);
+              rocks = terrainRocks(run.response.result);
+              for (const rock of rocks.meshes) scene.add(rock);
               lighting = terrainLighting(
                 scene,
                 renderer!,
                 run.request,
                 mesh,
-                forest.groups.flatMap((group) => [group.trunks, group.crowns]),
+                [...forest.groups.flatMap((group) => [group.trunks, group.crowns]), ...rocks.meshes],
               );
               // Bound the view by the request, not by sampled min/max: both modes share the same scale.
               const span = Math.max(

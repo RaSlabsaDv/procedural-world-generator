@@ -11,6 +11,7 @@ export interface TerrainComparison {
   readonly environmentMismatchCount: number;
   readonly vegetationMismatchCount: number;
   readonly coverageMismatchCount: number;
+  readonly rockMismatchCount: number;
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
@@ -109,6 +110,20 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
     )
       vegetationMismatchCount++;
   }
+  let rockMismatchCount = a.result.rocks.length === b.result.rocks.length ? 0 : 1;
+  for (let i = 0; i < Math.min(a.result.rocks.length, b.result.rocks.length); i++) {
+    const left = a.result.rocks[i],
+      right = b.result.rocks[i];
+    if (
+      left.cellIndex !== right.cellIndex ||
+      left.kind !== right.kind ||
+      left.variant !== right.variant ||
+      (['x', 'y', 'z', 'scaleX', 'scaleY', 'scaleZ', 'rotation', 'groundY'] as const).some(
+        (key) => !close(left[key], right[key]),
+      )
+    )
+      rockMismatchCount++;
+  }
   const verifiable = (id: string) =>
     id.trim().length > 0 && id.trim() !== 'unversioned' && !id.trim().endsWith('-dirty');
   const identity =
@@ -125,10 +140,12 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
       mismatchCount === 0 &&
       environmentMismatchCount === 0 &&
       vegetationMismatchCount === 0 &&
-      coverageMismatchCount === 0,
+      coverageMismatchCount === 0 &&
+      rockMismatchCount === 0,
     environmentMismatchCount,
     vegetationMismatchCount,
     coverageMismatchCount,
+    rockMismatchCount,
     biomeMismatchCount,
     biomesMatch: biomeMismatchCount === 0,
     identity,

@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v5`, algorithm `diverse-landscape-v4`, result `landscape-ecology-v5`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v5`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v6`, algorithm `diverse-landscape-v5`, result `landscape-ecology-v6`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v6`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -33,7 +33,7 @@ Freeze the code version (`coreBuildId`, preferably a commit, plus a separate app
 
 The Angular PWA displays host `computeMs`, browser `requestMs`, and the existing loader's one-time `initMs`. The current loader measures worker creation through WASM readiness; worker-side `runtimeMs` reports runtime startup. Importing the loader module precedes both. This is not a complete cold page-load measurement. Offline preparation verifies the cached version and eagerly initializes Local under the shared operation lock before interactive generation. Record this startup/preparation cost and cache state separately; the displayed first interactive Local request is not a cold-runtime measurement. The sequential UI equivalence check performs no repeated trials and excludes comparison and rendering from `requestMs`. Matching dirty or unversioned identities do not establish build compatibility even when numerical values match.
 
-In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. Core time includes composition, simulation allocation/steps, summaries, final conversion, ocean/environment fields, biomes, vegetation density, capped candidate selection, grove/clearing masks, edge distance, variant selection and surface coverage allocation/derivation. Tree geometry and instance-matrix construction are renderer CPU work, outside Core/request timings. The timer belongs in thin host code; Core has no HTTP or browser telemetry. Hosts parse through `TerrainTransport` and prepare through `TerrainValidator.Prepare`, then time `TerrainGenerator.GenerateValidated`. Worker messaging and JSON remain adapter overhead in `requestMs`.
+In C#, use a monotonic timer around the same `GenerateValidated` call. Transport parsing, JSON serialization, validation and preparation, interop, map comparison, and rendering are excluded from `computeMs`. Core time includes composition, simulation allocation/steps, summaries, final conversion, ocean/environment fields, biomes, vegetation density, capped candidate selection, grove/clearing masks, edge distance, variant selection and surface coverage allocation/derivation, rock eligibility/clustering/support, tree indexing, spacing, priority sorting and rock output allocation. Tree geometry and instance-matrix construction are renderer CPU work, outside Core/request timings. The timer belongs in thin host code; Core has no HTTP or browser telemetry. Hosts parse through `TerrainTransport` and prepare through `TerrainValidator.Prepare`, then time `TerrainGenerator.GenerateValidated`. Worker messaging and JSON remain adapter overhead in `requestMs`.
 
 `coreBuildId` is generated at build time from repository HEAD, checking `global.json`, `src/core`, and `src/hosts` for modifications. It has a `-dirty` suffix for modifications and `unversioned` as an invalid fallback when Git is unavailable, the revision is invalid, or either Git command fails. Failed Git diagnostics must not become build identity. It must not be replaced by an assembly `ModuleVersionId`, which can change without a source change. Both hosts return this value in `TerrainGenerationResponse`; a pair with different build IDs or algorithm versions is incompatible.
 
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree counts, kinds, variants and indices exactly. Preserve the execution profile and never pool v1/v2/v3/v4/v5 timings.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6 timings.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -167,3 +167,15 @@ actual serialized bytes rather than inferring transfer cost from tree count. Ext
 kind/variant batches and their static initial shadows belong to display work, not
 Core time. Height/climate/biome/surface equations stay frozen, but tree density and
 selection intentionally change. No cross-version performance advantage is claimed.
+
+Stage 5 freezes v6 workload/profile separately from v5. It appends decorative rock
+placement after unchanged trees: cluster/eligibility work, exact triangle support,
+tree grid construction, collision checks, priority sorting, capped spacing and output
+allocation are inside computeMs in both locations. Rock JSON, strict normalization,
+full comparison and instance/bounds/shadow setup remain outside computeMs. Record
+actual rock counts, variants, serialized UTF-8 bytes and runtime memory; 512 KiB of
+maximum rock matrices alone does not describe total memory. Geometry uses at most
+six extra instanced meshes, so the current color/initial shadow budget is nineteen
+calls per view. Baseline tree, terrain, climate and hydraulic outputs remain exact;
+additional Core work means v5/v6 timings cannot be pooled. Trunk clearance uses the
+actual returned trees, so vegetation density can affect rock availability.

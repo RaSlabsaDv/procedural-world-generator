@@ -32,6 +32,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           textures: new Set(),
           sources: new Set(),
           calls: 0,
+          instances: 0,
           terrainCalls: 0,
         };
         window.__surfaceContexts.push(record);
@@ -57,6 +58,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         const clear = gl.clear;
         gl.clear = function (...args) {
           record.calls = 0;
+          record.instances = 0;
           record.terrainCalls = 0;
           return clear.apply(this, args);
         };
@@ -69,6 +71,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           const original = gl[name];
           gl[name] = function (...args) {
             record.calls++;
+            if (name.endsWith("Instanced")) record.instances += args.at(-1);
             if (!name.endsWith("Instanced")) record.terrainCalls++;
             return original.apply(this, args);
           };
@@ -106,7 +109,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           body: JSON.stringify({
             ...parameters,
             heightMap,
-            algorithmVersion: "diverse-landscape-v4",
+            algorithmVersion: "diverse-landscape-v5",
           }),
         });
         if (!response.ok)
@@ -149,6 +152,10 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           kindVariants[tree.kind * 2 + tree.variant]++;
         }
         return {
+          rockCount: result.rocks.length,
+          rockGroups: new Set(result.rocks.map(r=>r.kind+":"+r.variant)).size,
+          rockKindVariantCounts: Array.from({length:6},(_,k)=>result.rocks.filter(r=>r.kind*2+r.variant===k).length),
+          rockInstanceMatrixBytes: result.rocks.length*16*4,
           treeCount: result.trees.length,
           kindVariantCounts: kindVariants,
           vegetationGroups: kindVariants.filter((count) => count > 0).length,
@@ -177,12 +184,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     const resources = async () =>
       page.evaluate(() =>
         window.__surfaceContexts.map(
-          ({ gl, textures, sources, calls, terrainCalls }) => ({
+          ({ gl, textures, sources, calls, terrainCalls, instances }) => ({
             lost: gl.isContextLost(),
             textures: textures.size,
             sources: [...sources].sort(),
             calls,
             terrainCalls,
+            instances,
           }),
         ),
       );
@@ -200,8 +208,8 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         ]);
         assert.equal(row.terrainCalls, 1);
         assert.ok(
-          row.calls <= 13,
-          "Color pass: terrain plus at most twelve tree meshes",
+          row.calls <= 19,
+          "Color pass: terrain, twelve tree and six rock meshes",
         );
       }
       for (const row of rows.filter((row) => row.lost))
@@ -223,7 +231,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         );
         assert.equal(row.activeShadowUpdates, 1);
         for (const pass of row.passes.filter((pass) => pass.calls > 0))
-          assert.ok(pass.calls <= 13);
+          assert.ok(pass.calls <= 19);
       }
       for (const row of lighting.filter(
         (row) => row.lost || row.detailTextures === 0,
@@ -264,14 +272,17 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       await complete();
       const canvas = page.locator("app-terrain-preview canvas");
       await canvas.screenshot({
-        path: artifact(`vegetation-after-${label}-overview.png`),
+        path: artifact(`rocks-after-${label}-overview.png`),
       });
       await canvas.hover();
       await page.mouse.wheel(0, -650);
       await page.waitForTimeout(350);
       await canvas.screenshot({
-        path: artifact(`vegetation-after-${label}-close.png`),
+        path: artifact(`rocks-after-${label}-close.png`),
       });
+      await page.mouse.wheel(0, -700);
+      await page.waitForTimeout(200);
+      await canvas.screenshot({ path: artifact(`rocks-after-${label}-detail.png`) });
       const parameters = await page
         .locator("input[type=number]")
         .evaluateAll((inputs) =>
@@ -282,10 +293,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       const diagnostic = await checkCoverage();
       if (label === "mixed") assert.equal(diagnostic.vegetationGroups, 6);
       coverageChecks.push(diagnostic);
+      const actual = await assertResources(1);
+      assert.equal(actual.find(row=>!row.lost && row.textures>0).calls,1+diagnostic.vegetationGroups*2+diagnostic.rockGroups);
+      assert.equal(actual.find(row=>!row.lost && row.textures>0).instances, diagnostic.treeCount*2+diagnostic.rockCount);
       captures.push({
         label,
         parameters,
-        algorithmVersion: "diverse-landscape-v4",
+        algorithmVersion: "diverse-landscape-v5",
         wheelDelta: -650,
         resources: await assertResources(1),
         lighting: await lightingResources(page),
@@ -332,18 +346,21 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     const maximumLighting = await lightingResources(page);
     const maxCanvas = page.locator("app-terrain-preview canvas");
     await maxCanvas.screenshot({
-      path: artifact("vegetation-maximum-overview.png"),
+      path: artifact("rocks-maximum-overview.png"),
     });
     await maxCanvas.hover();
     await page.mouse.wheel(0, -900);
     await page.waitForTimeout(200);
     await maxCanvas.screenshot({
-      path: artifact("vegetation-maximum-close.png"),
+      path: artifact("rocks-maximum-close.png"),
     });
     await page
       .getByRole("button", { name: "Reset camera", exact: true })
       .click();
-    coverageChecks.push(await checkCoverage());
+    const maxDiagnostic = await checkCoverage();
+    coverageChecks.push(maxDiagnostic);
+    assert.equal(maxDiagnostic.rockCount,8192);
+    assert.equal(maximum.find(row=>!row.lost && row.textures>0).instances, maxDiagnostic.treeCount*2+maxDiagnostic.rockCount);
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(
       await page.evaluate(
@@ -389,7 +406,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       pageErrors: errors,
     };
     await fs.writeFile(
-      artifact("vegetation-materials-verification.json"),
+      artifact("rocks-materials-verification.json"),
       JSON.stringify(evidence, null, 2),
     );
     console.log(JSON.stringify(evidence));

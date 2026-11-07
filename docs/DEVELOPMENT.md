@@ -2,7 +2,7 @@
 
 ## Supported application
 
-The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Surface materials, Core-owned surface transitions, daylight, static shadows, fog, structured forests and tree variants are implemented. Rocks and further landscape detailing remain planned. Evolution capture/playback remains a later extension. README is intentionally empty.
+The application exposes one generator, **Rich terrain + hydraulic erosion**, with Local/Remote execution and a Three.js preview. It has no generator selector, regional experiment, probe diagnostics or 2D view. Surface materials, Core-owned surface transitions, daylight, static shadows, fog, structured forests and tree variants are implemented. Core-placed boulders, outcrops and scree are implemented; local relief and coasts remain planned. Evolution capture/playback remains a later extension. README is intentionally empty.
 
 ## Frontend structure
 
@@ -28,6 +28,7 @@ python3 tests/reference/landscape_reference.py
 python3 tests/reference/climate_reference.py
 python3 tests/reference/surface_reference.py
 python3 tests/reference/vegetation_reference.py
+python3 tests/reference/rocks_reference.py
 ```
 
 If MSBuild worker nodes fail in the local environment, retry the native build with `--disable-build-servers -m:1`, and use `-m:1` for tests. When intentionally changing package references, regenerate NuGet lockfiles with `dotnet restore ProceduralWorldGenerator.slnx --force-evaluate` and review them.
@@ -107,13 +108,13 @@ PWA readiness is compact in the header. Expand it for detail; failures and avail
   "globalWarmth": 0.6,
   "vegetationDensity": 1,
   "landformRegionScale": 1,
-  "algorithmVersion": "diverse-landscape-v4"
+  "algorithmVersion": "diverse-landscape-v5"
 }
 ```
 
 Every member is required; missing numeric values are not defaulted. The nested heightmap settings are a composition contract, not an independent public generator. Strict JSON rejects unexpected fields, wrong case/types and non-finite overflow. Both hosts share preparation and `{ "error", "fields" }` failures. API validation/JSON failures return 400; terrain responses use `Cache-Control: no-store`. Health is `GET /api/health`. Removed generation/probe routes return 404.
 
-Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v5` and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v5`. Result `landscape-ecology-v5` includes moisture, temperature, slope, vegetationDensity and bounded eight-member tree records (including required numeric variant); required surfaceWeights is a row-major interleaved Grass/Soil/Sand/Rock/Snow numeric array; all arrays/transforms participate in equivalence checks. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
+Success contains `result` (dimensions, row-major heights, numeric biome IDs and versions), exact `parameters`, `simulation`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v6` and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v6`. Result `landscape-ecology-v6` includes moisture, temperature, slope, vegetationDensity and bounded eight-member tree records (including required numeric variant); required surfaceWeights is a row-major interleaved Grass/Soil/Sand/Rock/Snow numeric array; all arrays/transforms participate in equivalence checks. Summary reports work, terrain masses, suspended sediment and water balance. See the [architecture](ARCHITECTURE.md) for preparation and identity rules.
 
 The WASM proxy creates one module worker with one runtime per document. Always await `generateTerrainJson`. `getRuntimeInfo()` reports initialization count, worker+runtime initialization time, runtime-only time, execution and protocol. Initialization is excluded from Core timing. Startup/crash rejects pending work; a later attempt can retry. Application destruction terminates the worker.
 
@@ -151,13 +152,13 @@ Use the same environment with `node tests/browser/editor.cjs` for the editor (re
 
 Evidence is written under ignored `artifacts/`. Software WebGL smoke timings are not controlled comparative performance evidence. Reserved WASM linear memory is not live managed memory or total browser RAM. Maximum settings are a desktop smoke workload, not a mobile guarantee.
 
-Next implementation: rocks, boulders and scree (Stage 5), then local relief and coasts. See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
+Next implementation: local geometric relief (Stage 6), then coastal surfaces (Stage 7). See the staged detailing work in [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md). Bounded evolution capture and playback remain later work.
 
 ## Diverse terrain controls and forests
 
 Plains coverage and Mountain coverage are regional tendencies, not exact percentages per seed. Their sum cannot exceed 1; the remainder favors hills. Mountain strength controls relief in mountain regions independently of their coverage. Global moisture affects vegetation, independently of erosion rainfall. Sea level is a fraction of the height bound; only four-connected low samples reaching a boundary become ocean.
 
-Core uses illustrative grid/world units and a normalized temperature proxy. There are no calibrated weather, lakes, rivers, seasons or marine erosion. Trees occupy eligible forest quads and follow the exact rendered triangles. Core caps output at 16384 instances using independent hash priorities, avoiding a row-major cut-off. All returned trees are rendered with two shared instanced meshes per nonempty kind/variant pair, at most twelve vegetation meshes per viewport. Density and forest coverage are retained independently of this output cap. Request/serialization/rendering costs should be measured separately from Core work. Native historical v1 fixtures remain unchanged in tests/core/Historical and the independent v1 Python reference; the public endpoint accepts diverse-landscape-v4 only.
+Core uses illustrative grid/world units and a normalized temperature proxy. There are no calibrated weather, lakes, rivers, seasons or marine erosion. Trees occupy eligible forest quads and follow the exact rendered triangles. Core caps output at 16384 instances using independent hash priorities, avoiding a row-major cut-off. All returned trees are rendered with two shared instanced meshes per nonempty kind/variant pair, at most twelve vegetation meshes per viewport. Density and forest coverage are retained independently of this output cap. Request/serialization/rendering costs should be measured separately from Core work. Native historical v1 fixtures remain unchanged in tests/core/Historical and the independent v1 Python reference; the public endpoint accepts diverse-landscape-v5 only.
 
 ## Repository layout and maintenance
 
@@ -179,7 +180,7 @@ src/client/src/app/
 
 Core namespaces and host references remain unchanged. Historical v2 sources and golden fixtures live in tests/core/Historical/V2. Keep numerical operation order frozen for v3; a semantic biome change requires a new result version. Before extending biomes, update Core rules and the explicit client wire-ID/palette declarations together. UI defaults never substitute for missing host fields. Frontend tests remain colocated; historical v1 tests/reference code stay separate.
 
-The browser suite has five maintained entry points: `landscape.cjs` for complete v5 fields/trees and heavy limits, `materials.cjs` for coverage/vegetation views and resources, `lighting.cjs` for shadow/pause/minimum scenes, `editor.cjs` for UI transitions, and `pwa.cjs` for offline/safe-update lifecycle. They share launch configuration and readiness diagnostics in `tests/browser/support/browser.cjs`. The weaker duplicate hydraulic-only script has been removed; its current-workload coverage is included in the landscape/editor suite. Keep the existing PWG_* environment overrides. Packaging and worker RPC tests retain their separate build checks.
+The browser suite has five maintained entry points: `landscape.cjs` for complete v6 fields/trees/rocks and heavy limits, `materials.cjs` for coverage/vegetation views and resources, `lighting.cjs` for shadow/pause/minimum scenes, `editor.cjs` for UI transitions, and `pwa.cjs` for offline/safe-update lifecycle. They share launch configuration and readiness diagnostics in `tests/browser/support/browser.cjs`. The weaker duplicate hydraulic-only script has been removed; its current-workload coverage is included in the landscape/editor suite. Keep the existing PWG_* environment overrides. Packaging and worker RPC tests retain their separate build checks.
 
 `@angular/router` was removed because this single-screen editor does not use Angular routing. No dependencies were added. Reset values and readiness settings now share the same pure defaults module. The earlier organization pass preserved v2 results using fixtures and pre/post-refactor numerical fingerprints. V3 now has a separate specification, independent climate literals and explicit comparisons showing region scale 1 preserves historical terrain/hydraulic results.
 
@@ -214,8 +215,8 @@ The original five-channel normalized client field remains 5 MiB. Parsed JSON arr
 strings, Core output and client/geometry buffers can overlap; these figures are not
 peak browser/runtime memory. No unused sand channel is uploaded to the GPU.
 
-The current result/workload/profile use v5. Algorithm diverse-landscape-v4 adds
-structured vegetation while preserving the frozen v3 height/climate equations and
+The current result/workload/profile use v6. Algorithm diverse-landscape-v5 adds
+rocks after structured vegetation while preserving the frozen v3 height/climate equations and
 hydraulic-grid-v1. Exact rules, field invariants and timing are in
 [SURFACE_TRANSITIONS_V1.md](SURFACE_TRANSITIONS_V1.md). The v3 numerical/climate rules
 remain frozen in LANDSCAPE_V3.md. Historical fingerprints captured before Stage 2
@@ -223,7 +224,7 @@ verify every old array, biome, tree and simulation summary on eroded vegetated m
 
 Each preview owns one set of four decoded Texture objects, reused across successive
 results. Two comparison views own independent sets. There is one terrain material
-and draw call per viewport, plus the existing maximum of six vegetation meshes.
+and draw call per viewport, plus at most twelve vegetation meshes and six rock meshes.
 Result replacement releases the old geometry/material/renderer and reuses the decoded
 images; the installed renderer releases its GPU uploads. Final destruction disposes
 the texture owner. Partial/late loads are released after failure/destruction, obsolete
@@ -309,7 +310,7 @@ framebuffers, driver overhead and browser memory. This fits the 64/128 MiB targe
 budget. The light's shadow target is disposed once before renderer disposal, which
 also releases its owned depth attachment; no global or cross-view map is shared.
 
-The first render can include one <=13-call shadow pass and one <=13-call color pass;
+The current Stage 5 first render can include one <=19-call shadow pass and one <=19-call color pass;
 subsequent camera-only frames use the color pass. Shadow fitting, target setup and
 initial submission belong to the displayed CPU setup/first submission time, not
 Core/request time or measured GPU completion. Paused operations defer scene setup
@@ -346,8 +347,8 @@ WASM/API matrix still has zero observed numeric error.
 
 ## Forest structure and variants (Stage 4)
 
-The current algorithm/profile use diverse-landscape-v4 and landscape-worker-json-v5,
-with landscape-ecology-v5 results. Required numeric tree variant is Small=0 or
+Stage 4 introduced diverse-landscape-v4 and landscape-worker-json-v5,
+with landscape-ecology-v5 results; Stage 5 appends rocks under the current v6 contract. Required numeric tree variant is Small=0 or
 Mature=1. There are no added controls. Existing warmth/moisture select ecological
 categories; density scales the structured placement field independently of the
 fixed grove/clearing masks and four-connected edge distance. Small/Mature describe
@@ -399,3 +400,51 @@ scene uses all six groups and thirteen calls per color/initial-shadow pass; the
 smoke matrix is 17526721 UTF-8 bytes; reserved WASM memory reaches 151977984 bytes
 across the sequence, not peak managed memory or browser RSS. Counts vary with
 placement policy/seed, and these observations are not controlled benchmark findings.
+
+## Rocks, boulders and scree (Stage 5)
+
+The current algorithm is diverse-landscape-v5 and result/workload/profile are v6.
+Required rocks records contain cellIndex, x/y/z, scaleX/Y/Z, rotation, groundY, kind
+and variant. Core owns the distribution, support, embedding, clearance and capped
+selection. See [ROCK_PLACEMENT_V1.md](ROCK_PLACEMENT_V1.md). GroundY is terrain height
+at the center; Y is the embedded geometry origin and can be negative on dry flat
+terrain. Rocks are decorative and do not change any prior result field or tree.
+No controls, assets, dependencies or water rules were added.
+
+The renderer uses at most six nonempty rock meshes alongside twelve vegetation
+meshes and the terrain. All returned instances are visible geometry, with shared
+Lambert materials and static shadows; 8192 rock matrices require 512 KiB/view.
+Placement scratch storage is bounded at 32 MiB on the maximum map, separately from
+existing Core outputs, parsed JSON, normalized records, Three.js resources and WASM
+reserved linear memory. Native allocation tests include returned rock objects in
+that bound. Rendering pauses under the existing shared lock and owners dispose rock
+geometry/materials/matrices with the scene, including failed submissions.
+
+`tests/reference/rocks_reference.py` supplies independent transform/cluster literals
+and complete flat-map selection indices. `landscape-v5-fingerprints.json` captures
+c4b7954 before rock implementation, including full tree variants and cap-sized
+vegetation. It verifies every old numeric field bit-exactly while earlier historical
+fixtures retain their original meaning.
+
+The maintained browser entry points stay unchanged. landscape.cjs compares every
+rock field across actual WASM/API, includes empty/maximal inputs and records counts,
+response bytes and matrix bytes. materials.cjs records rock group/count diagnostics
+and exact main-pass counts, captures rocks-after-{normal,cold,warm,conifer,mixed}
+views at overview and close framing, and checks replacement/two-view/offline
+ownership. rocks-before-* retains the same requests/cameras from c4b7954. Current
+presentation evidence is artifacts/rocks-materials-verification.json. lighting,
+editor and PWA scenarios cover static shadow reuse, pause, interaction, offline
+reload/new tab, recovery and safe update behavior. These are correctness smoke
+checks, not a benchmark campaign or a mobile memory guarantee.
+
+Stage 5 verification: 155 Core, 38 API and 161 Angular tests pass, alongside Release/
+production builds, four Python packaging/asset tests, worker RPC and all five browser
+scenarios. Actual WASM/API parity has zero observed error across seven cases. The
+maximum eroded case returns 8192 rocks and 16384 trees, 19024626 UTF-8 response bytes
+and 183959552 reserved WASM bytes across the sequence; the maximum rock placement
+native test allocates 17309912 bytes including output. The mixed scene reaches all
+six rock groups and nineteen calls per color/initial shadow pass. GPU instrumentation
+confirms 40960 submitted instances at both caps. Final empty-ocean, static shadow,
+pause, replacement/error cleanup, offline/new-tab/recovery and safe-update checks
+pass. No controlled comparative performance conclusions are drawn from these smoke
+runs. The pre-existing unoptimized publishing notice remains recorded above.

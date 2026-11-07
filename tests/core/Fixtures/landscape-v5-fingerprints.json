@@ -1,0 +1,234 @@
+{
+  "sourceRevision": "c4b7954",
+  "encoding": "SHA256 of System.Text.Json camelCase UTF8 per field, numeric enums, float32 round-trip",
+  "cases": [
+    {
+      "request": {
+        "heightMap": {
+          "seed": 42,
+          "width": 129,
+          "height": 97,
+          "noiseScale": 0.03,
+          "octaves": 4,
+          "heightMultiplier": 30,
+          "algorithmVersion": "value-noise-fbm-v1"
+        },
+        "mountainStrength": 0.55,
+        "warpStrength": 2,
+        "iterations": 16,
+        "rainfall": 0.05,
+        "evaporation": 0.1,
+        "plainsCoverage": 0.45,
+        "mountainCoverage": 0.3,
+        "globalMoisture": 0.65,
+        "seaLevel": 0.16,
+        "globalWarmth": 0.6,
+        "vegetationDensity": 1,
+        "landformRegionScale": 1,
+        "algorithmVersion": "diverse-landscape-v4"
+      },
+      "treeCount": 622,
+      "hashes": {
+        "values": "06a3b8eaeb3daf57f2a6962eb8539ddbc95d7d406ace04909695c2181611bcff",
+        "biomes": "e0da900006a68de73b253887b0d1ef51a97201d829844a53cd4d6644e23f2867",
+        "moisture": "cb7a2d2f443d30769d158d4ba275439d72c8b52242f4bc094a08064050987320",
+        "temperature": "42b7fd5753e2dd39b325947b3e4ad7c5b1c3120cdd3c5ad2056feb16f89266a0",
+        "slope": "554845e24bf7efd1e1c58a560053d6b55f589d8df3649da3664079d35cdd21dc",
+        "vegetationDensity": "2f73542a7a3334c5278e6e660d73be627533958de12a468548a00b3d0b036baa",
+        "surfaceWeights": "0d77e50be62af02ebaefbb18173324e6144eb21e3e5dae023cc10bb0310ba778",
+        "trees": "4afb8867cf7c663a750a1364616c71c59a9eff2546c918fc0a9fc437fa958ea4",
+        "simulation": "6313f747dbfc0a59bf1238c22affda81f4a69d14c60a9f4d00b2d762faa98e06"
+      }
+    },
+    {
+      "request": {
+        "heightMap": {
+          "seed": 2026,
+          "width": 129,
+          "height": 97,
+          "noiseScale": 0.03,
+          "octaves": 4,
+          "heightMultiplier": 30,
+          "algorithmVersion": "value-noise-fbm-v1"
+        },
+        "mountainStrength": 0.55,
+        "warpStrength": 2,
+        "iterations": 16,
+        "rainfall": 0.05,
+        "evaporation": 0.1,
+        "plainsCoverage": 0.45,
+        "mountainCoverage": 0.3,
+        "globalMoisture": 0.8,
+        "seaLevel": 0.16,
+        "globalWarmth": 0.38,
+        "vegetationDensity": 1,
+        "landformRegionScale": 1,
+        "algorithmVersion": "diverse-landscape-v4"
+      },
+      "treeCount": 88,
+      "hashes": {
+        "values": "1c99e367e45769028d7e665ae9f660713c3a8f2dd4d2dfffe1721a10d48d7ff5",
+        "biomes": "064d15c5dff6f0b584892d48b951bc8ea36add95ab85aa7e7f5af7e68569687b",
+        "moisture": "254721064cd43d02ab507dcb4e457754d47afcb0dc247850b36fde3f9410f2c5",
+        "temperature": "6201cde3bdc4146cf26dedf52d00047ef56ca764aedac8c21c71c9bd64167999",
+        "slope": "9873fafc08413305e93e93cd0fd7f90f52dab78e900908d808d0a1daddb09fc3",
+        "vegetationDensity": "814f81c51e9d375f547ae0c5d47aa663675cf8f441d9a664e694ed82f6931dd0",
+        "surfaceWeights": "1ac6d3ccdcb9f12abd1d8dd3ef62b7c823d849a2f50245de2a9a4502d01717f4",
+        "trees": "e8cd96f065a9e1fe64249116580d0835a0689526e42b4cc798360c30e54ccfb1",
+        "simulation": "d895af5539301323d0464d6a7a8156ad9a3f95784e5e0bd95cebd5237ad4e1cc"
+      }
+    },
+    {
+      "request": {
+        "heightMap": {
+          "seed": -7,
+          "width": 129,
+          "height": 97,
+          "noiseScale": 0.03,
+          "octaves": 4,
+          "heightMultiplier": 30,
+          "algorithmVersion": "value-noise-fbm-v1"
+        },
+        "mountainStrength": 0.55,
+        "warpStrength": 2,
+        "iterations": 16,
+        "rainfall": 0.05,
+        "evaporation": 0.1,
+        "plainsCoverage": 0.45,
+        "mountainCoverage": 0.3,
+        "globalMoisture": 0.45,
+        "seaLevel": 0.16,
+        "globalWarmth": 0.9,
+        "vegetationDensity": 1,
+        "landformRegionScale": 1,
+        "algorithmVersion": "diverse-landscape-v4"
+      },
+      "treeCount": 58,
+      "hashes": {
+        "values": "34982ab64e02d4bcbf0aac4e1462a5b1133b424be098937e6803638f5c724d87",
+        "biomes": "5be72f6e08125ec3e863d9c141cdafa3082e53a469cb8afbb31fa4e312250e44",
+        "moisture": "1abe826586b3bfbca71f8c666d6f8c3df7a2e543583847aae8fd3ae624b81a02",
+        "temperature": "238522bb4c8000144ce409d13728cb39ce3c3c98d1cf8dafc3be8bf2b04fbee8",
+        "slope": "cb365bbea624a99af54f23759e23e8b1602aa885a467961faffe49cf9e92780b",
+        "vegetationDensity": "544d4c4edf27afe54f63dbf459c9e856720002bbb298c6deb44953b3812bec7c",
+        "surfaceWeights": "ed8c69888ad44f085d9fa43174145e152758dd1afd081f25081fd3dccaa10212",
+        "trees": "e9419b61d71f85ec9c7d77bf689fb8a374c904356407f326c6ed510845ff9bd0",
+        "simulation": "93bede6c247f691bb0992a62f0db33c9e9d3095ab7a3a88778b49968ef42269f"
+      }
+    },
+    {
+      "request": {
+        "heightMap": {
+          "seed": -2147483648,
+          "width": 129,
+          "height": 97,
+          "noiseScale": 0.03,
+          "octaves": 4,
+          "heightMultiplier": 30,
+          "algorithmVersion": "value-noise-fbm-v1"
+        },
+        "mountainStrength": 0.55,
+        "warpStrength": 2,
+        "iterations": 16,
+        "rainfall": 0.05,
+        "evaporation": 0.1,
+        "plainsCoverage": 0.45,
+        "mountainCoverage": 0.3,
+        "globalMoisture": 0.8,
+        "seaLevel": 0.16,
+        "globalWarmth": 0.35,
+        "vegetationDensity": 1,
+        "landformRegionScale": 1,
+        "algorithmVersion": "diverse-landscape-v4"
+      },
+      "treeCount": 341,
+      "hashes": {
+        "values": "4c765eeb99c715b50bbde7edc7345793d6fe2fee5f0340b2d5dafbbc45d82588",
+        "biomes": "3960223d979d6d048c52df9e1e0f58689f3ae4d3d61535a2d411227c71646022",
+        "moisture": "a983c0cf9d4c0341ed50971aab04141d62b7ad2b98aed16fafb71bbafe8ad735",
+        "temperature": "f56118e568c5e946f4e01d696cd03249a6b16c9013dc314a159eba73275549db",
+        "slope": "d292cca7ec102b338414e2c050cab04295b9e8cb4703067349084ae02ebcceee",
+        "vegetationDensity": "51a947af577ce2ba9e561be76e5bad267a48bf0f8f380ba52e7de4a3703792e4",
+        "surfaceWeights": "d3ede3d93a6b26ebfda950c24a1cc6621f253ac5357cffdff6a8093ca5adda17",
+        "trees": "d629e4f43320a0b28d3e37467188da39487695933542249b6e0eabd80aaffd92",
+        "simulation": "34a00a4ec749fe379a972118c75ec7e0ca9a154d3810edac5b8dc64237c5fc55"
+      }
+    },
+    {
+      "request": {
+        "heightMap": {
+          "seed": 2147483647,
+          "width": 129,
+          "height": 97,
+          "noiseScale": 0.03,
+          "octaves": 4,
+          "heightMultiplier": 30,
+          "algorithmVersion": "value-noise-fbm-v1"
+        },
+        "mountainStrength": 0.55,
+        "warpStrength": 2,
+        "iterations": 16,
+        "rainfall": 0.05,
+        "evaporation": 0.1,
+        "plainsCoverage": 0.45,
+        "mountainCoverage": 0.3,
+        "globalMoisture": 0.8,
+        "seaLevel": 0.16,
+        "globalWarmth": 0.6,
+        "vegetationDensity": 1,
+        "landformRegionScale": 1,
+        "algorithmVersion": "diverse-landscape-v4"
+      },
+      "treeCount": 1339,
+      "hashes": {
+        "values": "7dd034f17da2ab384c09362a747a37d1348126ef7d40a6223228fae26281c1df",
+        "biomes": "4de1787cc6d70d2f8c4dcd47b3c342b75388f4fb8f88b0673f1e1b03cbdb48d5",
+        "moisture": "515ae7c023726952703fea56c9727c367cc338c4cdffa59602be7b6ba04b3a49",
+        "temperature": "75645138291e60543ca3132cdb6096411320ecda2c0420a9aa11f7b58fb9f9c0",
+        "slope": "cb1a8f61d907dbbe48e0795ed079f23bf6f2f8b7b0a727a426e257a9770c8d28",
+        "vegetationDensity": "e4f087b8d4d3a162dddc03eda21a8770f0ddc3a8b616bae93a077cc5e7483c1a",
+        "surfaceWeights": "20fb34a760b03fe76b4bc723b3b735f983a1eb388242443e96defba0df7fbdc7",
+        "trees": "2118570e6a675f44b01e10c297b77590fd578aac25a258d0682fd2980ce3d424",
+        "simulation": "38516bb988134ef9fede6935e899bb8b8694736db0d1ab48b4dc7392f7eb3f09"
+      }
+    },
+    {
+      "request": {
+        "heightMap": {
+          "seed": -7,
+          "width": 512,
+          "height": 512,
+          "noiseScale": 0.03,
+          "octaves": 4,
+          "heightMultiplier": 80,
+          "algorithmVersion": "value-noise-fbm-v1"
+        },
+        "mountainStrength": 0.55,
+        "warpStrength": 2,
+        "iterations": 0,
+        "rainfall": 0.05,
+        "evaporation": 0.1,
+        "plainsCoverage": 1,
+        "mountainCoverage": 0,
+        "globalMoisture": 1,
+        "seaLevel": 0,
+        "globalWarmth": 0.6,
+        "vegetationDensity": 1,
+        "landformRegionScale": 4,
+        "algorithmVersion": "diverse-landscape-v4"
+      },
+      "treeCount": 16384,
+      "hashes": {
+        "values": "aa55e412b8b1cf9d6d9d3036e37c71d2fbb0f2002b62cae82a609bacb56596af",
+        "biomes": "08bb61501ad0af8d081e8af863fe4f92a22083db5e515f8eb76b1821614e7044",
+        "moisture": "d07de31c0e80556b70b898cf9a8943897e2c17caa2eb5bc75dfd363988b279fa",
+        "temperature": "e3e69294669efc3338aa19365fa9e18399548a6244a98e4296b11db957b73b54",
+        "slope": "938c962ae565bda990f49e5e208c78a1b6e77eb6fd04e4394af56717ae4e9959",
+        "vegetationDensity": "78972c1a6cf21b91947c55b75a5e12473b7f37a71d3c2834fe16d6067b30d636",
+        "surfaceWeights": "42ba8d7db429fe16a641b9014bca2d49d943a129f2d6877a3f04e31fbba0526d",
+        "trees": "0128d1a90deec141ded479e3d4b12388cf2882906dfbae18dcc05388eff827f4",
+        "simulation": "8a85f0d7709d8faba81f048b0e752ba135a5897e079018faf4c857003d886a66"
+      }
+    }
+  ]
+}

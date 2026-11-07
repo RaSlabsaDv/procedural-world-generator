@@ -83,14 +83,14 @@
       <p id="numeric-match">
         {{
           check.numericMatch
-            ? 'All heights match within tolerance, including environment, vegetation and surface coverage.'
+            ? 'All heights match within tolerance, including environment, vegetation, surface coverage and rocks.'
             : 'Numeric data differences exceed tolerance.'
         }}
       </p>
       <p>
         Environment mismatches: {{ check.environmentMismatchCount }} · Vegetation mismatches:
         {{ check.vegetationMismatchCount }} · Surface coverage mismatches:
-        {{ check.coverageMismatchCount }}
+        {{ check.coverageMismatchCount }} · Rock mismatches: {{ check.rockMismatchCount }}
       </p>
       <p id="biome-match">
         {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
@@ -123,6 +123,7 @@
     <section class="measurement" [attr.aria-label]="entry.name + ' measurements'">
       <h3>{{ entry.name }}</h3>
       <p class="tree-count">Trees: {{ run.response.result.trees.length }}</p>
+      <p class="rock-count">Rocks: {{ run.response.result.rocks.length }} / {{ maxRocks }}</p>
       <p class="result-state">
         {{ matchesDraft(run) ? 'Matches current draft' : 'Captured settings differ from draft' }}
       </p>

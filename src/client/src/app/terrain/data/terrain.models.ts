@@ -1,4 +1,4 @@
-export const RESULT_VERSION = 'landscape-ecology-v5';
+export const RESULT_VERSION = 'landscape-ecology-v6';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -24,6 +24,7 @@ export interface TerrainResponse {
     readonly slope: Float32Array;
     readonly vegetationDensity: Float32Array;
     readonly trees: readonly TreeInstance[];
+    readonly rocks: readonly RockInstance[];
     readonly resultVersion: string;
     readonly algorithmVersion: string;
   };
@@ -31,7 +32,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v5';
+  readonly executionProfile: 'landscape-worker-json-v6';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -53,8 +54,8 @@ export class TerrainError extends Error {
   }
 }
 
-export const TERRAIN_ALGORITHM = 'diverse-landscape-v4';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v5';
+export const TERRAIN_ALGORITHM = 'diverse-landscape-v5';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v6';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -96,9 +97,9 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v5';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v6';
 
-/** Wire IDs for landscape-ecology-v5; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v6; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,
@@ -132,3 +133,22 @@ export const SURFACE_SUM_TOLERANCE = 1e-6;
 export const TREE_VARIANT = { Small: 0, Mature: 1 } as const;
 export type TreeVariantId = (typeof TREE_VARIANT)[keyof typeof TREE_VARIANT];
 export const TREE_VARIANT_IDS: ReadonlySet<number> = new Set(Object.values(TREE_VARIANT));
+
+export const MAX_ROCKS = 8192;
+export const ROCK_KIND = { Boulder: 0, Outcrop: 1, Scree: 2 } as const;
+export type RockKindId = (typeof ROCK_KIND)[keyof typeof ROCK_KIND];
+export const ROCK_VARIANT = { Angular: 0, Rounded: 1 } as const;
+export type RockVariantId = (typeof ROCK_VARIANT)[keyof typeof ROCK_VARIANT];
+export interface RockInstance {
+  readonly cellIndex: number;
+  readonly x: number;
+  readonly y: number;
+  readonly z: number;
+  readonly scaleX: number;
+  readonly scaleY: number;
+  readonly scaleZ: number;
+  readonly rotation: number;
+  readonly groundY: number;
+  readonly kind: RockKindId;
+  readonly variant: RockVariantId;
+}

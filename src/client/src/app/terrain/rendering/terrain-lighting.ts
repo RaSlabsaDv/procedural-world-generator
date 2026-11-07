@@ -34,7 +34,7 @@ export function terrainLighting(
   renderer: Pick<WebGLRenderer, 'shadowMap'>,
   request: HeightMapRequest,
   terrain: Mesh,
-  trees: readonly Mesh[],
+  instances: readonly Mesh[],
 ) {
   const config = TERRAIN_LIGHTING;
   const span = Math.max(request.width - 1, request.height - 1, request.heightMultiplier, 1);
@@ -42,11 +42,10 @@ export function terrainLighting(
     new Vector3(-(request.width - 1) / 2, 0, -(request.height - 1) / 2),
     new Vector3((request.width - 1) / 2, request.heightMultiplier, (request.height - 1) / 2),
   );
-  for (const tree of trees) {
-    tree.castShadow = true;
-    tree.receiveShadow = false;
+  for (const instance of instances) {
+    instance.castShadow = true;
     // InstancedMesh computes a union of actual transformed geometry bounds once, in setup.
-    bounds.expandByObject(tree);
+    bounds.expandByObject(instance);
   }
   terrain.castShadow = terrain.receiveShadow = true;
   const materials = Array.isArray(terrain.material) ? terrain.material : [terrain.material];

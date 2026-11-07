@@ -1,4 +1,4 @@
-// Full v5 WASM/API fields and trees, maximum work, visible landscapes, instancing and offline 3D.
+// Full v6 WASM/API fields, trees and rocks, maximum work, visible landscapes, instancing and offline 3D.
 const {
   base,
   launchBrowser,
@@ -76,7 +76,7 @@ const assert = require("node:assert/strict"),
           globalWarmth: warmth,
           vegetationDensity: 1,
           landformRegionScale: regionScale,
-          algorithmVersion: "diverse-landscape-v4",
+          algorithmVersion: "diverse-landscape-v5",
         };
         let ticks = 0,
           last = performance.now(),
@@ -112,9 +112,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v5" ||
-            result.executionProfile !== "landscape-worker-json-v5" ||
-            result.result.resultVersion !== "landscape-ecology-v5" ||
+            result.workload !== "landscape-ecology-hydraulic-v6" ||
+            result.executionProfile !== "landscape-worker-json-v6" ||
+            result.result.resultVersion !== "landscape-ecology-v6" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )
@@ -239,6 +239,23 @@ const assert = require("node:assert/strict"),
           for (const key of ["x", "y", "z", "scale", "rotation"])
             check(Math.fround(a[key]), Math.fround(b[key]));
         }
+        if (!Array.isArray(local.result.rocks) || local.result.rocks.length > 8192 || local.result.rocks.length !== remote.result.rocks.length)
+          throw Error("Rock budget/count");
+        const rockKindVariants = Array(6).fill(0);
+        previous = -1;
+        for (let i = 0; i < local.result.rocks.length; i++) {
+          const a=local.result.rocks[i], b=remote.result.rocks[i];
+          if (Object.keys(a).length !== 11 || a.cellIndex !== b.cellIndex || a.cellIndex <= previous ||
+            a.kind !== b.kind || a.variant !== b.variant || ![0,1,2].includes(a.kind) || ![0,1].includes(a.variant))
+            throw Error("Rock identity");
+          previous=a.cellIndex; rockKindVariants[a.kind*2+a.variant]++;
+          for (const key of ["x","y","z","scaleX","scaleY","scaleZ","rotation","groundY"])
+            check(Math.fround(a[key]),Math.fround(b[key]));
+          const x=a.cellIndex%w, z=Math.floor(a.cellIndex/w);
+          if (x>=w-1 || z>=h-1 || a.x-a.scaleX<x || a.x+a.scaleX>x+1 || a.z-a.scaleX<z || a.z+a.scaleX>z+1 ||
+            [a.cellIndex,a.cellIndex+1,a.cellIndex+w,a.cellIndex+w+1].some(j=>local.result.biomes[j]===0))
+            throw Error("Rock support/category");
+        }
         for (const key of Object.keys(local.simulation))
           check(local.simulation[key], remote.simulation[key]);
         const coverageStart =
@@ -251,6 +268,10 @@ const assert = require("node:assert/strict"),
           variantCounts: variants,
           kindVariantCounts: kindVariants,
           trees: local.result.trees.length,
+          rocks: local.result.rocks.length,
+          rockKindVariantCounts: rockKindVariants,
+          rockMatrixBytes: local.result.rocks.length*16*4,
+          rockReserializedJsonBytes: new TextEncoder().encode(JSON.stringify(local.result.rocks)).length,
           responseBytes: new TextEncoder().encode(text).length,
           coverageWireJsonBytes: new TextEncoder().encode(
             text.slice(coverageStart, coverageEnd),
@@ -296,6 +317,8 @@ const assert = require("node:assert/strict"),
         "Missing biome " + id,
       );
     assert.equal(matrix.at(-1).trees, 16384);
+    assert.equal(matrix[0].rocks, 0);
+    for (let k=0;k<6;k++) assert.ok(matrix.some(row=>row.rockKindVariantCounts[k]>0),"Missing rock kind/variant "+k);
     const artifact = (name) =>
       path.resolve(__dirname, "../../artifacts/" + name);
     for (const [seed, moisture, sea, warmth] of [

@@ -1,4 +1,5 @@
 import { sameObject, object } from './contract-utils';
+import { decodeRocks } from './rock-decoder';
 import {
   RESULT_VERSION,
   SURFACE_CHANNELS,
@@ -204,6 +205,7 @@ export function decodeTerrain(
       return fail();
     previous = i;
   }
+  const rocks = decodeRocks(result['rocks'], request.width, request.height, normalized, biomeIds, fail);
   let simulation: SimulationSummary;
   {
     if (
@@ -247,6 +249,7 @@ export function decodeTerrain(
       vegetationDensity,
       surfaceWeights,
       trees: Object.freeze(trees),
+      rocks,
       resultVersion: RESULT_VERSION,
       algorithmVersion: terrain.algorithmVersion,
     },

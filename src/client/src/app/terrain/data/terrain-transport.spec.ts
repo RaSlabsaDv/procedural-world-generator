@@ -50,6 +50,7 @@ function wire() {
       slope: Array(6).fill(0),
       vegetationDensity: Array(6).fill(0),
       trees: [],
+      rocks: [],
       biomes: [1, 0, 1, 0, 1, 2],
       surfaceWeights: testSurfaceWeights([1, 0, 1, 0, 1, 2]),
       algorithmVersion: TERRAIN_ALGORITHM,
@@ -58,7 +59,7 @@ function wire() {
     parameters: terrain,
     simulationVersion: SIMULATION_VERSION,
     workload: TERRAIN_WORKLOAD,
-    executionProfile: 'landscape-worker-json-v5',
+    executionProfile: 'landscape-worker-json-v6',
     computeMs: 2,
     coreBuildId: 'test',
     simulation: {
