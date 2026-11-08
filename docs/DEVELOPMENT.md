@@ -73,10 +73,10 @@ The API exposes POST /api/v1/terrains and GET /api/health. Removed probe/region/
 
 Current identities:
 
-- Algorithm: diverse-landscape-v8; nested noise: value-noise-fbm-v1.
-- Result: landscape-ecology-v9.
-- Workload: landscape-ecology-hydraulic-v9.
-- Execution profile: landscape-worker-json-v9; RPC: worker-rpc-v1.
+- Algorithm: diverse-landscape-v9; nested noise: value-noise-fbm-v1.
+- Result: landscape-ecology-v10.
+- Workload: landscape-ecology-hydraulic-v10.
+- Execution profile: landscape-worker-json-v10; RPC: worker-rpc-v1.
 - Simulation: hydraulic-grid-v1.
 
 Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances and coastal distance/blending. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
@@ -371,3 +371,32 @@ cases have maximum observed error zero; 21 paired camera/invariant views plus
 materials/coasts/lighting/PWA regressions pass. Existing render/instance budgets and
 offline update behavior remain unchanged. The optional WASM optimization warning
 persists; no controlled benchmark campaign was run.
+
+
+## Coastal surfaces v2
+
+The current [coastal policy](specs/COASTAL_SURFACES_V2.md) extends gentle low shores
+and narrows steep/wet ones using existing slope/climate. It changes final coverage
+only; Snow and all non-coverage fields remain exact. Trees/rocks may still stand
+on sand, because placement is deliberately unchanged. Larger rocks are the next
+separate extension. Scratch storage remains byte[N]+int[N], raw 1.25 MiB at 512x512.
+
+Run `python3 tests/reference/coasts_v2_reference.py` for independent literals.
+`tests/core/Fixtures/landscape-v9-fingerprints.json` freezes all numerical fields
+from revision 92d160c before coastal v2. Preserve this fixture and historical v1
+expectations. The current integration reconstructs old final coverage with the
+frozen v1 pass, checks its original hash and compares every non-coverage hash.
+
+Use `node tests/browser/coasts.cjs --v2 --before` against the preceding algorithm
+v8 publication, then `node tests/browser/coasts.cjs --v2` against current v9. Eight
+cases at three zooms retain exact camera matrices and hashes of non-coverage fields
+and Snow; after cases invoke full worker/API comparisons. Ignored evidence uses
+`artifacts/coastal-v2-*`. Sand>=0.2 bands are vertex coverage statistics measured in
+Manhattan grid units, not pixel areas or a guarantee of continuous solid sand.
+
+Coastal-v2 verification: 214 Core / 41 API / 300 Angular tests, seven packaging
+checks, worker RPC and production publication pass. Eight coastal worker/API cases
+and the seven-case full landscape matrix report zero numeric error; 24 paired views
+preserve exact camera and non-coverage/Snow hashes. Material, lighting and PWA
+regressions pass with unchanged resources and no page errors. The optional WASM
+optimization warning persists. No controlled performance campaign was run.

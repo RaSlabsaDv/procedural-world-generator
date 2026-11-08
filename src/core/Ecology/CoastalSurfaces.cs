@@ -1,10 +1,12 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Final appearance only; run after placement so base ecological policy stays frozen.</summary>
+/// <summary>Context-sensitive final coverage; frozen arithmetic in COASTAL_SURFACES_V2.md.</summary>
 internal static class CoastalSurfaces
 {
-    internal const byte MaxDistance = 8, Unreached = byte.MaxValue;
-    private const double FullDistance = 2, FullElevation = .01, MaxElevation = .05;
+    internal const byte MaxDistance = 16, Unreached = byte.MaxValue;
+    private const double GentleSlopeStart = .15, GentleSlopeEnd = .60, WetWidthReduction = .35;
+    private const double FullDistanceBase = 1, FullDistanceGain = 3, EndDistanceBase = 6, EndDistanceGain = 10;
+    private const double FullElevationBase = .005, FullElevationGain = .015, EndElevationBase = .03, EndElevationGain = .07;
     private const double RockStart = .35, RockEnd = .90;
     private const double WarmStart = .20, WarmEnd = .50, WetStart = .65, WetEnd = .90;
     private const double GrassMoistureStart = .30, GrassMoistureEnd = .65, GrassWarmStart = .20, GrassWarmEnd = .40;
@@ -50,10 +52,13 @@ internal static class CoastalSurfaces
     internal static void Blend(Span<float> weights, byte distance, double elevation, float moisture, float temperature, float slope)
     {
         if (distance == 0 || distance >= MaxDistance || elevation <= 0) return;
-        var influence = (1 - Smooth(FullDistance, MaxDistance, distance)) * (1 - Smooth(FullElevation, MaxElevation, elevation));
+        var wet = Smooth(WetStart, WetEnd, moisture);
+        var room = (1 - Smooth(GentleSlopeStart, GentleSlopeEnd, slope)) * (1 - WetWidthReduction * wet);
+        var influence = (1 - Smooth(FullDistanceBase + FullDistanceGain * room, EndDistanceBase + EndDistanceGain * room, distance))
+            * (1 - Smooth(FullElevationBase + FullElevationGain * room, EndElevationBase + EndElevationGain * room, elevation));
         if (influence == 0) return;
         var rock = Smooth(RockStart, RockEnd, slope);
-        var sand = (BaseSand + WarmSand * Smooth(WarmStart, WarmEnd, temperature)) * (1 - WetReduction * Smooth(WetStart, WetEnd, moisture));
+        var sand = (BaseSand + WarmSand * Smooth(WarmStart, WarmEnd, temperature)) * (1 - WetReduction * wet);
         var grass = Smooth(GrassMoistureStart, GrassMoistureEnd, moisture) * Smooth(GrassWarmStart, GrassWarmEnd, temperature);
         var available = 1 - (double)weights[4];
         var ground = available * (1 - rock);

@@ -119,7 +119,7 @@ const cases = biomeStudy
         algorithmVersion:
           climateStudy && before
             ? "diverse-landscape-v7"
-            : "diverse-landscape-v8",
+            : "diverse-landscape-v9",
       };
       await page
         .locator(

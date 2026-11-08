@@ -7,13 +7,21 @@ const {
 } = require("./support/browser.cjs");
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises"),
-  path = require("node:path");
+  path = require("node:path"),
+  crypto = require("node:crypto");
 (async () => {
-  const baseline = process.argv.includes("--baseline"),
+  const v2 = process.argv.includes("--v2");
+  const baseline =
+      process.argv.includes("--baseline") ||
+      (v2 && process.argv.includes("--before")),
     prefix = baseline ? "before" : "after";
-  const algorithmVersion = baseline
-    ? "diverse-landscape-v6"
-    : "diverse-landscape-v8";
+  const study = v2 ? "coastal-v2" : "coasts";
+  const algorithmVersion =
+    v2 && baseline
+      ? "diverse-landscape-v8"
+      : baseline
+        ? "diverse-landscape-v6"
+        : "diverse-landscape-v9";
   const browser = await launchBrowser();
   try {
     const context = await browser.newContext({
@@ -35,6 +43,12 @@ const assert = require("node:assert/strict"),
       ["cold", 2026, 0.45, 0.3, 0.3, 0.25, 0.8],
       ["no-ocean", 42, 0.45, 0.3, 0, 0.6, 0.65],
       ["inland", -7, 0.45, 0.3, 0.23, 0.6, 0.65],
+      ...(v2
+        ? [
+            ["rolling", 2026, 0.45, 0.3, 0.16, 0.6, 0.65],
+            ["wet", 42, 1, 0, 0.16, 0.6, 0.95],
+          ]
+        : []),
     ]) {
       await page.locator("#reset-parameters").click();
       await fillParameters(page, {
@@ -143,7 +157,61 @@ const assert = require("node:assert/strict"),
               if (sand !== 0) throw Error("Beach in dry inland depression");
             }
           }
+          // Independent full Manhattan distances for vertex statistics, not product logic.
+          const distances = new Int32Array(r.values.length).fill(-1);
+          const queue = [];
+          r.biomes.forEach((b, i) => {
+            if (b === 0) {
+              distances[i] = 0;
+              queue.push(i);
+            }
+          });
+          for (let head = 0; head < queue.length; head++) {
+            const i = queue[head],
+              x = i % r.width,
+              y = Math.floor(i / r.width);
+            for (const j of [
+              x > 0 ? i - 1 : -1,
+              x < r.width - 1 ? i + 1 : -1,
+              y > 0 ? i - r.width : -1,
+              y < r.height - 1 ? i + r.width : -1,
+            ])
+              if (j >= 0 && distances[j] < 0) {
+                distances[j] = distances[i] + 1;
+                queue.push(j);
+              }
+          }
+          const sandBands = {};
+          let strongSand = 0,
+            maxStrongSandDistance = 0;
+          for (let i = 0; i < r.values.length; i++)
+            if (r.surfaceWeights[i * 5 + 2] >= 0.2) {
+              strongSand++;
+              maxStrongSandDistance = Math.max(
+                maxStrongSandDistance,
+                distances[i],
+              );
+              sandBands[distances[i]] = (sandBands[distances[i]] || 0) + 1;
+            }
+          const invariant = Object.fromEntries(
+            Object.entries(r).filter(
+              ([k]) =>
+                ![
+                  "surfaceWeights",
+                  "algorithmVersion",
+                  "resultVersion",
+                ].includes(k),
+            ),
+          );
           return {
+            invariant: {
+              result: invariant,
+              snow: r.surfaceWeights.filter((_, i) => i % 5 === 4),
+              simulation: remote.simulation,
+            },
+            strongSand,
+            maxStrongSandDistance,
+            sandBands,
             request,
             shoreline,
             steepShore,
@@ -175,28 +243,100 @@ const assert = require("node:assert/strict"),
         assert.ok(diagnostic.rockyShore > 0);
       }
       const canvas = page.locator("app-terrain-preview canvas").first();
-      for (const [view, wheel] of [
-        ["overview", 0],
-        ["close", -1350],
-      ]) {
+      const views = [];
+      await page
+        .getByRole("button", { name: "Reset camera", exact: true })
+        .click();
+      for (const [view, wheel] of v2
+        ? [
+            ["overview", 0],
+            ["close", -650],
+            ["detail", -700],
+          ]
+        : [
+            ["overview", 0],
+            ["close", -1350],
+          ]) {
         if (wheel) {
           await canvas.hover();
           await page.mouse.wheel(0, wheel);
           await page.waitForTimeout(250);
         }
+        if (v2) {
+          const camera = await canvas.evaluate((canvas) => {
+            const gl = canvas.getContext("webgl2"),
+              program = gl.getParameter(gl.CURRENT_PROGRAM);
+            const read = (name) => {
+              const location = gl.getUniformLocation(program, name);
+              return location
+                ? Array.from(gl.getUniform(program, location))
+                : null;
+            };
+            return {
+              width: canvas.width,
+              height: canvas.height,
+              projection: read("projectionMatrix"),
+              modelView: read("modelViewMatrix"),
+            };
+          });
+          assert.ok(camera.projection && camera.modelView);
+          views.push({ view, wheel, camera });
+        }
         await canvas.screenshot({
           path: path.resolve(
             __dirname,
-            `../../artifacts/coasts-${prefix}-${label}-${view}.png`,
+            `../../artifacts/${study}-${prefix}-${label}-${view}.png`,
           ),
         });
       }
-      captures.push({ label, ...diagnostic });
+      const { invariant, ...stats } = diagnostic;
+      captures.push({
+        label,
+        ...stats,
+        views,
+        invariantHash: crypto
+          .createHash("sha256")
+          .update(JSON.stringify(invariant))
+          .digest("hex"),
+      });
       await page
         .getByRole("button", { name: "Reset camera", exact: true })
         .click();
     }
     assert.deepEqual(errors, []);
+    if (v2 && !baseline) {
+      const before = JSON.parse(
+        await fs.readFile(
+          path.resolve(
+            __dirname,
+            "../../artifacts/coastal-v2-before-verification.json",
+          ),
+          "utf8",
+        ),
+      );
+      const project = (rows) =>
+        rows.map(({ label, request, views, invariantHash }) => ({
+          label,
+          request: { ...request, algorithmVersion: "coastal-comparison" },
+          views,
+          invariantHash,
+        }));
+      assert.deepEqual(
+        project(captures),
+        project(before.captures),
+        "Camera, requests, all non-coverage fields and snow must stay exact",
+      );
+      const oldGentle = before.captures.find((r) => r.label === "gentle"),
+        gentle = captures.find((r) => r.label === "gentle");
+      assert.ok(
+        gentle.strongSand > oldGentle.strongSand,
+        "More readable sand on gentle land",
+      );
+      assert.ok(
+        gentle.maxStrongSandDistance > oldGentle.maxStrongSandDistance,
+        "Gentle beach extends further inland",
+      );
+    }
     const evidence = {
       pass: true,
       baseline,
@@ -207,7 +347,7 @@ const assert = require("node:assert/strict"),
     await fs.writeFile(
       path.resolve(
         __dirname,
-        `../../artifacts/coasts-${prefix}-verification.json`,
+        `../../artifacts/${study}-${prefix}-verification.json`,
       ),
       JSON.stringify(evidence, null, 2),
     );

@@ -372,8 +372,8 @@ remain unchanged until this step is explicitly implemented.
 ## Biome readability — Step 2: regional climate and snow complete
 
 Implemented [regional-climate-v1](specs/REGIONAL_CLIMATE_V1.md): two broad world-grid
-climate fields, stronger elevation cooling and smooth static highland snow. Current
-algorithm is diverse-landscape-v8; result/workload/profile are v9 with unchanged JSON
+climate fields, stronger elevation cooling and smooth static highland snow. At this milestone the
+algorithm was diverse-landscape-v8; result/workload/profile were v9 with unchanged JSON
 shape, IDs, request fields and simulation version. No renderer climate decisions,
 controls, dependencies or extra map-sized climate buffers were introduced.
 
@@ -389,8 +389,33 @@ RPC and production publication pass. All seven full browser parity cases report
 zero numeric error; 21 paired camera/invariant views and material/coast/light/PWA
 regressions pass. Existing resource caps and offline behavior remain intact.
 
-Next: coastal readability and wider, context-sensitive beaches, with a separate
-frozen Core specification and versioned equivalence tests. Afterwards implement
-the planned larger, varied rocks with sparse natural scattering. Neither feature
-is included in regional climate/snow. Controlled performance campaigns remain
-separate work; this step supplies no performance findings. README remains empty.
+Coastal readability is completed in Step 3 below. Larger, varied rocks with sparse
+natural scattering follow it. Neither feature belongs to the regional climate/snow
+policy. Controlled performance campaigns remain separate work; this step supplies
+no performance findings. README remains empty.
+
+
+## Biome readability — Step 3: context-sensitive beaches complete
+
+Implemented [coastal surfaces v2](specs/COASTAL_SURFACES_V2.md). Gentle low shores
+have wider sandy zones with gradual inland fading; slope and wetness narrow the
+zone, retaining rocky/cold shoreline character. Existing fields provide variation
+without extra noise. Algorithm is diverse-landscape-v9; result/workload/profile v10
+distinguish changed coverage and traversal work. Schemas, controls, textures, shader,
+lighting, camera and scratch-array sizes remain unchanged.
+
+All non-coverage fields, full trees/rocks and exact Snow bits remain preserved,
+verified against 23 pre-change requests. Historical v1 formulas/fixtures remain
+test-only and unchanged. Heightfield ocean geometry retains its grid-scale angular
+edges; trees/rocks may still occur on sand. The pass is appearance, not sediment
+simulation. Cold/steep/rolling coasts are not required to gain sandy area.
+
+Verification: 214 Core, 41 API and 300 Angular tests, seven packaging/documentation
+checks, worker RPC and production publication pass. Eight coastal comparisons and
+the seven-case full landscape matrix report zero error. Twenty-four paired views
+preserve camera/non-coverage/Snow hashes; material, lighting and PWA checks pass.
+
+Next: implement the planned larger, varied rocks with sparse natural scattering.
+Freeze shape/size ranges, footprint support, clearances and resource limits before
+implementation. Do not carpet the map with a visible grid or fill to the instance
+cap. Controlled measurement campaigns remain separate work. README stays empty.

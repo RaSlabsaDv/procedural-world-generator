@@ -150,7 +150,7 @@ const artifact = artifactPath;
           body: JSON.stringify({
             ...parameters,
             heightMap,
-            algorithmVersion: "diverse-landscape-v8",
+            algorithmVersion: "diverse-landscape-v9",
           }),
         });
         if (!response.ok)
@@ -372,7 +372,7 @@ const artifact = artifactPath;
       captures.push({
         label,
         parameters,
-        algorithmVersion: "diverse-landscape-v8",
+        algorithmVersion: "diverse-landscape-v9",
         wheelDelta: -650,
         resources: await assertResources(1),
         lighting: await lightingResources(page),
