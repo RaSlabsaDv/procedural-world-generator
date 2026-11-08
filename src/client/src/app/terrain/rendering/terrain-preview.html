@@ -1,0 +1,30 @@
+<div class="preview-actions">
+  <button type="button" (click)="resetCamera()" [disabled]="paused() || !!problem()">
+    Reset camera
+  </button>
+</div>
+<div #container class="viewport">
+  <canvas
+    #canvas
+    role="img"
+    tabindex="0"
+    [attr.aria-label]="'3D terrain for seed ' + run().request.seed"
+  ></canvas>
+</div>
+@if (problem()) {
+  <p role="alert">{{ problem() }} Numerical results remain available.</p>
+}
+@if (displayMs() !== null) {
+  <p class="display-time">
+    Textured 3D setup and first render submission (CPU): {{ displayMs()!.toFixed(2) }} ms
+  </p>
+}
+@if (displayMs() === null && !problem()) {
+  <p class="surface-loading">Preparing textured surface…</p>
+}
+@if (textureWaitMs() !== null) {
+  <p class="texture-time">
+    Surface asset wait: {{ textureWaitMs()!.toFixed(2) }} ms (excluded from CPU setup).
+  </p>
+}
+<p>Drag to orbit · Scroll or pinch to zoom · Right-drag to pan.</p>

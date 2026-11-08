@@ -21,7 +21,7 @@ Read AGENTS.md, PROJECT_BRIEF.md, ARCHITECTURE.md, DEVELOPMENT.md, BENCHMARKING.
 
 Capture current normal/cold/warm rectangular landscapes at the exact requests and overview/close camera framing used by materials.cjs. Include a dense forest and a steep, snow-covered slope. Retain screenshots and parameters under ignored artifacts/ before changing lighting.
 
-Create docs/LIGHTING_ATMOSPHERE_V1.md before implementation. Specify the fixed light direction/colors/intensities, ambient/fill approach, background/fog, shadow type, resolution, camera fitting, bias/normal bias, texture/target budgets and measurement boundaries. Keep related constants in a small rendering configuration/helper module. Avoid expanding the preview constructor into a second general-purpose scene framework.
+Create docs/specs/LIGHTING_ATMOSPHERE_V1.md before implementation. Specify the fixed light direction/colors/intensities, ambient/fill approach, background/fog, shadow type, resolution, camera fitting, bias/normal bias, texture/target budgets and measurement boundaries. Keep related constants in a small rendering configuration/helper module. Avoid expanding the preview constructor into a second general-purpose scene framework.
 
 Evaluate current AmbientLight(white,1.6) and DirectionalLight(white,1.8): reduce flat ambient wash while retaining readable shadowed slopes and ground under trees. A fixed hemisphere fill plus one directional sun is acceptable, as is a restrained ambient fill with the sun. Choose one approach, document it and freeze its actual constants after visual evaluation. Preserve the normalized sun direction across seeds, sizes and execution modes; positioning may scale with the request bounds. There is no required physically calibrated lux claim.
 

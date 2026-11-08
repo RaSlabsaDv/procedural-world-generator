@@ -1,3 +1,4 @@
+const { waitForTerrain, fillParameters } = require("./support/editor.cjs");
 // Static shadow reuse, paused work, minimum terrain and cleanup in real WebGL.
 const {
   base,
@@ -26,18 +27,7 @@ const assert = require("node:assert/strict"),
     });
     await page.goto(base);
     await waitForOfflineReady(page);
-    const complete = async () => {
-      await page.waitForFunction(
-        () => document.querySelector(".status").textContent === "Complete",
-        null,
-        { timeout: 120000 },
-      );
-      await page.locator("app-terrain-preview .display-time").first().waitFor();
-      assert.equal(
-        await page.locator("app-terrain-preview [role=alert]").count(),
-        0,
-      );
-    };
+    const complete = () => waitForTerrain(page, 120000);
     const current = async () => {
       const rows = await lightingResources(page),
         live = rows.filter((row) => !row.lost && row.attachments.length);
@@ -61,12 +51,11 @@ const assert = require("node:assert/strict"),
       assert.equal(shadowBytes, 33554432);
       return live[0];
     };
-    for (const [id, value] of Object.entries({
+    await fillParameters(page, {
       width: 129,
       height: 97,
       iterations: 16,
-    }))
-      await page.locator("#" + id).fill(String(value));
+    });
     await page.locator("#generate-local").click();
     await complete();
     const initial = await current();
@@ -120,13 +109,12 @@ const assert = require("node:assert/strict"),
         initial.attachments[0].framebuffer,
     );
     // Minimum, zero-height, all-ocean case must still allocate valid targets and render once.
-    for (const [id, value] of Object.entries({
+    await fillParameters(page, {
       width: 2,
       height: 2,
       heightMultiplier: 0,
       iterations: 0,
-    }))
-      await page.locator("#" + id).fill(String(value));
+    });
     await page.locator("#generate-remote").click();
     await complete();
     const minimum = await current();

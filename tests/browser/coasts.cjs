@@ -1,3 +1,4 @@
+const { waitForGeneration, fillParameters } = require("./support/editor.cjs");
 // Fixed coastline views, actual-host coverage parity and dry-depression protection.
 const {
   base,
@@ -36,7 +37,7 @@ const assert = require("node:assert/strict"),
       ["inland", -7, 0.45, 0.3, 0.23, 0.6, 0.65],
     ]) {
       await page.locator("#reset-parameters").click();
-      for (const [key, value] of Object.entries({
+      await fillParameters(page, {
         width: 129,
         height: 97,
         iterations: 16,
@@ -46,14 +47,9 @@ const assert = require("node:assert/strict"),
         seaLevel: sea,
         globalWarmth: warmth,
         globalMoisture: moisture,
-      }))
-        await page.locator("#" + key).fill(String(value));
+      });
       await page.locator("#verify-equivalence").click();
-      await page.waitForFunction(
-        () => document.querySelector(".status").textContent === "Complete",
-        null,
-        { timeout: 120000 },
-      );
+      await waitForGeneration(page, 120000);
       await page.locator("app-terrain-preview .display-time").first().waitFor();
       assert.match(
         await page.locator("#numeric-match").innerText(),

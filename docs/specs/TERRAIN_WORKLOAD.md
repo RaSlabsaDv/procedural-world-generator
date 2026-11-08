@@ -1,6 +1,6 @@
 # Terrain hydraulic workload v1
 
-This is the historical v1 workload specification. The current public generator is specified in [LANDSCAPE_V2.md](LANDSCAPE_V2.md). V1 reference equations and literal fixtures remain in tests; it is not exposed as another editor mode. Its arithmetic is frozen. Reproduction commands and environment-specific smoke evidence are in [DEVELOPMENT.md](DEVELOPMENT.md).
+This is the historical v1 workload specification. The current public generator is specified in [LANDSCAPE_V2.md](LANDSCAPE_V2.md). V1 reference equations and literal fixtures remain in tests; it is not exposed as another editor mode. Its arithmetic is frozen. Reproduction commands and environment-specific smoke evidence are in [DEVELOPMENT.md](../DEVELOPMENT.md).
 
 ## Contract and limits
 
@@ -60,4 +60,4 @@ Biome IDs are numeric arrays in row-major order, never base64: Water=0 below 0.2
 
 Core tests retain independent literal Python fixtures for zero and two erosion steps, deterministic/independent arrays, extreme seeds, bounded dimensions, validation and conservation. Both hosts serialize identical full results, settings and summaries. Client tests cover strict decoding, full-array comparisons, service adapters, operation locking, 3D resource disposal and offline version integrity.
 
-Reproduce native, client and browser checks with [DEVELOPMENT.md](DEVELOPMENT.md). The hydraulic browser matrix includes 512x512x128, active main-thread heartbeats, 3D and offline new-seed generation. These checks verify correctness and practical operation, not a controlled performance advantage or a universal device memory guarantee.
+Reproduce native, client and browser checks with [DEVELOPMENT.md](../DEVELOPMENT.md). The hydraulic browser matrix includes 512x512x128, active main-thread heartbeats, 3D and offline new-seed generation. These checks verify correctness and practical operation, not a controlled performance advantage or a universal device memory guarantee.

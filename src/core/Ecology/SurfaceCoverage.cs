@@ -1,6 +1,6 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Derived appearance only. Frozen arithmetic in SURFACE_TRANSITIONS_V1.md.</summary>
+/// <summary>Derived appearance only. Frozen arithmetic in docs/specs/SURFACE_TRANSITIONS_V1.md.</summary>
 internal static class SurfaceCoverage
 {
     internal const int ChannelCount = 5;

@@ -1,3 +1,8 @@
+const {
+  waitForTerrain,
+  fillParameters,
+  artifactPath,
+} = require("./support/editor.cjs");
 // Real shader/PNG decoding, bounded texture ownership and reproducible surface views.
 const {
   base,
@@ -11,7 +16,7 @@ const {
 } = require("./support/lighting.cjs");
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
+const artifact = artifactPath;
 (async () => {
   const browser = await launchBrowser();
   try {
@@ -129,7 +134,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
               !Number.isFinite(value) ||
               value < 0 ||
               value > 1 ||
-                            (result.biomes[i] === 0 && value !== 0)
+              (result.biomes[i] === 0 && value !== 0)
             )
               throw Error("Coverage field");
             sum += Math.fround(value);
@@ -152,9 +157,14 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         }
         return {
           rockCount: result.rocks.length,
-          rockGroups: new Set(result.rocks.map(r=>r.kind+":"+r.variant)).size,
-          rockKindVariantCounts: Array.from({length:6},(_,k)=>result.rocks.filter(r=>r.kind*2+r.variant===k).length),
-          rockInstanceMatrixBytes: result.rocks.length*16*4,
+          rockGroups: new Set(result.rocks.map((r) => r.kind + ":" + r.variant))
+            .size,
+          rockKindVariantCounts: Array.from(
+            { length: 6 },
+            (_, k) =>
+              result.rocks.filter((r) => r.kind * 2 + r.variant === k).length,
+          ),
+          rockInstanceMatrixBytes: result.rocks.length * 16 * 4,
           treeCount: result.trees.length,
           kindVariantCounts: kindVariants,
           vegetationGroups: kindVariants.filter((count) => count > 0).length,
@@ -170,16 +180,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     });
     await page.goto(base);
     await waitForOfflineReady(page);
-    const complete = async () => {
-      await page.waitForFunction(
-        () => document.querySelector(".status").textContent === "Complete",
-      );
-      await page.locator("app-terrain-preview .display-time").first().waitFor();
-      assert.equal(
-        await page.locator("app-terrain-preview [role=alert]").count(),
-        0,
-      );
-    };
+    const complete = () => waitForTerrain(page, 30000);
     const resources = async () =>
       page.evaluate(() =>
         window.__surfaceContexts.map(
@@ -266,8 +267,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         globalWarmth: warmth,
         globalMoisture: moisture,
       };
-      for (const [id, value] of Object.entries(fields))
-        await page.locator("#" + id).fill(String(value));
+      await fillParameters(page, fields);
       await page.locator("#generate-local").click();
       await complete();
       const canvas = page.locator("app-terrain-preview canvas");
@@ -282,7 +282,9 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       });
       await page.mouse.wheel(0, -700);
       await page.waitForTimeout(200);
-      await canvas.screenshot({ path: artifact(`coasts-materials-after-${label}-detail.png`) });
+      await canvas.screenshot({
+        path: artifact(`coasts-materials-after-${label}-detail.png`),
+      });
       const parameters = await page
         .locator("input[type=number]")
         .evaluateAll((inputs) =>
@@ -294,8 +296,14 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       if (label === "mixed") assert.equal(diagnostic.vegetationGroups, 6);
       coverageChecks.push(diagnostic);
       const actual = await assertResources(1);
-      assert.equal(actual.find(row=>!row.lost && row.textures>0).calls,1+diagnostic.vegetationGroups*2+diagnostic.rockGroups);
-      assert.equal(actual.find(row=>!row.lost && row.textures>0).instances, diagnostic.treeCount*2+diagnostic.rockCount);
+      assert.equal(
+        actual.find((row) => !row.lost && row.textures > 0).calls,
+        1 + diagnostic.vegetationGroups * 2 + diagnostic.rockGroups,
+      );
+      assert.equal(
+        actual.find((row) => !row.lost && row.textures > 0).instances,
+        diagnostic.treeCount * 2 + diagnostic.rockCount,
+      );
       captures.push({
         label,
         parameters,
@@ -320,7 +328,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     );
     await page.locator("app-terrain-preview .display-time").waitFor();
     await assertResources(1);
-    for (const [id, value] of Object.entries({
+    await fillParameters(page, {
       seed: -7,
       width: 512,
       height: 512,
@@ -330,8 +338,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       globalWarmth: 0.6,
       globalMoisture: 1,
       seaLevel: 0,
-    }))
-      await page.locator("#" + id).fill(String(value));
+    });
     await page.locator("#generate-remote").click();
     await complete();
     assert.match(
@@ -359,8 +366,11 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       .click();
     const maxDiagnostic = await checkCoverage();
     coverageChecks.push(maxDiagnostic);
-    assert.equal(maxDiagnostic.rockCount,8192);
-    assert.equal(maximum.find(row=>!row.lost && row.textures>0).instances, maxDiagnostic.treeCount*2+maxDiagnostic.rockCount);
+    assert.equal(maxDiagnostic.rockCount, 8192);
+    assert.equal(
+      maximum.find((row) => !row.lost && row.textures > 0).instances,
+      maxDiagnostic.treeCount * 2 + maxDiagnostic.rockCount,
+    );
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(
       await page.evaluate(

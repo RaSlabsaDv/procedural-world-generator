@@ -1,3 +1,4 @@
+import { terrainScene } from './terrain-scene';
 import {
   afterRenderEffect,
   Component,
@@ -12,14 +13,10 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Mesh, MeshLambertMaterial, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { TerrainRun } from '../data/terrain.models';
-import { terrainForest } from './terrain-forest';
-import { terrainRocks } from './terrain-rocks';
-import { terrainGeometry } from './terrain-geometry';
-import { terrainLighting } from './terrain-lighting';
-import { loadTerrainSurfaces, terrainSurfaceMaterial, TerrainSurfaces } from './terrain-surfaces';
+import { loadTerrainSurfaces, TerrainSurfaces } from './terrain-surfaces';
 
 export const TERRAIN_SURFACES_FACTORY = new InjectionToken<() => TerrainSurfaces>(
   'Terrain surface textures',
@@ -35,85 +32,8 @@ export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
 
 @Component({
   selector: 'app-terrain-preview',
-  template: `
-    <div class="preview-actions">
-      <button type="button" (click)="resetCamera()" [disabled]="paused() || !!problem()">
-        Reset camera
-      </button>
-    </div>
-    <div #container class="viewport">
-      <canvas
-        #canvas
-        role="img"
-        tabindex="0"
-        [attr.aria-label]="'3D terrain for seed ' + run().request.seed"
-      ></canvas>
-    </div>
-    @if (problem()) {
-      <p role="alert">{{ problem() }} Numerical results remain available.</p>
-    }
-    @if (displayMs() !== null) {
-      <p class="display-time">
-        Textured 3D setup and first render submission (CPU): {{ displayMs()!.toFixed(2) }} ms
-      </p>
-    }
-    @if (displayMs() === null && !problem()) {
-      <p class="surface-loading">Preparing textured surface…</p>
-    }
-    @if (textureWaitMs() !== null) {
-      <p class="texture-time">
-        Surface asset wait: {{ textureWaitMs()!.toFixed(2) }} ms (excluded from CPU setup).
-      </p>
-    }
-    <p>Drag to orbit · Scroll or pinch to zoom · Right-drag to pan.</p>
-  `,
-  styles: `
-    .viewport {
-      width: 100%;
-      height: clamp(400px, 66vh, 780px);
-      border-radius: 0.5rem;
-      overflow: hidden;
-      background: #18232d;
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      touch-action: none;
-    }
-    p {
-      font-size: 0.7rem;
-      color: #70867c;
-    }
-    .preview-actions {
-      display: flex;
-      justify-content: flex-end;
-      margin-bottom: 0.5rem;
-    }
-    button {
-      border: 1px solid #d5e0df;
-      background: #fff;
-      color: #526f60;
-      padding: 0.3rem 0.6rem;
-      border-radius: 0.35rem;
-      cursor: pointer;
-      font: inherit;
-      font-size: 0.7rem;
-    }
-    button:focus-visible {
-      outline: 3px solid #59a99b;
-      outline-offset: 2px;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: wait;
-    }
-    @media (max-width: 650px) {
-      .viewport {
-        height: 400px;
-      }
-    }
-  `,
+  templateUrl: './terrain-preview.html',
+  styleUrl: './terrain-preview.css',
 })
 export class TerrainPreview {
   readonly run = input.required<TerrainRun>();
@@ -162,10 +82,7 @@ export class TerrainPreview {
       let controls: OrbitControls | undefined;
       let camera: PerspectiveCamera | undefined;
       let observer: ResizeObserver | undefined;
-      let forest: ReturnType<typeof terrainForest> | undefined;
-      let rocks: ReturnType<typeof terrainRocks> | undefined;
-      let lighting: ReturnType<typeof terrainLighting> | undefined;
-      let mesh: Mesh<ReturnType<typeof terrainGeometry>, MeshLambertMaterial> | undefined;
+      let content: ReturnType<typeof terrainScene> | undefined;
       const contextLost = (event: Event) => {
         event.preventDefault();
         fail(new Error('The WebGL context was lost. Generate again to retry.'));
@@ -185,11 +102,7 @@ export class TerrainPreview {
             target: controls.target.toArray() as [number, number, number],
           };
         controls?.dispose();
-        lighting?.dispose();
-        forest?.dispose();
-        rocks?.dispose();
-        mesh?.geometry.dispose();
-        mesh?.material.dispose();
+        content?.dispose();
         renderer?.dispose();
         this.controls = undefined;
       };
@@ -228,26 +141,7 @@ export class TerrainPreview {
               const resumed = performance.now();
               const scene = new Scene();
               camera = new PerspectiveCamera(45, 1, 0.01, 10000);
-              mesh = new Mesh(
-                terrainGeometry(run.response.result),
-                terrainSurfaceMaterial(
-                  textures,
-                  run.response.result.width,
-                  run.response.result.height,
-                ),
-              );
-              scene.add(mesh);
-              forest = terrainForest(run.response.result);
-              for (const group of forest.groups) scene.add(group.trunks, group.crowns);
-              rocks = terrainRocks(run.response.result);
-              for (const rock of rocks.meshes) scene.add(rock);
-              lighting = terrainLighting(
-                scene,
-                renderer!,
-                run.request,
-                mesh,
-                [...forest.groups.flatMap((group) => [group.trunks, group.crowns]), ...rocks.meshes],
-              );
+              content = terrainScene(scene, renderer!, run.request, run.response.result, textures);
               // Bound the view by the request, not by sampled min/max: both modes share the same scale.
               const span = Math.max(
                 run.request.width - 1,

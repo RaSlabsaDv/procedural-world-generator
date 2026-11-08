@@ -1,3 +1,4 @@
+const { waitForGeneration, fillParameters } = require("./support/editor.cjs");
 // Fixed pure-plain/mountain views and actual UI equivalence, before/after local relief.
 const {
   base,
@@ -41,14 +42,9 @@ const assert = require("node:assert/strict"),
         mountainCoverage,
         iterations,
       };
-      for (const [key, value] of Object.entries(fields))
-        await page.locator("#" + key).fill(String(value));
+      await fillParameters(page, fields);
       await page.locator("#verify-equivalence").click();
-      await page.waitForFunction(
-        () => document.querySelector(".status").textContent === "Complete",
-        null,
-        { timeout: 120000 },
-      );
+      await waitForGeneration(page, 120000);
       await page.locator("app-terrain-preview .display-time").first().waitFor();
       assert.match(
         await page.locator("#numeric-match").innerText(),

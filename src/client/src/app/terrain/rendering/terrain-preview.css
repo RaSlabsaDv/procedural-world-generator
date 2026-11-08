@@ -1,0 +1,45 @@
+.viewport {
+  width: 100%;
+  height: clamp(400px, 66vh, 780px);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #18232d;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+p {
+  font-size: 0.7rem;
+  color: #70867c;
+}
+.preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+button {
+  border: 1px solid #d5e0df;
+  background: #fff;
+  color: #526f60;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.35rem;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.7rem;
+}
+button:focus-visible {
+  outline: 3px solid #59a99b;
+  outline-offset: 2px;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+@media (max-width: 650px) {
+  .viewport {
+    height: 400px;
+  }
+}

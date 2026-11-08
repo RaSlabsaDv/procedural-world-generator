@@ -28,51 +28,140 @@
         Verify equivalence
       </button>
     </div>
+    <button
+      id="toggle-parameter-tips"
+      class="tips-toggle secondary"
+      type="button"
+      [attr.aria-pressed]="showTips()"
+      (click)="toggleTips()"
+    >
+      Parameter tips
+    </button>
     @for (group of groups(); track group.title) {
-      <details class="parameter-group" [open]="!group.advanced">
+      <details
+        class="parameter-group"
+        [class.coverage-group]="group.kind === 'coverage'"
+        [open]="!group.advanced"
+      >
         <summary>{{ group.title }}</summary>
+        @if (group.kind === 'coverage') {
+          <div
+            class="coverage-budget"
+            id="coverage-budget"
+            aria-live="polite"
+            [class.over-budget]="coverage() && coverage()!.excess > 0"
+          >
+            <div class="budget-heading"><span>Shared budget</span><strong>100%</strong></div>
+            @if (coverage(); as balance) {
+              <div
+                class="coverage-bar"
+                role="img"
+                [attr.aria-label]="
+                  'Landform tendencies: plains ' +
+                  percent(balance.plains) +
+                  ', mountains ' +
+                  percent(balance.mountains) +
+                  ', hills ' +
+                  percent(balance.hills)
+                "
+              >
+                <span class="plains-segment" [style.flex-grow]="balance.plains"></span>
+                <span class="mountains-segment" [style.flex-grow]="balance.mountains"></span>
+                <span class="hills-segment" [style.flex-grow]="balance.hills"></span>
+              </div>
+              <p class="budget-message">
+                @if (balance.excess > 0) {
+                  Combined values exceed 100%. Reduce plains or mountains.
+                } @else {
+                  {{ percent(balance.hills) }} remains for hills.
+                }
+              </p>
+            } @else {
+              <p class="budget-message">Enter both coverages between 0 and 1 to see the balance.</p>
+            }
+            <p class="budget-note" [hidden]="!showTips()">
+              Regional tendencies, not exact map percentages.
+            </p>
+          </div>
+        }
         @for (field of group.fields; track field.name) {
-          <div class="parameter">
-            <label [for]="field.name">{{ field.definition.label }}</label>
+          @let bounds = range(field.name);
+          @let problem = inputError(field.name, field.nested, field.control);
+          <div class="parameter" [class.wide-input]="field.name === 'seed'">
+            <div class="parameter-label">
+              <label [for]="field.name">{{ field.definition.label }}</label>
+              <small
+                class="range-hint"
+                [id]="field.name + '-range'"
+                [class.range-warning]="!!problem"
+              >
+                <span class="sr-only">{{
+                  group.kind === 'coverage' ? 'Available range' : 'Range'
+                }}</span>
+                <b
+                  >{{ format(bounds.min) }} <span aria-hidden="true">–</span>
+                  {{ format(bounds.max) }}</b
+                >
+              </small>
+            </div>
             <input
               [id]="field.name"
               type="number"
               [step]="field.definition.step"
+              [attr.min]="bounds.min"
+              [attr.max]="bounds.max"
               [formControl]="field.control"
-              [attr.aria-describedby]="field.name + '-help ' + field.name + '-error'"
-              [attr.aria-invalid]="fieldError(field.name, field.nested) ? 'true' : null"
+              [attr.aria-describedby]="
+                field.name +
+                '-help ' +
+                field.name +
+                '-range ' +
+                field.name +
+                '-error' +
+                (group.kind === 'coverage' ? ' coverage-budget' : '')
+              "
+              [attr.aria-invalid]="problem ? 'true' : null"
             />
             @if (field.slider; as slider) {
               <input
                 class="slider"
                 [id]="field.name + '-slider'"
                 type="range"
-                [min]="slider.min"
-                [max]="slider.max"
+                [min]="bounds.min"
+                [max]="bounds.max"
                 [step]="field.definition.step"
                 [value]="field.control.value ?? field.definition.defaultValue"
+                [disabled]="busy() || (group.kind === 'coverage' && !coverage())"
                 (input)="slide(field.control, $event)"
                 [attr.aria-label]="field.definition.label + ' slider'"
-                [attr.aria-describedby]="field.name + '-help'"
+                [attr.aria-describedby]="
+                  field.name +
+                  '-range ' +
+                  field.name +
+                  '-help' +
+                  (group.kind === 'coverage' ? ' coverage-budget' : '')
+                "
               />
             }
-            <small class="parameter-help" [id]="field.name + '-help'">{{
+            <small class="parameter-help" [hidden]="!showTips()" [id]="field.name + '-help'">{{
               field.definition.description
             }}</small>
-            <small class="field-error" [id]="field.name + '-error'">{{
-              fieldError(field.name, field.nested)
-            }}</small>
+            <small class="field-error" [id]="field.name + '-error'">{{ problem }}</small>
           </div>
         }
       </details>
     }
     <p class="work-estimate">
       {{ mapForm().controls.width.value }} × {{ mapForm().controls.height.value }} ×
-      {{ simulationForm().controls.iterations.value }} cell-iterations. Core validates the work
-      budget.
+      {{ simulationForm().controls.iterations.value }} cell-iterations.
+      @if (iterationLimit(); as limit) {
+        <span>Up to {{ format(limit) }} iterations for these dimensions.</span>
+      } @else {
+        <span>Enter valid dimensions to calculate the iteration limit.</span>
+      }
     </p>
 
-    <p class="parameter-help">
+    <p class="parameter-help" [hidden]="!showTips()">
       Changes stay in the draft until you generate. Heavy runs may take time; progress and
       cancellation are unavailable.
     </p>

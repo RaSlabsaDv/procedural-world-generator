@@ -18,7 +18,7 @@ Keep Stage 1 textures, four-unit triplanar scale, lighting, tree meshes, ownersh
 
 ## 1. Freeze the surface specification first
 
-Create docs/SURFACE_TRANSITIONS_V1.md before implementing the equations. Record field layout, operation order, constants, float conversion, ocean behavior, color blending, timing and resource budgets. Constants belong in a small Core surface-coverage component, separate from biome classification.
+Create docs/specs/SURFACE_TRANSITIONS_V1.md before implementing the equations. Record field layout, operation order, constants, float conversion, ocean behavior, color blending, timing and resource budgets. Constants belong in a small Core surface-coverage component, separate from biome classification.
 
 Keep algorithmVersion = diverse-landscape-v3 and simulationVersion = hydraulic-grid-v1 because the existing generation equations remain unchanged. Introduce resultVersion = landscape-ecology-v4, workload = landscape-ecology-hydraulic-v4 and executionProfile = landscape-worker-json-v4 for the extended result and additional Core work. Do not pool old/new timings. Both hosts and the client must switch together; do not add a version selector or compatibility fallback that fabricates missing weights.
 

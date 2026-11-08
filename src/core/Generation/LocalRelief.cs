@@ -1,6 +1,6 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Bounded world-grid detail before erosion; frozen equations in LOCAL_RELIEF_V1.md.</summary>
+/// <summary>Bounded world-grid detail before erosion; frozen equations in docs/specs/LOCAL_RELIEF_V1.md.</summary>
 internal static class LocalRelief
 {
     internal const double MaxAmplitude = .041;

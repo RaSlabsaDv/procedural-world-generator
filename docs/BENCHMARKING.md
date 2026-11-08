@@ -143,7 +143,7 @@ The interactive Three.js card reports CPU scene setup and first render submissio
 
 ## Hydraulic workload scaling and worker execution
 
-The hydraulic profile is specified in [LANDSCAPE_V3.md](LANDSCAPE_V3.md). Use map size and iteration count as independent axes, including a zero-step composition reference. Environment fields and bounded vegetation selection are included even at zero steps. Iterations add genuine simulation work without enlarging final-only geometry or returning simulation history. No convergence shortcut or no-op repetition is used.
+The hydraulic profile is specified in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md). Use map size and iteration count as independent axes, including a zero-step composition reference. Environment fields and bounded vegetation selection are included even at zero steps. Iterations add genuine simulation work without enlarging final-only geometry or returning simulation history. No convergence shortcut or no-op repetition is used.
 
 Offline preparation normally initializes the worker/runtime before interactive generation. Record startup, cache state, worker protocol and execution model separately. `requestMs` includes string serialization, RPC or HTTP, parsing, normalization and validation. C# `computeMs` excludes those costs. The browser smoke matrix through 512x512x128 established scalable work and active main-thread heartbeats, not controlled comparative performance. Raw evidence is generated at ignored `artifacts/landscape-verification.json`; the work cap is 33,554,432 cell-iterations and steps are also limited to 2048.
 

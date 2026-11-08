@@ -2,12 +2,8 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { compareTerrains, TerrainComparison } from './terrain/data/terrain.contract';
 import { TerrainError, TerrainRun } from './terrain/data/terrain.models';
-import {
-  captureTerrainRequest,
-  createParameterForm,
-  MAP_PARAMETERS,
-  SIMULATION_PARAMETERS,
-} from './terrain/editor/terrain-parameters';
+import { MAP_PARAMETERS, SIMULATION_PARAMETERS } from './terrain/editor/parameter-definitions';
+import { captureTerrainRequest, createParameterForm } from './terrain/editor/terrain-parameters';
 import { TerrainParametersPanel, GenerationMode } from './terrain/editor/terrain-parameters-panel';
 import { TerrainResultsPanel } from './terrain/editor/terrain-results-panel';
 import { PwaStatusPanel } from './platform/pwa-status-panel';

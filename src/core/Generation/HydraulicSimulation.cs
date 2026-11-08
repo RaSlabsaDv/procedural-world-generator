@@ -1,6 +1,6 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Fixed-step conservative grid model specified in docs/TERRAIN_WORKLOAD.md.</summary>
+/// <summary>Fixed-step conservative grid model specified in docs/specs/TERRAIN_WORKLOAD.md.</summary>
 internal static class HydraulicSimulation
 {
     internal const double TimeStep = .2;

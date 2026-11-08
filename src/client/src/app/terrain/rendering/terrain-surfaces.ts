@@ -9,7 +9,7 @@ import {
 export const SURFACE_REPEAT_UNITS = 4;
 export const SURFACE_TEXTURE_NAMES = ['grass', 'soil', 'sand', 'rock', 'snow'] as const;
 type SurfaceName = (typeof SURFACE_TEXTURE_NAMES)[number];
-type SurfaceTextures = Record<SurfaceName, Texture>;
+export type SurfaceTextures = Record<SurfaceName, Texture>;
 
 /** Rendering colors only. Coverage and suitability are supplied by Core. */
 export const SURFACE_COLORS = {

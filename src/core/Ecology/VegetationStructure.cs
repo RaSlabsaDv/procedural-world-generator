@@ -1,6 +1,6 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Frozen grove, clearing and edge policy; see VEGETATION_STRUCTURE_V1.md.</summary>
+/// <summary>Frozen grove, clearing and edge policy; see docs/specs/VEGETATION_STRUCTURE_V1.md.</summary>
 internal static class VegetationStructure
 {
     private const uint GroveSalt = 0xD6E8FEB9u, ClearingSalt = 0xA5A3564Du;

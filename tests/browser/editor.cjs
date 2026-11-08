@@ -1,3 +1,4 @@
+const { waitForGeneration } = require("./support/editor.cjs");
 // Production editor integration: real WASM/API, retained results, responsive layout and offline use.
 const {
   base,
@@ -18,14 +19,90 @@ const path = require("node:path");
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     const ready = () => waitForOfflineReady(page);
-    const complete = () =>
-      page.waitForFunction(
-        () => document.querySelector(".status").textContent === "Complete",
-        null,
-        { timeout: 90000 },
-      );
+    const complete = () => waitForGeneration(page, 90000);
     await page.goto(base);
     await ready();
+    assert.equal(await page.locator("#seed-help").isVisible(), false);
+    await page.locator("#toggle-parameter-tips").click();
+    await page.waitForFunction(
+      () => !document.querySelector("#seed-help").hidden,
+    );
+    assert.equal(await page.locator("#seed").inputValue(), "42");
+    await page.locator("#toggle-parameter-tips").click();
+    await page.waitForFunction(
+      () => document.querySelector("#seed-help").hidden,
+    );
+    assert.ok(
+      (await page.locator(".coverage-group").boundingBox()).height < 300,
+    );
+    // Shared landform guidance updates drafts without silently changing the other value.
+    assert.match(
+      await page.locator("#coverage-budget").innerText(),
+      /25% remains for hills/,
+    );
+    assert.equal(
+      await page.locator("#plainsCoverage-slider").getAttribute("max"),
+      "0.7",
+    );
+    await page.locator("#mountainCoverage").fill("0.5");
+    assert.equal(await page.locator("#plainsCoverage").inputValue(), "0.45");
+    await page.locator("#plainsCoverage-slider").focus();
+    await page.keyboard.press("End");
+    await page.waitForFunction(
+      () => document.querySelector("#plainsCoverage").value === "0.5",
+    );
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector("#coverage-budget .budget-message")
+          .textContent.trim() === "0% remains for hills.",
+    );
+    await page.locator("#plainsCoverage").fill("0.8");
+    await page.waitForFunction(() =>
+      document
+        .querySelector("#coverage-budget")
+        .textContent.includes("exceed 100%"),
+    );
+    assert.equal(await page.locator("#mountainCoverage").inputValue(), "0.5");
+    await page
+      .locator(".coverage-group")
+      .screenshot({
+        path: path.resolve(
+          __dirname,
+          "../../artifacts/input-balance-over-budget.png",
+        ),
+      });
+    await page.locator("#reset-parameters").click();
+    await page.locator("#width").fill("512");
+    await page.locator("#height").fill("512");
+    await page.waitForFunction(
+      () => document.querySelector("#iterations").max === "128",
+    );
+    await page.locator("#reset-parameters").click();
+    await page
+      .locator(".coverage-group")
+      .screenshot({
+        path: path.resolve(
+          __dirname,
+          "../../artifacts/input-balance-desktop.png",
+        ),
+      });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
+    await page
+      .locator(".coverage-group")
+      .screenshot({
+        path: path.resolve(
+          __dirname,
+          "../../artifacts/input-balance-narrow.png",
+        ),
+      });
+    await page.setViewportSize({ width: 1600, height: 1050 });
     await page.locator("#width").fill("129");
     await page.locator("#height").fill("97");
     await page.locator("#iterations").fill("16");

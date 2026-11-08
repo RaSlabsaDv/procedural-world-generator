@@ -1,9 +1,5 @@
-import {
-  captureTerrainRequest,
-  createParameterForm,
-  MAP_PARAMETERS,
-  SIMULATION_PARAMETERS,
-} from './terrain-parameters';
+import { MAP_PARAMETERS, SIMULATION_PARAMETERS } from './parameter-definitions';
+import { captureTerrainRequest, createParameterForm } from './terrain-parameters';
 
 describe('terrain parameter capture', () => {
   it('captures independent frozen settings and leaves later edits outside the snapshot', () => {
