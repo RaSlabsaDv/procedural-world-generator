@@ -149,7 +149,7 @@ public sealed class CoastalSurfacesV2Tests
         foreach (var item in fixture.RootElement.GetProperty("cases").EnumerateArray())
         {
             var request = item.GetProperty("request").Deserialize<TerrainRequest>(options)! with { AlgorithmVersion = TerrainLimits.AlgorithmVersion };
-            var result = TerrainGenerator.Generate(request); var m = result.HeightMap; var bound = (float)request.HeightMap.HeightMultiplier;
+            var result = Historical.V10.TerrainGenerator.Generate(request); var m = result.HeightMap; var bound = (float)request.HeightMap.HeightMultiplier;
             var ocean = m.Biomes.Select(b => b == LandscapeBiome.Ocean).ToArray();
             var baseline = SurfaceCoverage.Derive(m.Values, m.Biomes, m.Moisture, m.Temperature, m.Slope, bound);
             var old = (float[])baseline.Clone();

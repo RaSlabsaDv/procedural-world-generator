@@ -30,7 +30,7 @@ Generation preserves prior successful maps during work or errors. Display labels
 
 One primary result is visible by default; Local/Remote selection and Compare views are explicit. Comparison views can retain results from different requests, which are labelled and flagged; numerical verification is shown only for a verified identical request. Build identity remains separate from numeric agreement. Captured parameters, versions, simulation totals and startup/display details are expandable. Individual runs are not a benchmark campaign.
 
-Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v10 result semantics are specified below.
+Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v11 result semantics are specified below.
 
 Playback and brush editing are not implemented. Lighting, shadows and atmosphere are implemented as a presentation layer; bounded evolution capture remains later work.
 
@@ -38,9 +38,9 @@ Playback and brush editing are not implemented. Lighting, shadows and atmosphere
 
 The sole generation endpoint is `POST /api/v1/terrains`; `GET /api/health` reports availability. Unknown `/api` routes return 404 rather than the Angular shell. The sole WASM export is `GenerateTerrainJson`, exposed as the asynchronous `generateTerrainJson` worker proxy. See [development](DEVELOPMENT.md) for a complete request.
 
-`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v9`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
+`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v10`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
 
-The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v10`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v10`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights and rocks. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v10`. The new result/workload identities distinguish ecology from historical v1.
+The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v11`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v11`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights and rocks. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v11`. The new result/workload identities distinguish ecology from historical v1.
 
 All wire members are required. Nullable wire records distinguish missing fields from zero. JSON is camelCase and case-sensitive; unknown members, numeric strings, comments, trailing commas, malformed JSON, and overflowing/non-finite numbers are rejected. Both hosts return the same `{ error, fields }` shape: `invalid_json` for transport failures or `validation` with field errors. Canonical numeric limits live only in Core. API failures return 400; all terrain responses use `Cache-Control: no-store`.
 
@@ -109,24 +109,29 @@ Angular keeps only its root shell/configuration at `src/client/src/app`. `platfo
 
 Display CPU measurements are retained for an unchanged result when the other execution mode is updated. Replacing that result invalidates only its own display measurement. The earlier organization pass preserved v2. V3 now adds explicitly versioned climate, region-scale and vegetation rules; frozen v2 sources/fixtures remain in tests/core/Historical/V2, outside the public surface.
 
-## Decorative rocks (Stage 5)
+## Decorative rocks
 
-Core appends required `rocks` after tree placement, originally preserving every Stage 4 array,
-full tree record and hydraulic summary; Stage 6 changes their height inputs under a new version. `RockPlacement` uses independent cluster/hash
-streams, exact triangular support extrema, conservative embedding, trunk clearance
-and priority-ordered spacing with bounded cell grids. Its total cap is 8192; kinds
-Boulder/Outcrop/Scree each have two numeric variants. Eleven required numeric record
-members carry the complete transform and center groundY. The frozen policy,
-coordinates, salts, ranges and selection order are in [ROCK_PLACEMENT_V1.md](specs/ROCK_PLACEMENT_V1.md).
+Current [rock placement v2](specs/ROCK_PLACEMENT_V2.md) preserves all non-rock
+arrays, full trees, surface coverage and hydraulics. Independent world-grid cluster
+and hash streams produce sparse isolated stones and loose groups, wide sub-cell
+jitter and three size ranges. Occasional boulders reach radius 3; scree stays small.
+Radius-aware clearance protects conservative tree crowns and other rocks using
+bounded grids and priority/CellIndex ordering. The 8192 cap is a ceiling, not a target.
 
-Both transports use the same Core record and source-generated WASM metadata.
-`rock-decoder.ts` checks the versioned wire/geometry invariants without reproducing
-clustering or selection. Full comparison includes every rock field and reports a
-separate rock mismatch count. `terrain-rocks.ts` renders all records in up to six
-shared instanced groups; geometry is unit radius and supplied axes/yaw position it.
-Rocks cast/receive, trees retain their previous cast-only policy. Their actual
-bounds join the existing static shadow fit. A view has at most nineteen color and
-nineteen initial caster calls, with unchanged shadow/texture configuration.
+RockSupport clips the full conservative footprint square against every overlapped
+quad, checking rectangle corners, interior grid vertices and diagonal intersections.
+Ocean/map-edge overhangs and unsupported ranges are rejected. Embedding is .12*ScaleY
+below support minimum; support range must be<=.50*ScaleY. Closed unit-sphere geometry
+has a tested central roof>=.70, so center ground intersects the solid with bounded
+burial. This is decorative grounding, not rigid-body contact simulation.
+
+The eleven-member wire record and enum meanings remain; scales broaden under result/
+workload/profile v11. rock-decoder validates supplied geometry/raw ranges without
+reproducing noise or selection. Comparison checks every field. terrain-rocks builds
+six shared closed polyhedra under rock-shapes-v2, without per-instance randomness.
+All records are rendered: at most six rock draws, nineteen total color/initial caster
+calls. Actual large instance bounds feed existing static shadows. Camera, lighting,
+textures, pause and independent-view cleanup remain. Historical v1 stays test-only.
 
 ## Local geometric relief (Stage 6)
 
@@ -321,7 +326,7 @@ remains, so this does not smooth ocean geometry or remove angular water edges.
 
 The same in-place post-placement pass preserves all non-coverage output and Snow
 bits. No new buffers beyond the existing byte/int scratch pair, wire fields, assets,
-controls or dependencies. Current result/workload/profile v10 distinguish changed
+controls or dependencies. The coastal step introduced result/workload/profile v10 to distinguish changed
 coverage semantics and traversal work. Old complete fixtures use frozen coastal v1
 under Historical/V8; 23 pre-v2 v9 field fingerprints verify preservation, including
 full trees and rocks.

@@ -3,7 +3,7 @@ const {
   fillParameters,
   artifactPath,
 } = require("./support/editor.cjs");
-// Full v10 WASM/API fields, trees and rocks, maximum work, visible landscapes, instancing and offline 3D.
+// Full v11 WASM/API fields, trees and rocks, maximum work, visible landscapes, instancing and offline 3D.
 const {
   base,
   launchBrowser,
@@ -75,7 +75,7 @@ const assert = require("node:assert/strict"),
           globalWarmth: warmth,
           vegetationDensity: 1,
           landformRegionScale: regionScale,
-          algorithmVersion: "diverse-landscape-v9",
+          algorithmVersion: "diverse-landscape-v10",
         };
         let ticks = 0,
           last = performance.now(),
@@ -111,9 +111,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v10" ||
-            result.executionProfile !== "landscape-worker-json-v10" ||
-            result.result.resultVersion !== "landscape-ecology-v10" ||
+            result.workload !== "landscape-ecology-hydraulic-v11" ||
+            result.executionProfile !== "landscape-worker-json-v11" ||
+            result.result.resultVersion !== "landscape-ecology-v11" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )
@@ -273,21 +273,40 @@ const assert = require("node:assert/strict"),
             check(Math.fround(a[key]), Math.fround(b[key]));
           const x = a.cellIndex % w,
             z = Math.floor(a.cellIndex / w);
+          const px = Math.fround(a.x),
+            pz = Math.fround(a.z),
+            radius = Math.fround(a.scaleX);
           if (
             x >= w - 1 ||
             z >= h - 1 ||
-            a.x - a.scaleX < x ||
-            a.x + a.scaleX > x + 1 ||
-            a.z - a.scaleX < z ||
-            a.z + a.scaleX > z + 1 ||
-            [
-              a.cellIndex,
-              a.cellIndex + 1,
-              a.cellIndex + w,
-              a.cellIndex + w + 1,
-            ].some((j) => local.result.biomes[j] === 0)
+            Math.floor(px) !== x ||
+            Math.floor(pz) !== z ||
+            px - radius < 0 ||
+            px + radius > w - 1 ||
+            pz - radius < 0 ||
+            pz + radius > h - 1 ||
+            radius > 3
           )
-            throw Error("Rock support/category");
+            throw Error("Rock footprint/map bounds");
+          for (
+            let cz = Math.floor(pz - radius);
+            cz < Math.ceil(pz + radius);
+            cz++
+          )
+            for (
+              let cx = Math.floor(px - radius);
+              cx < Math.ceil(px + radius);
+              cx++
+            )
+              if (
+                [
+                  cz * w + cx,
+                  cz * w + cx + 1,
+                  (cz + 1) * w + cx,
+                  (cz + 1) * w + cx + 1,
+                ].some((j) => local.result.biomes[j] === 0)
+              )
+                throw Error("Ocean inside multi-cell rock support");
         }
         for (const key of Object.keys(local.simulation))
           check(local.simulation[key], remote.simulation[key]);

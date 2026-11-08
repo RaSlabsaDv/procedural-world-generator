@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v10`, algorithm `diverse-landscape-v9`, result `landscape-ecology-v10`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v10`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v11`, algorithm `diverse-landscape-v10`, result `landscape-ecology-v11`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v11`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7/v8/v9/v10 timings.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7/v8/v9/v10/v11 timings.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -284,7 +284,8 @@ constants and numerical references.
 
 ## Coastal v2 workload identity
 
-Current workload/profile v10 and algorithm v9 change final coastal coverage only.
+The coastal-v2 step introduced workload/profile v10 and algorithm v9 for final
+coastal coverage changes only.
 The distance ceiling rises from 8 to 16, with slope/moisture-dependent local distance
 and relative-height windows. The same byte/int scratch arrays have unchanged maximum
 size; traversal can visit more cells. Core time includes this work and blending after
@@ -293,3 +294,19 @@ all instances and non-coverage arrays remain identical. Schema, renderer resourc
 and timing boundaries are unchanged. Freeze matching v10 builds/requests for pairs
 and do not infer performance gains from old/new smoke timings. See
 [Coastal surfaces v2](specs/COASTAL_SURFACES_V2.md).
+
+
+## Sparse rock workload v11
+
+Current algorithm v10 and result/workload/profile v11 change rocks only. Core time
+includes world-grid patches, multiple size ranges, full triangle-footprint support,
+crown exclusion, bounded neighbor indexing and priority selection. The 8192 cap is
+a ceiling, not a target. All non-rock data remain exact. Fewer records can reduce
+JSON bytes while larger support/clearance checks alter computation; do not assume
+a speedup or pool old/new observations. Both modes retain identical inputs/policies.
+
+Placement allocation budget stays 32 MiB at 512x512; instance matrices stay capped
+at 512 KiB/view. Six shared polyhedra, supplied-geometry validation and actual
+bounds/shadow/display setup remain outside computeMs. No schema field, dependency
+or control is added. Freeze matching v11 identities for experiments; software WebGL
+smoke checks are correctness evidence, not controlled performance findings.

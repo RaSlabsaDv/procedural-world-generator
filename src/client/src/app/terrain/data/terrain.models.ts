@@ -1,4 +1,4 @@
-export const RESULT_VERSION = 'landscape-ecology-v10';
+export const RESULT_VERSION = 'landscape-ecology-v11';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -32,7 +32,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v10';
+  readonly executionProfile: 'landscape-worker-json-v11';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -54,8 +54,8 @@ export class TerrainError extends Error {
   }
 }
 
-export const TERRAIN_ALGORITHM = 'diverse-landscape-v9';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v10';
+export const TERRAIN_ALGORITHM = 'diverse-landscape-v10';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v11';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -97,9 +97,9 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v10';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v11';
 
-/** Wire IDs for landscape-ecology-v10; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v11; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,
@@ -152,3 +152,16 @@ export interface RockInstance {
   readonly kind: RockKindId;
   readonly variant: RockVariantId;
 }
+
+/** Geometry contract for rock placement v2; no candidate/selection policy in the client. */
+export const ROCK_ENVELOPE = Object.freeze({
+  minRadius: 0.18,
+  maxRadius: 3,
+  minHeight: 0.12,
+  maxHeight: 3.2,
+  minDepth: 0.105,
+  screeMaxRadius: 0.65,
+  screeMaxHeight: 0.4,
+  supportFraction: 0.5,
+  embedding: 0.12,
+});

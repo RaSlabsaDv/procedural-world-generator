@@ -73,10 +73,10 @@ The API exposes POST /api/v1/terrains and GET /api/health. Removed probe/region/
 
 Current identities:
 
-- Algorithm: diverse-landscape-v9; nested noise: value-noise-fbm-v1.
-- Result: landscape-ecology-v10.
-- Workload: landscape-ecology-hydraulic-v10.
-- Execution profile: landscape-worker-json-v10; RPC: worker-rpc-v1.
+- Algorithm: diverse-landscape-v10; nested noise: value-noise-fbm-v1.
+- Result: landscape-ecology-v11.
+- Workload: landscape-ecology-hydraulic-v11.
+- Execution profile: landscape-worker-json-v11; RPC: worker-rpc-v1.
 - Simulation: hydraulic-grid-v1.
 
 Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances and coastal distance/blending. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
@@ -400,3 +400,37 @@ and the seven-case full landscape matrix report zero numeric error; 24 paired vi
 preserve exact camera and non-coverage/Snow hashes. Material, lighting and PWA
 regressions pass with unchanged resources and no page errors. The optional WASM
 optimization warning persists. No controlled performance campaign was run.
+
+
+## Sparse large rocks v2
+
+[Rock placement v2](specs/ROCK_PLACEMENT_V2.md) replaces single-cell stones with
+sparse groups, isolated boulders, multiple sizes and full-footprint support. Core
+owns every placement decision. The unchanged eleven-member wire record and IDs
+have broader scales under result/workload/profile v11. Client geometry validation
+checks supplied transforms without repeating candidate acceptance or selection.
+Six shared polyhedra use rock-shapes-v2; no dependencies, assets or controls added.
+
+Run `python3 tests/reference/rocks_v2_reference.py` for independent transform/flat
+selection literals. The 23 pre-change numerical fingerprints live in
+tests/core/Fixtures/landscape-v10-fingerprints.json. Frozen v1 rocks and a minimal
+V10 pipeline retain prior fixtures; current tests compare every non-rock hash.
+
+With the documented PWG_* setup, run
+`node tests/browser/atlas-materials.cjs --rocks --before` against previous algorithm
+v9, then `--rocks` against current v10. Eight scenes at three zooms preserve actual
+camera and all non-rock hashes. After scenes invoke worker/API equivalence. Ignored
+evidence uses artifacts/rocks-v2-*. Earlier climate/coast paired baselines apply to
+their original downstream policies, not to intentionally changed rock records.
+
+The materials maximum fixture asserts sparse counts below 8192 and exact actual
+submissions instead of requiring cap filling. Native allocation checks retain the
+32 MiB placement budget, with inputs allocated before measurement. Low-poly faces,
+conservative support and no rigid-body settling/rockfall physics remain limitations.
+
+Rock-v2 verification: 231 Core / 42 API / 303 Angular tests, seven packaging checks,
+worker RPC and production publication pass. Seven full host-parity cases report
+zero error; 24 paired camera/non-rock views and material/coast/light/PWA regressions
+pass. The focused allocation check records 16856656 placement bytes including
+output for 1693 dry-flat rocks at 512x512. The optional WASM optimization warning
+remains; no controlled performance findings are claimed.

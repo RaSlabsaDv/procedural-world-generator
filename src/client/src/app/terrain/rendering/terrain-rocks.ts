@@ -1,5 +1,15 @@
-import { IcosahedronGeometry, InstancedMesh, MeshLambertMaterial, Object3D } from 'three';
+import {
+  IcosahedronGeometry,
+  DodecahedronGeometry,
+  OctahedronGeometry,
+  BufferGeometry,
+  InstancedMesh,
+  MeshLambertMaterial,
+  Object3D,
+} from 'three';
 import { MAX_ROCKS, ROCK_KIND, ROCK_VARIANT, TerrainResponse } from '../data/terrain.models';
+
+export const ROCK_SHAPES_REVISION = 'rock-shapes-v2';
 
 const COLORS = [0x89877f, 0x85857f, 0x999487] as const;
 
@@ -14,7 +24,7 @@ export function terrainRocks(result: TerrainResponse['result']) {
     )
   )
     throw new Error('Unsupported rock category or variant.');
-  const meshes: InstancedMesh<IcosahedronGeometry, MeshLambertMaterial>[] = [];
+  const meshes: InstancedMesh<BufferGeometry, MeshLambertMaterial>[] = [];
   let disposed = false;
   const dispose = () => {
     if (disposed) return;
@@ -31,7 +41,7 @@ export function terrainRocks(result: TerrainResponse['result']) {
         const rocks = result.rocks.filter((r) => r.kind === kind && r.variant === variant);
         if (!rocks.length) continue;
         const mesh = new InstancedMesh(
-          new IcosahedronGeometry(1, variant === ROCK_VARIANT.Angular ? 0 : 1),
+          rockGeometry(kind, variant),
           new MeshLambertMaterial({ color: COLORS[kind], flatShading: true }),
           rocks.length,
         );
@@ -58,4 +68,34 @@ export function terrainRocks(result: TerrainResponse['result']) {
     dispose();
     throw error;
   }
+}
+
+/** Six shared, closed, bounded silhouettes. Geometry only; no per-instance randomness. */
+export function rockGeometry(kind: number, variant: number): BufferGeometry {
+  const angular = variant === ROCK_VARIANT.Angular;
+  const geometry =
+    kind === ROCK_KIND.Boulder
+      ? angular
+        ? new DodecahedronGeometry(1, 0)
+        : new IcosahedronGeometry(1, 1)
+      : kind === ROCK_KIND.Outcrop
+        ? angular
+          ? new OctahedronGeometry(1, 0)
+          : new DodecahedronGeometry(1, 0)
+        : angular
+          ? new IcosahedronGeometry(1, 0)
+          : new OctahedronGeometry(1, 1);
+  geometry.rotateZ(kind === ROCK_KIND.Outcrop ? 0.18 : kind === ROCK_KIND.Boulder ? -0.08 : 0);
+  const position = geometry.getAttribute('position');
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i),
+      y = position.getY(i),
+      z = position.getZ(i);
+    position.setXYZ(i, x * (0.9 + 0.08 * y), y, z * (0.87 + 0.08 * x));
+  }
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.name = ROCK_SHAPES_REVISION + ':' + kind + ':' + variant;
+  return geometry;
 }

@@ -150,7 +150,7 @@ const artifact = artifactPath;
           body: JSON.stringify({
             ...parameters,
             heightMap,
-            algorithmVersion: "diverse-landscape-v9",
+            algorithmVersion: "diverse-landscape-v10",
           }),
         });
         if (!response.ok)
@@ -372,7 +372,7 @@ const artifact = artifactPath;
       captures.push({
         label,
         parameters,
-        algorithmVersion: "diverse-landscape-v9",
+        algorithmVersion: "diverse-landscape-v10",
         wheelDelta: -650,
         resources: await assertResources(1),
         lighting: await lightingResources(page),
@@ -435,7 +435,10 @@ const artifact = artifactPath;
       .click();
     const maxDiagnostic = await checkCoverage();
     coverageChecks.push(maxDiagnostic);
-    assert.equal(maxDiagnostic.rockCount, 8192);
+    assert.ok(
+      maxDiagnostic.rockCount < 8192,
+      "Sparse rock placement must not fill the cap",
+    );
     assert.equal(
       maximum.find((row) => !row.lost && row.textures > 0).instances,
       maxDiagnostic.treeCount * 2 + maxDiagnostic.rockCount,

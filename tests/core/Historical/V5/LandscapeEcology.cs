@@ -32,7 +32,7 @@ internal static class LandscapeEcology
         VegetationStructure.Apply(density, biomes, slope, request);
         var surfaceWeights = global::WorldGenerator.Core.Tests.Historical.V8.SurfaceCoverage.Derive(values, biomes, moisture, temperature, slope, bound);
         var trees = VegetationGenerator.PlaceTrees(values, biomes, slope, density, map.Width, map.Height, seed);
-        var rocks = RockPlacement.Place(values, biomes, slope, surfaceWeights, trees, map.Width, map.Height, seed, map.NoiseScale);
+        var rocks = global::WorldGenerator.Core.Tests.Historical.V8.RockPlacement.Place(values, biomes, slope, surfaceWeights, trees, map.Width, map.Height, seed, map.NoiseScale);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,
             moisture, temperature, slope, density, trees, surfaceWeights, rocks);
     }

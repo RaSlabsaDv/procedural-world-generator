@@ -339,7 +339,7 @@ Regional climate and snow readability are completed in Step 2 below. Beach width
 and coastal transitions follow separately; neither belongs to this palette step.
 
 
-## Planned: larger, varied rocks with natural scattering
+## Larger, varied rocks — completed in Step 4
 
 After regional climate/snow and coastal readability, extend decorative rocks beyond
 the current small stones. Keep this as a separate generation/rendering step.
@@ -365,8 +365,8 @@ the current small stones. Keep this as a separate generation/rendering step.
   distribution and large-object bounds/shadows. Inspect overview and close-up scenes
   across several seeds to check for visible grids, repetition and overcrowding.
 
-This is planned work only; the existing frozen rock specification and implementation
-remain unchanged until this step is explicitly implemented.
+This planned scope is implemented in Step 4 below. The original rock specification
+remains historical evidence.
 
 
 ## Biome readability — Step 2: regional climate and snow complete
@@ -415,7 +415,37 @@ checks, worker RPC and production publication pass. Eight coastal comparisons an
 the seven-case full landscape matrix report zero error. Twenty-four paired views
 preserve camera/non-coverage/Snow hashes; material, lighting and PWA checks pass.
 
-Next: implement the planned larger, varied rocks with sparse natural scattering.
-Freeze shape/size ranges, footprint support, clearances and resource limits before
-implementation. Do not carpet the map with a visible grid or fill to the instance
-cap. Controlled measurement campaigns remain separate work. README stays empty.
+Larger, varied rocks with sparse natural scattering are completed in Step 4 below.
+Controlled measurement campaigns remain separate work. README stays empty.
+
+
+## Biome readability — Step 4: sparse large rocks complete
+
+Implemented [rock placement v2](specs/ROCK_PLACEMENT_V2.md): rare large boulders,
+medium stones, small fragments, broad seeded patches and isolated background rocks.
+Centers use wide sub-cell jitter; large footprints can span multiple quads. Exact
+triangle support includes interior vertices/diagonals, bounded burial, water/map-edge
+exclusion and conservative tree-crown/rock clearances. Bounded spatial grids retain
+priority-stable deterministic selection. Caps are ceilings, never population targets.
+
+Six shared closed polyhedral silhouettes under rock-shapes-v2 render every returned
+record, with actual bounds in existing static shadows. Algorithm v10 and result/
+workload/profile v11 change rock semantics only. All non-rock fields, full trees,
+coverage and hydraulic results remain exact across 23 pre-change requests. Eleven
+wire members, enum meanings, controls, textures, camera and lighting stay unchanged.
+
+The default mixed reference drops from 767 to 31 rocks, including a radius 2.05 boulder;
+the plain scene drops from 865 to 48. Some steep mountain seeds have few accepted
+rocks and no large landmarks because conservative support rejects unsuitable ground.
+Low-poly silhouettes and no physical settling/rockfall remain deliberate limits.
+
+Verification: 231 Core, 42 API and 303 Angular tests, seven packaging checks, worker
+RPC and production publication pass. All seven full WASM/API cases report zero
+numeric error; 24 paired camera/non-rock views and materials/coasts/lighting/PWA
+regressions pass. Maximum dry-flat allocation is 16856656 bytes for 1693 rocks,
+within the unchanged 32 MiB budget.
+
+Next: review the visual result, then prepare the separately planned controlled
+performance campaign with frozen matching builds and reproducible environments.
+Further generation or evolution/playback extensions require their own scope; no
+optional feature is implemented here. README remains empty.

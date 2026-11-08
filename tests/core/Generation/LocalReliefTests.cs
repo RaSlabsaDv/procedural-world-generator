@@ -117,8 +117,8 @@ public sealed class LocalReliefTests
         {
             var fx=(double)rock.X-rock.CellIndex%width;var fz=(double)rock.Z-rock.CellIndex/width;
             Assert.Equal(VegetationGenerator.Surface(map.Values,width,rock.CellIndex,fx,fz),rock.GroundY);
-            var support=RockPlacement.Support(map.Values,width,rock.CellIndex,fx,fz,rock.ScaleX);
-            Assert.Equal((float)(support.Min-.1*rock.ScaleY),rock.Y);
+            Assert.True(RockSupport.Try(map.Values,map.Biomes,map.Slope,width,height,rock.X,rock.Z,rock.ScaleX,out var support));
+            Assert.Equal((float)(support.Min-RockPlacement.Embedding*rock.ScaleY),rock.Y);
         }
     }
 

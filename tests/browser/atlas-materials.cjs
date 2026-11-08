@@ -14,67 +14,87 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
+const rockStudy = process.argv.includes("--rocks");
 const climateStudy = process.argv.includes("--climate");
 const biomeStudy = process.argv.includes("--biomes") || climateStudy;
-const study = climateStudy
-  ? "regional-climate"
-  : biomeStudy
-    ? "biome-readability"
-    : "atlas-materials";
-const cases = biomeStudy
+const study = rockStudy
+  ? "rocks-v2"
+  : climateStudy
+    ? "regional-climate"
+    : biomeStudy
+      ? "biome-readability"
+      : "atlas-materials";
+const cases = rockStudy
   ? [
       ["mixed", { seed: 42 }],
-      ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
-      [
-        "savanna-dry",
-        { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
-      ],
-      ["tundra", { seed: 2026, globalWarmth: 0.18, globalMoisture: 0.65 }],
-      [
-        "snow",
-        {
-          seed: 2026,
-          globalWarmth: 0.12,
-          globalMoisture: 0.8,
-          heightMultiplier: 60,
-          seaLevel: 0.3,
-        },
-      ],
-      [
-        "gentle-coast",
-        { seed: 42, plainsCoverage: 1, mountainCoverage: 0, seaLevel: 0.16 },
-      ],
-      [
-        "steep-coast",
-        { seed: -7, globalWarmth: 0.6, globalMoisture: 0.65, seaLevel: 0.23 },
-      ],
-    ]
-  : [
-      ["mixed", { seed: 42 }],
       ["plains", { seed: 42, plainsCoverage: 1, mountainCoverage: 0 }],
+      ["hills", { seed: 2026, globalWarmth: 0.6 }],
       [
         "mountains",
         { seed: 42, plainsCoverage: 0, mountainCoverage: 1, seaLevel: 0.3 },
       ],
+      ["forest", { seed: 42, globalMoisture: 1 }],
+      ["cold", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
       [
         "warm-coast",
         { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
       ],
-      [
-        "cold-snow",
-        {
-          seed: 2026,
-          globalWarmth: 0.12,
-          globalMoisture: 0.8,
-          heightMultiplier: 60,
-          seaLevel: 0.3,
-        },
-      ],
-      [
-        "gentle-coast",
-        { seed: 42, plainsCoverage: 1, mountainCoverage: 0, seaLevel: 0.16 },
-      ],
-    ];
+      ["all-species", { seed: 42, globalWarmth: 0.7 }],
+    ]
+  : biomeStudy
+    ? [
+        ["mixed", { seed: 42 }],
+        ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
+        [
+          "savanna-dry",
+          { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
+        ],
+        ["tundra", { seed: 2026, globalWarmth: 0.18, globalMoisture: 0.65 }],
+        [
+          "snow",
+          {
+            seed: 2026,
+            globalWarmth: 0.12,
+            globalMoisture: 0.8,
+            heightMultiplier: 60,
+            seaLevel: 0.3,
+          },
+        ],
+        [
+          "gentle-coast",
+          { seed: 42, plainsCoverage: 1, mountainCoverage: 0, seaLevel: 0.16 },
+        ],
+        [
+          "steep-coast",
+          { seed: -7, globalWarmth: 0.6, globalMoisture: 0.65, seaLevel: 0.23 },
+        ],
+      ]
+    : [
+        ["mixed", { seed: 42 }],
+        ["plains", { seed: 42, plainsCoverage: 1, mountainCoverage: 0 }],
+        [
+          "mountains",
+          { seed: 42, plainsCoverage: 0, mountainCoverage: 1, seaLevel: 0.3 },
+        ],
+        [
+          "warm-coast",
+          { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
+        ],
+        [
+          "cold-snow",
+          {
+            seed: 2026,
+            globalWarmth: 0.12,
+            globalMoisture: 0.8,
+            heightMultiplier: 60,
+            seaLevel: 0.3,
+          },
+        ],
+        [
+          "gentle-coast",
+          { seed: 42, plainsCoverage: 1, mountainCoverage: 0, seaLevel: 0.16 },
+        ],
+      ];
 (async () => {
   const browser = await launchBrowser();
   try {
@@ -87,7 +107,8 @@ const cases = biomeStudy
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(base);
     await waitForOfflineReady(page);
-    const captures = [];
+    const captures = [],
+      diagnostics = [];
     for (const [label, values] of cases) {
       await page.locator("#reset-parameters").click();
       await fillParameters(page, {
@@ -116,18 +137,23 @@ const cases = biomeStudy
       const request = {
         ...params,
         heightMap,
-        algorithmVersion:
-          climateStudy && before
+        algorithmVersion: rockStudy
+          ? before
+            ? "diverse-landscape-v9"
+            : "diverse-landscape-v10"
+          : climateStudy && before
             ? "diverse-landscape-v7"
-            : "diverse-landscape-v9",
+            : "diverse-landscape-v10",
       };
       await page
         .locator(
-          climateStudy && !before ? "#verify-equivalence" : "#generate-local",
+          (climateStudy || rockStudy) && !before
+            ? "#verify-equivalence"
+            : "#generate-local",
         )
         .click();
       await waitForTerrain(page);
-      if (climateStudy && !before)
+      if ((climateStudy || rockStudy) && !before)
         assert.match(
           await page.locator("#numeric-match").innerText(),
           /All heights match/,
@@ -181,19 +207,41 @@ const cases = biomeStudy
         const body = await response.json();
         return { result: body.result, simulation: body.simulation };
       }, request);
-      const invariantData = climateStudy
+      const invariantData = rockStudy
         ? {
-            values: data.result.values,
-            slope: data.result.slope,
-            ocean: data.result.biomes.map((id) => id === 0),
+            result: Object.fromEntries(
+              Object.entries(data.result).filter(
+                ([k]) =>
+                  !["rocks", "algorithmVersion", "resultVersion"].includes(k),
+              ),
+            ),
             simulation: data.simulation,
           }
-        : data;
+        : climateStudy
+          ? {
+              values: data.result.values,
+              slope: data.result.slope,
+              ocean: data.result.biomes.map((id) => id === 0),
+              simulation: data.simulation,
+            }
+          : data;
+      if (rockStudy) {
+        const rocks = data.result.rocks;
+        diagnostics.push({
+          label,
+          count: rocks.length,
+          large: rocks.filter((r) => r.scaleX >= 1.8).length,
+          maxRadius: Math.max(0, ...rocks.map((r) => r.scaleX)),
+          groups: new Set(rocks.map((r) => r.kind + ":" + r.variant)).size,
+          matrixBytes: rocks.length * 64,
+        });
+      }
       captures.push({
         label,
-        request: climateStudy
-          ? { ...request, algorithmVersion: "versioned-climate-comparison" }
-          : request,
+        request:
+          climateStudy || rockStudy
+            ? { ...request, algorithmVersion: "versioned-climate-comparison" }
+            : request,
         views,
         resultHash: crypto
           .createHash("sha256")
@@ -214,7 +262,11 @@ const cases = biomeStudy
     }
     await fs.writeFile(
       artifactPath(`${study}-${phase}.json`),
-      JSON.stringify({ phase, captures, pageErrors: errors }, null, 2),
+      JSON.stringify(
+        { phase, captures, diagnostics, pageErrors: errors },
+        null,
+        2,
+      ),
     );
     console.log(
       JSON.stringify({
@@ -224,9 +276,11 @@ const cases = biomeStudy
         cases: captures.length,
         views: captures.length * 3,
         cameraAndMathPreserved: !before,
-        preservedFields: climateStudy
-          ? ["values", "slope", "ocean", "simulation"]
-          : "all",
+        preservedFields: rockStudy
+          ? "all except rocks and identities"
+          : climateStudy
+            ? ["values", "slope", "ocean", "simulation"]
+            : "all",
         pageErrors: errors,
       }),
     );

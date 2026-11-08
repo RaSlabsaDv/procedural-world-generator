@@ -1,5 +1,5 @@
 import { object } from './contract-utils';
-import { LANDSCAPE_BIOME, MAX_ROCKS, RockInstance } from './terrain.models';
+import { LANDSCAPE_BIOME, MAX_ROCKS, ROCK_ENVELOPE as E, RockInstance } from './terrain.models';
 
 /** Wire/geometry checks only: eligibility, noise, spacing and selection remain in Core. */
 export function decodeRocks(
@@ -25,12 +25,15 @@ export function decodeRocks(
       if (floats.some((k) => typeof item[k] !== 'number' || !Number.isFinite(item[k])))
         return fail();
       if (
-        (item['scaleX'] as number) < Math.min(0.12, Math.fround(0.12)) ||
-        (item['scaleX'] as number) > Math.fround(0.36) ||
-        (item['scaleY'] as number) < Math.min(0.1, Math.fround(0.1)) ||
-        (item['scaleY'] as number) > Math.fround(0.8) ||
-        (item['scaleZ'] as number) < Math.min(0.084, Math.fround(0.084)) ||
+        (item['scaleX'] as number) < Math.min(E.minRadius, Math.fround(E.minRadius)) ||
+        (item['scaleX'] as number) > Math.fround(E.maxRadius) ||
+        (item['scaleY'] as number) < Math.min(E.minHeight, Math.fround(E.minHeight)) ||
+        (item['scaleY'] as number) > Math.fround(E.maxHeight) ||
+        (item['scaleZ'] as number) < Math.min(E.minDepth, Math.fround(E.minDepth)) ||
         (item['scaleZ'] as number) > (item['scaleX'] as number) ||
+        (item['kind'] === 2 &&
+          ((item['scaleX'] as number) > Math.fround(E.screeMaxRadius) ||
+            (item['scaleY'] as number) > Math.fround(E.screeMaxHeight))) ||
         (item['rotation'] as number) < 0 ||
         (item['rotation'] as number) > 2 * Math.PI + 1e-6
       )
@@ -71,54 +74,70 @@ export function decodeRocks(
         variant < 0 ||
         variant > 1 ||
         floats.some((k) => !Number.isFinite(rock[k])) ||
-        sx < Math.fround(0.12) ||
-        sx > Math.fround(0.36) ||
-        sy < Math.fround(0.1) ||
-        sy > Math.fround(0.8) ||
-        sz < Math.fround(0.084) ||
+        sx < Math.fround(E.minRadius) ||
+        sx > Math.fround(E.maxRadius) ||
+        sy < Math.fround(E.minHeight) ||
+        sy > Math.fround(E.maxHeight) ||
+        sz < Math.fround(E.minDepth) ||
         sz > sx ||
         rotation < 0 ||
         rotation > 2 * Math.PI + 1e-6 ||
-        fx - sx < 0 ||
-        fx + sx > 1 ||
-        fz - sx < 0 ||
-        fz + sx > 1
+        fx < 0 ||
+        fx >= 1 ||
+        fz < 0 ||
+        fz >= 1 ||
+        x - sx < 0 ||
+        x + sx > width - 1 ||
+        z - sx < 0 ||
+        z + sx > height - 1 ||
+        (kind === 2 && (sx > Math.fround(E.screeMaxRadius) || sy > Math.fround(E.screeMaxHeight)))
       )
         return fail();
-      const corners = [i, i + 1, i + width, i + width + 1];
-      if (corners.some((j) => biomes[j] === LANDSCAPE_BIOME.Ocean)) return fail();
-      const surface = (px: number, pz: number) =>
+      const surface = (i: number, px: number, pz: number) =>
         px + pz <= 1
           ? values[i] + (values[i + 1] - values[i]) * px + (values[i + width] - values[i]) * pz
           : values[i + width + 1] +
             (values[i + width] - values[i + width + 1]) * (1 - px) +
             (values[i + 1] - values[i + width + 1]) * (1 - pz);
-      const x0 = fx - sx,
-        x1 = fx + sx,
-        z0 = fz - sx,
-        z1 = fz + sx;
-      const support = [
-        [x0, z0],
-        [x1, z0],
-        [x0, z1],
-        [x1, z1],
-      ];
-      for (const [px, pz] of [
-        [x0, 1 - x0],
-        [x1, 1 - x1],
-        [1 - z0, z0],
-        [1 - z1, z1],
-      ])
-        if (px >= x0 && px <= x1 && pz >= z0 && pz <= z1) support.push([px, pz]);
-      const levels = support.map(([px, pz]) => surface(px, pz)),
-        min = Math.min(...levels),
-        max = Math.max(...levels);
+      let min = Infinity,
+        max = -Infinity;
+      // Check the supplied geometry envelope, not Core's stochastic eligibility/selection.
+      for (let cz = Math.floor(z - sx); cz < Math.ceil(z + sx); cz++)
+        for (let cx = Math.floor(x - sx); cx < Math.ceil(x + sx); cx++) {
+          const cell = cz * width + cx;
+          if (
+            [cell, cell + 1, cell + width, cell + width + 1].some(
+              (j) => biomes[j] === LANDSCAPE_BIOME.Ocean,
+            )
+          )
+            return fail();
+          const x0 = Math.max(0, x - sx - cx),
+            x1 = Math.min(1, x + sx - cx);
+          const z0 = Math.max(0, z - sx - cz),
+            z1 = Math.min(1, z + sx - cz);
+          const include = (px: number, pz: number) => {
+            const value = surface(cell, px, pz);
+            min = Math.min(min, value);
+            max = Math.max(max, value);
+          };
+          include(x0, z0);
+          include(x1, z0);
+          include(x0, z1);
+          include(x1, z1);
+          for (const [px, pz] of [
+            [x0, 1 - x0],
+            [x1, 1 - x1],
+            [1 - z0, z0],
+            [1 - z1, z1],
+          ])
+            if (px >= x0 && px <= x1 && pz >= z0 && pz <= z1) include(px, pz);
+        }
       const close = (a: number, b: number) =>
         Math.abs(a - b) <= 1e-6 + 1e-5 * Math.max(Math.abs(a), Math.abs(b));
       if (
-        !close(groundY, surface(fx, fz)) ||
-        !close(y, min - 0.1 * sy) ||
-        max - min > 0.7 * sy + 1e-6
+        !close(groundY, surface(i, fx, fz)) ||
+        !close(y, min - E.embedding * sy) ||
+        max - min > E.supportFraction * sy + 1e-6
       )
         return fail();
       previous = i;

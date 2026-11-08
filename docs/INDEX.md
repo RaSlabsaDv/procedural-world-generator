@@ -10,7 +10,7 @@
 
 ## Frozen policies and specifications
 
-Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v9, landscape-ecology-v10, landscape-ecology-hydraulic-v10 and landscape-worker-json-v10.
+Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v10, landscape-ecology-v11, landscape-ecology-hydraulic-v11 and landscape-worker-json-v11.
 
 - [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md): experiment protocol, readonly records and immutable configuration, sequential runner and editor UI, summary inclusion/count rules and versioned JSON/CSV export.
 - [Landscape/climate v3](specs/LANDSCAPE_V3.md): base environment and ecological rules; original height composition is historical.
@@ -19,7 +19,8 @@ Current behavior composes the policies below; a historical version label does no
 - [Atlas material detail v1](specs/ATLAS_MATERIALS_V1.md): reproducible lower-contrast surface PNGs and presentation-only verification.
 - [Surface coverage v1](specs/SURFACE_TRANSITIONS_V1.md): base weights used before placement.
 - [Vegetation structure v1](specs/VEGETATION_STRUCTURE_V1.md): groves, edges and variants.
-- [Rock placement v1](specs/ROCK_PLACEMENT_V1.md): bounded decorative placement and support.
+- [Rock placement v2](specs/ROCK_PLACEMENT_V2.md): current sparse boulders, varied silhouettes and multi-cell support.
+- [Rock placement v1](specs/ROCK_PLACEMENT_V1.md): historical single-cell rocks and reference fixtures.
 - [Local relief v1](specs/LOCAL_RELIEF_V1.md): current pre-erosion height extension.
 - [Coastal surfaces v2](specs/COASTAL_SURFACES_V2.md): current wider, context-sensitive post-placement coverage.
 - [Coastal surfaces v1](specs/COASTAL_SURFACES_V1.md): historical coastal equations and reference fixtures.

@@ -1,10 +1,13 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Frozen decorative placement, independent of terrain/vegetation mutation and rendering.</summary>
+/// <summary>Sparse multi-cell decorative placement; frozen policy in ROCK_PLACEMENT_V2.md.</summary>
 internal static class RockPlacement
 {
-    internal const double MaxSlope = 1.8, SupportFraction = .7, Embedding = .10;
-    internal const double TreeGap = .15, RockGap = .12, TrunkRadius = .075;
+    internal const double MaxSlope = 1.8, SupportFraction = .5, Embedding = .12;
+    internal const double TreeGap = .25, RockGap = .40, TreeRadius = 1.05;
+    internal const int NeighborCells = 8;
+    internal const double MaxRadius = 3;
+    private const uint ClassSalt = 0x3C6EF372u;
     private const uint AcceptanceSalt = 0x91E10DA5u, XSalt = 0xD192ED03u, ZSalt = 0xA24BAED5u;
     private const uint SizeSalt = 0x9FB21C65u, AspectSalt = 0xC13FA9A9u, RotationSalt = 0xF39CC061u;
     private const uint VariantSalt = 0xB7E15163u, PrioritySalt = 0x8AED2A6Bu, ClusterSalt = 0x6C8E9CF5u;
@@ -23,7 +26,7 @@ internal static class RockPlacement
     });
 
     internal static RockInstance[] Place(float[] heights, LandscapeBiome[] biomes, float[] slopes,
-        float[] weights, TreeInstance[] trees, int width, int height, uint seed, double noiseScale)
+        float[] weights, TreeInstance[] trees, int width, int height, uint seed)
     {
         var candidates = new Candidate[(width - 1) * (height - 1)];
         var treeGrid = new int[width * height];
@@ -42,13 +45,14 @@ internal static class RockPlacement
                 }
                 if (!eligible) continue;
                 slope /= 4; rock /= 4;
-                var cluster = Cluster(x, z, seed, noiseScale);
+                var cluster = Cluster(x, z, seed);
                 var kind = slope >= .35 && rock >= .2 ? RockKind.Outcrop : slope >= .12 && cluster >= .55 ? RockKind.Scree : RockKind.Boulder;
-                var chance = kind switch { RockKind.Outcrop => .10 + .28 * cluster, RockKind.Scree => .08 + .55 * Smooth(.45, .75, cluster), _ => .025 + .10 * cluster };
+                var chance = (.003 + .05 * Smooth(.48, .72, cluster)) * (.35 + .65 * Math.Clamp(rock + .5 * slope, 0, 1));
                 if (ValueNoise.LatticeValue(x, z, seed ^ AcceptanceSalt) >= chance) continue;
                 var candidate = Transform(x, z, width, seed, kind);
                 var fx = (double)candidate.X - x; var fz = (double)candidate.Z - z;
-                var (min, max) = Support(heights, width, i, fx, fz, candidate.ScaleX);
+                if (!RockSupport.Try(heights, biomes, slopes, width, height, candidate.X, candidate.Z, candidate.ScaleX, out var support)) continue;
+                var (min, max) = support;
                 if (max - min > SupportFraction * candidate.ScaleY) continue;
                 candidate = candidate with { Y = (float)(min - Embedding * candidate.ScaleY), GroundY = VegetationGenerator.Surface(heights, width, i, fx, fz) };
                 if (TreeOverlap(candidate, treeGrid, trees, width, height)) continue;
@@ -57,36 +61,32 @@ internal static class RockPlacement
         return Select(candidates, count, width, height);
     }
 
-    internal static double Cluster(int x, int z, uint seed, double scale) =>
-        TerrainComposer.Fbm(x * scale * .8 + 71, z * scale * .8 + 29, seed ^ ClusterSalt, 3);
+    internal static double Cluster(int x, int z, uint seed) =>
+        TerrainComposer.Fbm(x / 48.0 + 71, z / 48.0 + 29, seed ^ ClusterSalt, 2);
 
     internal static Candidate Transform(int x, int z, int width, uint seed, RockKind kind)
     {
         double Hash(uint salt) => ValueNoise.LatticeValue(x, z, seed ^ salt);
         var size = Hash(SizeSalt);
-        var sx = (float)(kind switch { RockKind.Outcrop => .28 + .08 * size, RockKind.Scree => .12 + .06 * size, _ => .22 + .10 * size });
-        var sy = (float)(kind switch { RockKind.Outcrop => .48 + .32 * size, RockKind.Scree => .10 + .10 * size, _ => .24 + .18 * size });
-        return new(z * width + x, (float)(x + .4 + .2 * Hash(XSalt)), 0, (float)(z + .4 + .2 * Hash(ZSalt)),
-            sx, sy, (float)(sx * (.7 + .3 * Hash(AspectSalt))), (float)(2 * Math.PI * Hash(RotationSalt)), 0,
-            kind, Hash(VariantSalt) < .5 ? RockVariant.Angular : RockVariant.Rounded, Hash(PrioritySalt));
-    }
-
-    /// <summary>Extrema on a square cut by the rendered triangle diagonal (no sampling approximation).</summary>
-    internal static (double Min, double Max) Support(float[] values, int width, int i, double x, double z, double radius)
-    {
-        var x0 = x - radius; var x1 = x + radius; var z0 = z - radius; var z1 = z + radius;
-        var min = double.PositiveInfinity; var max = double.NegativeInfinity;
-        Include(x0, z0); Include(x1, z0); Include(x0, z1); Include(x1, z1);
-        Cross(x0, 1 - x0); Cross(x1, 1 - x1); Cross(1 - z0, z0); Cross(1 - z1, z1);
-        return (min, max);
-        void Cross(double px, double pz) { if (px >= x0 && px <= x1 && pz >= z0 && pz <= z1) Include(px, pz); }
-        void Include(double px, double pz)
+        var classHash = Hash(ClassSalt);
+        var sizeClass = classHash < .10 ? 2 : classHash < .45 ? 1 : 0;
+        if (kind == RockKind.Scree && sizeClass == 2) sizeClass = 1;
+        var (minX, gainX, minY, gainY) = (kind, sizeClass) switch
         {
-            var value = px + pz <= 1
-                ? values[i] + ((double)values[i + 1] - values[i]) * px + ((double)values[i + width] - values[i]) * pz
-                : values[i + width + 1] + ((double)values[i + width] - values[i + width + 1]) * (1 - px) + ((double)values[i + 1] - values[i + width + 1]) * (1 - pz);
-            min = Math.Min(min, value); max = Math.Max(max, value);
-        }
+            (RockKind.Boulder, 0) => (.22, .23, .22, .23),
+            (RockKind.Boulder, 1) => (.70, .65, .70, .50),
+            (RockKind.Boulder, _) => (1.80, 1.20, 1.60, 1.00),
+            (RockKind.Outcrop, 0) => (.30, .20, .45, .25),
+            (RockKind.Outcrop, 1) => (.80, .60, 1.10, .70),
+            (RockKind.Outcrop, _) => (1.80, 1.20, 2.00, 1.20),
+            (_, 0) => (.18, .17, .12, .10),
+            _ => (.40, .25, .25, .15)
+        };
+        var sx = (float)(minX + gainX * size); var sy = (float)(minY + gainY * size);
+        var aspect = kind == RockKind.Outcrop ? .35 + .20 * Hash(AspectSalt) : .65 + .30 * Hash(AspectSalt);
+        return new(z * width + x, (float)(x + .04 + .92 * Hash(XSalt)), 0, (float)(z + .04 + .92 * Hash(ZSalt)),
+            sx, sy, (float)(sx * aspect), (float)(2 * Math.PI * Hash(RotationSalt)), 0,
+            kind, Hash(VariantSalt) < .5 ? RockVariant.Angular : RockVariant.Rounded, Hash(PrioritySalt));
     }
 
     internal static RockInstance[] Select(Candidate[] candidates, int count, int width, int height)
@@ -98,8 +98,8 @@ internal static class RockPlacement
         {
             var rock = candidates[c]; var collision = false;
             var x = rock.CellIndex % width; var z = rock.CellIndex / width;
-            for (var nz = Math.Max(0, z - 2); nz <= Math.Min(height - 2, z + 2) && !collision; nz++)
-                for (var nx = Math.Max(0, x - 2); nx <= Math.Min(width - 2, x + 2); nx++)
+            for (var nz = Math.Max(0, z - NeighborCells); nz <= Math.Min(height - 2, z + NeighborCells) && !collision; nz++)
+                for (var nx = Math.Max(0, x - NeighborCells); nx <= Math.Min(width - 2, x + NeighborCells); nx++)
                 {
                     var slot = grid[nz * width + nx]; if (slot == 0) continue;
                     var other = accepted[slot - 1];
@@ -116,12 +116,12 @@ internal static class RockPlacement
     private static bool TreeOverlap(Candidate rock, int[] grid, TreeInstance[] trees, int width, int height)
     {
         var x = rock.CellIndex % width; var z = rock.CellIndex / width;
-        for (var nz = Math.Max(0, z - 2); nz <= Math.Min(height - 2, z + 2); nz++)
-            for (var nx = Math.Max(0, x - 2); nx <= Math.Min(width - 2, x + 2); nx++)
+        for (var nz = Math.Max(0, z - NeighborCells); nz <= Math.Min(height - 2, z + NeighborCells); nz++)
+            for (var nx = Math.Max(0, x - NeighborCells); nx <= Math.Min(width - 2, x + NeighborCells); nx++)
             {
                 var slot = grid[nz * width + nx]; if (slot == 0) continue;
                 var tree = trees[slot - 1];
-                if (Overlaps(rock.X, rock.Z, tree.X, tree.Z, rock.ScaleX + TrunkRadius * tree.Scale + TreeGap)) return true;
+                if (Overlaps(rock.X, rock.Z, tree.X, tree.Z, rock.ScaleX + TreeRadius * tree.Scale + TreeGap)) return true;
             }
         return false;
     }
