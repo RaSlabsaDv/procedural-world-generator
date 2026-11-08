@@ -1,8 +1,8 @@
 # Architecture Race v1
 
-Status: Step 1 implements only this protocol, readonly record contracts and immutable
-configuration capture. The runner, collection UI, statistics and downloads are future
-steps. This is an experiment schema, not a new mathematical workload.
+Status: Steps 1–2 implement this protocol, readonly record contracts, immutable
+configuration capture and the sequential runner. Collection UI, statistics and
+downloads remain future steps. This is an experiment schema, not a new mathematical workload.
 
 ## Configuration and sequence
 
@@ -23,7 +23,7 @@ summaries and tree/rock transforms, and exact categories, kinds, variants and in
 Its numericMatch includes environment/instance/coverage agreement; biomesMatch adds
 exact biome agreement. Neither boolean alone establishes build compatibility.
 
-The future runner holds one OperationLock through preparation, warmup, calls and
+The runner holds one OperationLock through preparation, warmup, calls and
 verification. Block interactive generation and PWA reload; defer scene construction
 and rendering until the series ends. Do not publish intermediate maps to the preview.
 Stop is cooperative between calls: finish an active call, retain its record, skip
@@ -100,14 +100,15 @@ measurements and compact diagnostics (dimensions/tree/rock counts); errors carry
 structured failure with nullable available timing/identity/diagnostics. Pair verification
 is either compared with existing complete TerrainComparison metrics, or unavailable
 with reasons and nullable references. No record contains TerrainRun, full terrain
-arrays, scene objects or retained generation history. Readonly records are compile-time
-contracts; runtime freezing is currently implemented only for configuration capture.
+arrays, scene objects or retained generation history. Readonly contracts are reinforced by frozen configurations, compact records,
+metadata snapshots and their nested collections. Full visualization results remain
+separate from records and are transferred through takePreviewPair at most once.
 
-Future collection retains full results only for the current pair and at most one final
+Collection retains full results only for the current pair and at most one final
 suitable pair for post-run visualization, releasing obsolete pairs. Small records and
 verification metrics survive. Export must not duplicate arrays or collect map history.
 
-## Future summaries and export (not implemented in Step 1)
+## Future summaries and export (not implemented)
 
 For each mode, separately summarize computeMs and requestMs: eligible count, median,
 Q1, Q3, min/max, failed/excluded counts and reasons. Sort ascending and interpolate
@@ -126,7 +127,57 @@ pairVerificationStatus, exclusionReasons. Unavailable cells are empty. Pair IDs 
 to JSON verification records and experimentId links complete inputs/environment;
 CSV is a flat companion, not a replacement for authoritative JSON.
 
-Next: implement the sequential runner against these contracts; then add UI, statistics
-and export. Controlled research campaigns and separate documented cold-start scenarios
+Next: add experiment UI, then statistics and export against these contracts. Controlled research campaigns and separate documented cold-start scenarios
 follow. No concurrent Race, Adaptive Mode, AOT, evolution or algorithm optimization is
 part of this step. See [benchmarking](../BENCHMARKING.md).
+
+
+## Step 2 runner lifecycle
+
+ExperimentRunner is a root Angular service. start(configuration, conditions?) captures
+an independent configuration immediately and rejects unsupported schema/order/warmup
+policies. An active experiment or any other held OperationLock causes rejection;
+starts do not queue behind readiness or reload. Rejection preserves the existing
+active/finished result. After acquiring the lock, start clears prior retained maps and
+records and prepares the shared runtime. It runs no extra generation calls beyond
+the specified warmups and measured trials.
+
+progress and result are readonly signals. Progress carries stage, attempted-trial
+count, phase/index and actual mode/position. stop requests a boundary stop; dispose
+also removes listeners, drops retained visualization maps and prevents new starts,
+while the active call still settles before lock release. The service also disposes
+on Angular destruction. takePreviewPair returns null during collection, transfers the
+last numerically suitable same-request pair once after completion, and removes the
+service's reference. A diagnostic pair with matching unverifiable build IDs may be
+visualized; its eligibility remains excluded. Previous interactive editor results are
+owned by the editor, are not duplicated in records, and remain static while locked.
+
+Preparation failure, failed warmup or observed runtime reset takes terminal precedence
+over Stop and produces failed/incomplete. Otherwise explicit Stop produces
+stopped/incomplete. If every measured pair was attempted, the result is completed,
+even when the final pair is excluded for a mismatch. A disqualifying earlier pair
+stops further collection and produces failed/incomplete. Per-trial measured failures
+permit later pairs; comparison exceptions between two successful results halt the
+series. Cross-mode build mismatch also halts collection. Pair assessments and the
+final assessment preserve all reasons; even previously eligible pairs do not make an
+excluded experiment a verified performance claim.
+
+Runtime reset detection compares observed initCount, execution and protocol before
+and after calls. This is not a monitor for silent unreported worker failures.
+visibilitychange records hidden transitions (including an initially hidden document);
+pagehide records navigation/suspension and requests Stop. Listeners are removed after
+collection and on disposal. Actual process termination can lose in-memory records.
+The runtime's startup durations remain available separately; their origin is unknown
+when the observed counters do not establish initialization timing. Failure records
+retain any startup information observed before preparation failed.
+
+Optional condition strings are operator-reported metadata, copied at start; no server
+hardware, cache reset, network profile or runtime version is inferred. The browser user
+agent is observed directly. Unavailable values remain null. No browser timers replace
+adapter timings, and no API/WASM host or Core change is included.
+
+The preview observes OperationLock directly as well as its paused input, so a delayed
+Angular input update cannot permit a draw. New WebGL/asset setup and scene construction
+wait until unlock; resize work and render submissions are suppressed while locked.
+This does not wait for completion of previously submitted GPU work. The service is
+not connected to an App action yet; current Verify remains a single equivalence check.

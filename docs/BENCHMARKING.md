@@ -1,6 +1,6 @@
 # Benchmarking Protocol
 
-The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check is implemented; repeated-trial running and campaign results remain planned. [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes the implementable protocol and record schema; Step 1 supplies only contracts and immutable configuration. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
+The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check and service-level repeated-trial runner are implemented; experiment UI, summaries, export and campaign results remain planned. [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes the implementable protocol and record schema; Steps 1–2 supply contracts, immutable configuration and sequential collection. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
 
 ## 1. What we compare
 
@@ -76,9 +76,9 @@ Initial proposal for the pilot:
 
 Use the pilot to verify safe sizes and sufficient warm-up. Freeze campaign inputs before collection. Architecture Race v1 fixes one warmup per mode; changing that policy requires a documented protocol revision, not an unrecorded runner adjustment. The default sample count is not a guarantee of statistical adequacy.
 
-For each combination, execute 30 sequential pairs. Alternate `Local → Remote` and `Remote → Local`, with 15 pairs in each order. Start the next run only after the previous one has completed. Preserve warm-up records with `warmup = true`, but exclude them from the main aggregates.
+For each combination, configure the measured-pair count explicitly (default 10, up to 30). Alternate `Local → Remote` and `Remote → Local`, starting Local; 30 pairs gives 15 in each order. Start the next call only after the previous one has completed. Preserve `phase = warmup` records separately and exclude them from main aggregates.
 
-During runs, stop the renderer/animation loop, avoid rebuilding meshes, and do not compute statistics for previous maps. Compare each pair after it completes and before starting the next pair. Keep only the current pair of maps in memory, then release references.
+During runs, stop the renderer/animation loop, avoid rebuilding meshes, and do not compute statistics for previous maps. Compare each pair after it completes and before starting the next pair. Keep only the current pair and at most one final suitable visualization pair; release obsolete references.
 
 Keep the tab active and visible; record power-saving settings, charging state, and background load. Mark background transitions or interruptions in the data. Do not run DevTools profiling during the main campaign; if DevTools is needed for throttling, record that fact and keep conditions consistent.
 
@@ -139,7 +139,7 @@ Synchronous WASM can block the UI; a `Promise` alone does not prevent this. Time
 
 ## Display boundary
 
-The interactive Three.js card reports CPU scene setup and first render submission only. It does not measure GPU completion or include the deferred module download. It must not be added to `computeMs` or request-to-data time. Biome allocation/classification is already inside Core in both execution modes. Rendering is on demand and pauses during a shared operation. The future trial runner must additionally defer scene construction until its measurement series completes; the interactive equivalence check is not that runner. Preserve `resultVersion` along with the algorithm, workload, and build identity in future trial exports. Do not combine historical workload timings with this workload.
+The interactive Three.js card reports CPU scene setup and first render submission only. It does not measure GPU completion or include the deferred module download. It must not be added to `computeMs` or request-to-data time. Biome allocation/classification is already inside Core in both execution modes. Rendering is on demand and pauses during a shared operation. The trial runner holds the shared lock to defer scene construction until its measurement series completes; the interactive equivalence check is not that runner. Preserve `resultVersion` along with the algorithm, workload, and build identity in future trial exports. Do not combine historical workload timings with this workload.
 
 ## Hydraulic workload scaling and worker execution
 
@@ -155,7 +155,7 @@ Rendering revision daylight-shadow-v1 adds static directional shadows and fog on
 Record its configuration separately from the unchanged v4 Core workload identities.
 The initial shadow map/color submission can add setup time and GPU work; both remain
 excluded from computeMs and requestMs. Orbit-only frames reuse the shadow map. The
-future trial runner must continue to defer all scene construction/rendering during
+trial runner must continue to defer all scene construction/rendering during
 measured pairs; the static interactive renderer is not that runner. Attachment byte
 estimates, software-WebGL smoke timings and diagnostic API requests are not a
 controlled performance campaign.
@@ -224,4 +224,5 @@ Future summaries exclude warmups and separate diagnostic/verified samples. Quart
 use sorted index (n-1)*p with linear interpolation; preserve outliers and give counts
 and reasons for exclusions. JSON retains complete small records and configuration;
 CSV includes each attempted trial, warmups/errors included. Neither retains full maps.
-Runner, statistics functions and export are not implemented in Step 1.
+Step 2 implements the runner as a service using these boundaries. Statistics functions,
+export and experiment UI remain unimplemented; no controlled campaign is claimed.

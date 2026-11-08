@@ -2,7 +2,7 @@
 
 ## Current application
 
-One Angular editor generates **Rich terrain + hydraulic erosion** locally in a C# WASM worker or remotely through ASP.NET Core. Both use the same Core. Seven detail stages are implemented, including structured vegetation, local relief and coastal surfaces. Evolution capture/playback and Architecture Race remain future work. README is intentionally empty.
+One Angular editor generates **Rich terrain + hydraulic erosion** locally in a C# WASM worker or remotely through ASP.NET Core. Both use the same Core. Seven detail stages are implemented, including structured vegetation, local relief and coastal surfaces. Architecture Race has protocol/contracts and a sequential collection service; its UI, summaries and export remain planned. Evolution capture/playback remains future work. README is intentionally empty.
 
 Start with the [documentation index](INDEX.md), [project brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md) and [benchmark methodology](BENCHMARKING.md). Frozen mathematical/presentation policies live in [specs/](specs/); original milestone observations are in [history/DETAILING_VERIFICATION.md](history/DETAILING_VERIFICATION.md).
 
@@ -121,14 +121,15 @@ PWA tests temporarily mutate only generated deployment files and restore them in
 - src/api and src/wasm: thin execution hosts and worker/loader assets.
 - src/client/src/app/platform: runtime, PWA and operation locking.
 - terrain/data: contracts, decoding, comparisons, defaults and adapters.
-- experiments/data: Architecture Race readonly records and pure frozen configuration capture; no runner yet.
+- experiments/data: Architecture Race readonly records, frozen configuration and compact record helpers.
+- experiments/experiment-runner.service.ts: sequential collector and bounded preview-pair handoff.
 - terrain/editor: parameter definitions, form/snapshot handling, pure presentation guidance and panels.
 - terrain/rendering: terrain/instance/material/light modules, scene-content ownership and preview lifecycle.
 - terrain/testing and colocated frontend *.spec.ts: reusable fixtures and corresponding tests.
 - tests/core/Generation, Ecology, Validation: active Core checks; Historical/ and Fixtures/ retain versioned evidence.
 - tests/api, browser, build, reference: host integration, real browser scenarios, packaging and independent numerical references.
 
-Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race Step 1 protocol/contracts and immutable configuration are implemented; see [the specification](specs/ARCHITECTURE_RACE_V1.md). Sequential collection is next; there is no experiment runner or placeholder UI.
+Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race Step 1 protocol/contracts and immutable configuration are implemented; see [the specification](specs/ARCHITECTURE_RACE_V1.md). Sequential collection is implemented as a service; experiment UI, summaries and export remain planned.
 
 
 ## Architecture Race configuration
@@ -139,5 +140,26 @@ The default is 10 measured pairs; invalid pair counts throw RangeError. Mathemat
 terrain validation remains in Core. No Angular form or browser APIs are required.
 Colocated utility tests cover every captured parameter, caller edits, runtime freezing,
 count boundaries and forwarding invalid terrain drafts unchanged. Run `npm --prefix
-src/client test -- --watch=false` for frontend checks. This step adds no collector,
-statistics, export or experiment UI; no performance campaign has been run.
+src/client test -- --watch=false` for frontend checks. Step 2 adds the collector service described below; statistics, export and experiment
+UI remain planned. No performance campaign has been run.
+
+
+## Architecture Race runner
+
+Inject ExperimentRunner and call start(createExperimentConfiguration(terrain, count),
+conditions?) to obtain ExperimentResult. The App intentionally has no runner action
+in this step. progress/result are readonly signals; stop is cooperative. A busy
+operation or overlapping start rejects immediately. Preparation/call/verification
+holds one shared lock, preventing generation and safe PWA reload; an active call
+must settle before release, including on disposal.
+
+Records contain raw host/adapter durations and full pair comparison diagnostics, not
+maps. takePreviewPair transfers at most one final suitable pair after completion;
+callers own that pair thereafter. New starts discard any unclaimed prior pair.
+dispose drops retained maps/listeners and prevents new starts. Angular destruction
+calls it automatically. The normal runtime and transport adapters are unchanged.
+
+Optional conditions are operator-reported environment strings; unknown data remains
+null. Startup counters/timings and browser user agent are observed separately. Tests
+use controlled promises and real comparisons for ordering, locking, failures, stop,
+identity changes, interruptions and bounded handoff. They do not measure performance.

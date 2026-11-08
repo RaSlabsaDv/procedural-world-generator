@@ -18,9 +18,11 @@ import {
 } from './terrain-preview';
 import { testTerrain, testWire } from '../testing/terrain-test-fixture';
 import { loadTerrainSurfaces } from './terrain-surfaces';
+import { OperationLock } from '../../platform/operation-lock.service';
 import { TerrainRun } from '../data/terrain.models';
 
 const state = {
+  create: vi.fn(),
   render: vi.fn(),
   dispose: vi.fn(),
   lose: vi.fn(),
@@ -102,6 +104,7 @@ describe('terrain preview lifecycle', () => {
         {
           provide: TERRAIN_RENDERER_FACTORY,
           useValue: () => {
+            state.create();
             if (state.fail) throw new Error('No WebGL');
             return {
               shadowMap: { enabled: false, autoUpdate: true, needsUpdate: false },
@@ -248,6 +251,41 @@ describe('terrain preview lifecycle', () => {
     expect(state.dispose).toHaveBeenCalledTimes(1);
     fixture.destroy();
     expect(owner.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('defers WebGL/assets under the shared lock and blocks draws before input propagation', async () => {
+    const createSurfaces = vi.fn(() => ({
+      ready: Promise.resolve({
+        grass: new Texture(),
+        soil: new Texture(),
+        sand: new Texture(),
+        rock: new Texture(),
+        snow: new Texture(),
+      }),
+      dispose: vi.fn(),
+    }));
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, { useValue: createSurfaces });
+    const lock = TestBed.inject(OperationLock);
+    const release = lock.tryAcquire()!;
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(state.create).not.toHaveBeenCalled();
+    expect(createSurfaces).not.toHaveBeenCalled();
+    expect(state.render).not.toHaveBeenCalled();
+    release();
+    await settlePreview(fixture);
+    expect(state.create).toHaveBeenCalledTimes(1);
+    expect(createSurfaces).toHaveBeenCalledTimes(1);
+    expect(state.render).toHaveBeenCalled();
+    state.render.mockClear();
+    const releaseAgain = lock.tryAcquire()!;
+    // Trigger a direct draw before Angular can propagate any paused input.
+    (fixture.componentInstance as unknown as { draw: () => void }).draw();
+    expect(state.render).not.toHaveBeenCalled();
+    releaseAgain();
+    await settlePreview(fixture);
+    expect(state.render).toHaveBeenCalled();
   });
 
   it('defers scene preparation while paused and excludes texture/pause wait from CPU timing', async () => {

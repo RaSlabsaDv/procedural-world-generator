@@ -175,8 +175,8 @@ Generation/Ecology/Validation, with versioned Historical/ and Fixtures/ retained
 The complete v8 fingerprint manifest includes final coastal weights and all tree/
 rock records for 23 pre-refactor requests, independently of timing/build identity.
 Browser support/editor.cjs shares small field/wait/artifact actions while scenarios
-retain their own numeric, rendering and offline assertions. No general runner or
-Architecture Race implementation is introduced.
+retain their own numeric, rendering and offline assertions. That organizational
+cleanup introduced no experiment runner; subsequent Architecture Race work follows.
 
 
 ## Architecture Race contracts
@@ -190,7 +190,18 @@ and completed/stopped/failed collection. Existing complete TerrainComparison met
 are reused, with eligibility and explicit exclusion reasons separate from agreement
 and build compatibility. Records retain no full map arrays.
 
-The next step is the runner: one OperationLock for preparation through verification,
-no scene construction during collection, bounded pair retention and honest startup
-metadata. UI, summaries and export follow separately. The interactive Verify action
+Step 2 implements ExperimentRunner in experiments/: one OperationLock for preparation
+through verification, no scene construction during collection, bounded pair retention
+and honest startup metadata. The preview observes the lock directly, deferring new
+WebGL/asset setup and suppressing resize/draw work until release. UI, summaries and
+export follow separately. The interactive Verify action
 remains a single equivalence check, not a repeated measurement campaign.
+
+
+The runner rejects overlapping or lock-busy starts, captures configuration again at
+entry, and exposes readonly progress/result signals. Cooperative stop never cancels
+Core or releases the lock before settlement. Observed visibility/navigation/runtime
+interruptions, failures and disqualifications remain in frozen small records. The
+latest suitable pair can be transferred once for later display; arrays never enter
+ExperimentResult. Runtime collection uses existing TerrainService calls and complete
+compareTerrains checks. Details and terminal-state precedence are in the v1 spec.

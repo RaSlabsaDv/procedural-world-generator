@@ -9,7 +9,7 @@ import {
   WARMUP_PAIRS,
 } from './experiment.models';
 
-/** Capture only; Core validates terrain before future runner preparation. */
+/** Capture only; Core validates terrain through the existing host adapters. */
 export function createExperimentConfiguration(
   request: TerrainRequest,
   measuredPairs = DEFAULT_MEASURED_PAIRS,

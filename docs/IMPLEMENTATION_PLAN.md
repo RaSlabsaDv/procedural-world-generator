@@ -142,7 +142,7 @@ Preserve the preferred terrain appearance. Develop diagnostic layers for slope/e
 
 ## Architecture Race and research campaign
 
-Build a sequential runner with immutable inputs, alternating execution order, warm-up, raw trial retention, statistics and JSON/CSV export. Use the current `landscape-ecology-hydraulic-v8` and `landscape-worker-json-v8` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
+Protocol/contracts and the sequential runner are implemented in Steps 1–2 below. Experiment UI, statistics and JSON/CSV export remain next. Use the current `landscape-ecology-hydraulic-v8` and `landscape-worker-json-v8` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
 
 Run a controlled size/iteration/seed matrix under documented network profiles. Keep compute, initialization, request overhead and rendering separate. Report failures and environment limits; browser smoke checks are correctness evidence, not a performance campaign.
 
@@ -180,12 +180,44 @@ status/eligibility with explicit reasons, without full terrain arrays. Pure capt
 copies/freezes both request levels and validates only the pair-count configuration.
 Current workload identities, Core mathematics, host contracts and UI remain unchanged.
 
-Next, Step 2: implement sequential runner, OperationLock lifecycle, preparation,
-warmup, paired calls, full verification, cooperative stop, bounded retention and
-failure/interruption recording. Then add experiment UI, summaries and JSON/CSV export.
-Statistics/export policy is specified only; no runner or controlled campaign exists yet.
+Step 2 scope: sequential runner, OperationLock lifecycle, preparation, warmup, paired
+calls, full verification, cooperative stop, bounded retention and interruption records.
+Step 2 completion follows below. Statistics/export policy remains specified only;
+no controlled campaign has been conducted.
 
 Verification: all 185 Angular tests pass, including 15 new configuration tests;
 Angular production compilation and the documentation-link check pass. No Core,
 host, adapter or rendering source changed, so this step does not establish new
 browser parity or controlled performance results. README.md remains empty.
+
+
+## Architecture Race — Step 2 complete
+
+Implemented ExperimentRunner as a service using unchanged TerrainService adapters:
+one warmup per mode, alternating sequential measured calls, full pair verification,
+raw duration/identity records and explicit eligibility/exclusion reasons. It captures
+an independent configuration at entry and holds one shared OperationLock across
+preparation through final settlement/verification. Overlapping or busy starts reject.
+Cooperative stop finishes an active call without fabricated counterparts or cancellation
+claims. Failed warmup, measured errors, correctness/build changes, inconsistent timings
+and observed visibility/navigation/runtime interruptions follow the frozen v1 policy.
+
+Readonly progress/result signals and one-time final preview-pair handoff prepare for
+future UI. Records contain no full map arrays. New starts/disposal release retained
+maps; listeners are removed on completion/disposal. The preview observes the lock
+directly, defers WebGL/assets/scene setup and suppresses resize/render work while held.
+Existing editor controls and generation mathematics remain unchanged.
+
+Verification: 228 Angular tests pass (42 runner scenarios plus one lock/preview test
+added to the prior 185), production Angular compilation/finalization and API/WASM
+publication pass, as does the documentation-link check. Real Chromium materials,
+lighting and PWA scenarios pass with no page errors, including static shadow reuse,
+paused rendering, maximum instance rendering, offline reload/new tab, Remote failure/
+recovery and update deferral. The known optional WASM optimization warning remains.
+Core/host source was unchanged; native test suites were not rerun. Controlled-promise
+runner tests and browser regression checks are not a performance campaign.
+
+Next, Step 3: experiment UI for configuration, start/progress/stop, final statuses,
+validation/availability errors, explicit exclusions and post-run pair visualization.
+Then implement documented summaries and JSON/CSV export. No experiment App action,
+statistics functions or download feature is implemented in Step 2. README stays empty.
