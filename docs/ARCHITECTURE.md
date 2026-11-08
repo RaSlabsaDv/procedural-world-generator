@@ -381,3 +381,32 @@ on CPU and GPU separately. Five terrain textures and existing shadow targets rem
 The new offline asset brings the complete PWA catalog to 39 entries. Mathematical
 identities and Core outputs are unchanged. See the specification for conservative
 diagonal clipping and transparency/shadow/reflection limitations.
+
+
+## Sky and atmosphere
+
+[atmosphere-v1](specs/ATMOSPHERE_V1.md) composes one shared analytical sky-radiance
+function with existing Lambert hooks and the Ocean material. The same sun wrappers
+feed visible sky, directional fog in-scattering and water reflection. Settings are
+immutable shared presentation state: enabled, haze and valleyFog. A collapsed panel
+updates both views without Core/transport work or scene/camera replacement.
+
+One view-owned fullscreen triangle (36 raw position bytes) adds at most one color
+draw: total ceiling21, existing caster ceiling19. It has no depth writes, shadow,
+texture, render target or recurring loop. Its camera inverse-projection/world
+matrices update before draw. Atmosphere updates do not invalidate static shadows.
+Resources are disposed with the scene, including partial setup failures.
+
+Exponential distance and analytically integrated height optical depths add before
+attenuation. World-height origin is sea level when water exists; scales derive from
+request span. Stable horizontal limits and bounded exponents prevent discontinuity
+and overflow. All opaque groups and water share the linear-space implementation,
+before tone/output conversion; native linear fog runs only in reference mode.
+
+For above-water cameras, underwater Ocean terrain ends its air ray at sea level.
+Bottom and water therefore share the air segment before transparent composition.
+Existing output-space blending remains an approximation; there is no refraction,
+underwater scattering or linear offscreen compositing pass. Disabled atmosphere
+restores the preceding background, native fog and water reflection. Low-poly coast
+and conservative diagonal clipping limits remain. The sky is illustrative and has
+no clouds, astronomical calibration or infinite ground beyond the finite map.

@@ -513,3 +513,58 @@ pass. Eighteen paired camera/full numerical hashes are unchanged. Chromium water
 checks pass, including animated comparison views, computation pause and new-seed
 offline rendering. Frozen close-up views show removal of the directional bands;
 the existing low-poly shoreline remains.
+
+
+## Sky and atmosphere controls
+
+The collapsed Atmosphere panel provides Enabled, Haze, Valley fog and Reset.
+Defaults are true/.22/.18, with numeric sliders in [0,1]. Both views update together
+without generation, geometry replacement or camera reset. Disabled mode restores
+the earlier flat background, linear fog and approximate water horizon reflection.
+Controls are disabled during operations; pending updates apply after release.
+There are no time-of-day controls yet. SceneEnvironmentService remains the sole
+source of sun state, and atmosphere adds no animation clock.
+
+[Atmosphere v1](specs/ATMOSPHERE_V1.md) defines the analytical model, numerical bounds,
+linear-color ordering, water composition approximation and graphics budgets. Full
+sky gradients are most visible when orbiting toward the horizon; the existing
+initial camera looks down at the finite map and is intentionally preserved.
+
+Using the documented PWG_* production-browser environment, run:
+
+- node tests/browser/atmosphere.cjs
+- node tests/browser/atlas-materials.cjs --atmosphere --before (prior publication)
+- node tests/browser/atlas-materials.cjs --atmosphere (new publication)
+- node tests/browser/atlas-materials.cjs --atmosphere --reference
+
+The reference atlas can reuse the preceding frozen Ocean captures by copying their
+JSON to atmosphere-reference-before.json and PNGs to atmosphere-reference-before-*
+in ignored artifacts. Compare PNG bytes separately. The atlas preserves complete
+Core hashes/camera matrices; pixels intentionally change in enabled mode. Historical
+Ocean captures from the ripple correction use reduced motion and identical scenes.
+The atmosphere harness also exercises nondefault sun states with test-only source
+substitution in an isolated SW-blocked context; modified bundles never enter PWA
+caches. This is test tooling, not an exposed production debug interface.
+
+Run normal unit/packaging/RPC checks and production publication; then material,
+lighting/editor and PWA browser regressions. Keep PWA update tests last because they
+mutate and restore generated deployment assets. No new texture/catalog entry or
+external dependency is needed. Native sources stay unchanged; mathematical native
+suites need not be rerun for presentation-only changes. README stays empty.
+
+Atmosphere verification: 333 Angular tests, nine packaging/asset checks, worker RPC,
+production publish and Chromium atmosphere/materials/lighting/editor scenarios pass.
+All 18 enabled-mode full Core/camera comparisons and all 18 disabled-mode PNG byte
+comparisons pass. Actual sky allocation is 36 raw position bytes; total color cap 21
+and caster cap 19 remain bounded. Numeric parameters, Core/host sources and identities
+are unchanged. The optional WASM optimization warning persists; no performance
+finding is inferred from smoke runs. Raw evidence is in ignored artifacts/atmosphere-*.
+
+The materials matrix observed up to 19 color calls including exactly one sky draw;
+the structural ceiling is 21 when every terrain/tree/rock/water group is present.
+Existing 2048-square shadow attachments remain 32 MiB per view (format-based
+estimate), with one static update per unchanged scene.
+
+Production PWA regression also passes: cached reload/new tabs and new seeds, Remote
+failure/recovery, deferred update while busy, and updated-version offline 3D terrain.
+Deployment assets were restored after the update simulation.

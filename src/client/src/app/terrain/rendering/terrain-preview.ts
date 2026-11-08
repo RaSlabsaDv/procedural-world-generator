@@ -1,3 +1,4 @@
+import { AtmosphereSettings, AtmosphereSettingsService } from './atmosphere-settings.service';
 import { OceanSettings, OceanSettingsService } from './ocean-settings.service';
 import { OceanAnimationService } from './ocean-animation.service';
 import { loadOceanNormal } from './ocean-normal';
@@ -52,6 +53,8 @@ export class TerrainPreview {
   readonly paused = input(false);
   private readonly operations = inject(OperationLock);
   private readonly environment = inject(SceneEnvironmentService);
+  private readonly atmosphere = inject(AtmosphereSettingsService);
+  private applyAtmosphere: ((settings: AtmosphereSettings) => void) | undefined;
   private readonly water = inject(OceanSettingsService);
   private readonly animation = inject(OceanAnimationService);
   private readonly createNormal = inject(OCEAN_NORMAL_FACTORY);
@@ -118,6 +121,7 @@ export class TerrainPreview {
         this.draw = undefined;
         this.applyEnvironment = undefined;
         this.applyWater = undefined;
+        this.applyAtmosphere = undefined;
         unregisterAnimation?.();
         visibility?.disconnect();
         this.resumeSetup = undefined;
@@ -198,9 +202,11 @@ export class TerrainPreview {
                         settings: untracked(this.water.settings),
                       }
                     : undefined,
+                  untracked(this.atmosphere.settings),
                 );
                 this.applyEnvironment = content.updateEnvironment;
                 this.applyWater = content.updateWater;
+                this.applyAtmosphere = content.updateAtmosphere;
                 // Bound the view by the request, not by sampled min/max: both modes share the same scale.
                 const span = Math.max(
                   run.request.width - 1,
@@ -313,6 +319,7 @@ export class TerrainPreview {
       const paused = this.isPaused();
       const environment = this.environment.snapshot();
       const water = this.water.settings();
+      const atmosphere = this.atmosphere.settings();
       if (this.controls) this.controls.enabled = !paused;
       if (!paused) {
         const setup = this.resumeSetup;
@@ -320,6 +327,7 @@ export class TerrainPreview {
         setup?.();
         this.applyEnvironment?.(environment);
         this.applyWater?.(water);
+        this.applyAtmosphere?.(atmosphere);
         this.draw?.();
       }
       this.animation.refresh();

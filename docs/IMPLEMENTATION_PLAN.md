@@ -446,14 +446,14 @@ regressions pass. Maximum dry-flat allocation is 16856656 bytes for 1693 rocks,
 within the unchanged 32 MiB budget.
 
 The next approved scope is the visual-realism and execution-feedback roadmap below.
-Water and the shared environment foundation below are complete. Controlled performance campaigns remain planned after
+Water, atmosphere and the shared environment foundation below are complete. Controlled performance campaigns remain planned after
 configuration and workload identities are frozen. README remains empty.
 
 
 ## Next roadmap: visual realism and execution feedback
 
-Status: shared environment foundation and Visual Stage 1 implemented; remaining stages are planned.
-The next visual feature is sky/fog integration with the completed Ocean surface.
+Status: shared environment foundation and Visual Stages 1–2 implemented; remaining stages are planned.
+The next visual feature is sun controls and justified shadow-quality improvements.
 Implement incremental, independently reviewable stages, freezing each stage's
 policy, resource budget, acceptance scenes and verification before changing code.
 
@@ -581,7 +581,7 @@ Acceptance includes warm/cold, shallow/deep, gentle/steep coast, no/all Ocean, z
 height, dry disconnected pockets and maximum dimensions; exact Core hashes remain
 unchanged. Compare Local/Remote at identical requests and fixed visual time/camera.
 
-### Visual Stage 2 — sky and atmosphere
+### Visual Stage 2 — sky and atmosphere (complete)
 
 - Use an analytic sun-dependent sky: assess Preetham, Hosek-Wilkie or a simplified
   Rayleigh/Mie model against the required quality and budget. Sky and sun are one
@@ -688,7 +688,7 @@ collection. CPU first submission is not GPU completion or an FPS measurement.
 
 ### Execution track 1 — detailed timing diagnostics
 
-The shared foundation and water are complete; sky/fog is the next visual task. Timing diagnostics precede WASM
+The shared foundation, water and atmosphere are complete; sun controls are next. Timing diagnostics precede WASM
 optimization decisions and the next controlled performance campaign.
 
 Break down height composition, erosion, final conversion/ocean/environment/biome
@@ -781,7 +781,7 @@ This extension is separate from Visual Stage 1 and is not implemented here.
 Implementation sequence:
 
 1. Shared sun/fog/visual-time foundation — complete.
-2. Water — complete; sun-dependent sky/fog integration — next.
+2. Water and sun-dependent sky/fog integration — complete.
 3. Shadow refinement and separately budgeted AO where justified.
 4. Material normals, vegetation variation/LOD, then postprocessing.
 5. Shared Core river/lake hydrology, after the water system is established.
@@ -820,11 +820,48 @@ ownership, shared animation, operation pause and maximum-size Ocean resource cap
 The PWA catalog has 39 assets. Native code is unchanged. This is correctness evidence;
 no controlled performance findings are claimed.
 
-Next: Visual Stage 2 sky/atmosphere, preserving the shared environment and water
-bindings. No sun controls, Core AO, river/lake hydrology, stage telemetry or new
+At that milestone, Visual Stage 2 sky/atmosphere was next; its completion follows. No sun controls, Core AO, river/lake hydrology, stage telemetry or new
 optimization configuration is implemented by this stage.
 
 Focused Chromium checks also pass for no-Ocean animation shutdown, 512x512 Ocean
 (11509784 raw GPU geometry bytes), zero-height Ocean, cached new-seed offline water,
 and narrow layout. Lighting, editor and PWA update regressions pass, including
 offline new-tab generation, Remote recovery and update deferral while busy.
+
+
+### Visual Stage 2 completion evidence
+
+Implemented [Atmosphere v1](specs/ATMOSPHERE_V1.md): shared sun-dependent analytical
+sky, exponential distance fog and stable integrated height fog across terrain,
+instanced vegetation, rocks and water. One sky function drives visible background,
+fog in-scattering and water reflection. A compact collapsed panel changes enabled,
+haze and valley-fog settings without generation. Disabled mode restores the earlier
+flat background/native linear fog and Ocean reflection. No independent sun clock,
+new asset, rendering dependency, target or shadow pass is added.
+
+333 Angular tests, nine packaging/asset checks, worker RPC and production publication
+pass. Chromium atmosphere/materials/lighting/editor checks pass with no errors.
+Eighteen paired views preserve complete Core hashes and camera matrices. All 18
+frozen disabled-mode PNGs match the preceding Ocean publication byte-for-byte.
+The focused harness covers shared controls/uniforms, no geometry uploads or new
+programs on settings changes, operation pause, min/rectangular/512-square maps,
+zero/all/no Ocean, new-seed offline generation, narrow layout and actual shared
+sun derivation at 6.2/17.8/0 hours. Static shadows stay reused. The sky adds exactly
+one 36-byte position buffer and one color draw; total ceiling 21, caster ceiling 19.
+Native sources and mathematical identities remain unchanged. The 39-entry offline
+catalog and existing texture/shadow budgets are retained. No performance claim.
+
+Known limits include finite map edges, low-poly coasts, approximate output-space
+water blending, no underwater scattering/clouds and an illustrative sky/light cycle.
+Full gradients are visible near the horizon; the initial downward camera is retained.
+Next: Visual Stage 3 compact sun controls and evidence-driven shadow refinements.
+CSM/Core AO still require separate justification/specification before implementation.
+
+The materials matrix observed up to 19 color calls including exactly one sky draw;
+the structural ceiling is 21 when every terrain/tree/rock/water group is present.
+Existing 2048-square shadow attachments remain 32 MiB per view (format-based
+estimate), with one static update per unchanged scene.
+
+Production PWA regression also passes: cached reload/new tabs and new seeds, Remote
+failure/recovery, deferred update while busy, and updated-version offline 3D terrain.
+Deployment assets were restored after the update simulation.

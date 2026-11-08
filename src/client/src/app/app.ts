@@ -1,3 +1,4 @@
+import { AtmosphereControls } from './terrain/editor/atmosphere-controls';
 import { OceanControls } from './terrain/editor/ocean-controls';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -23,6 +24,7 @@ import { OperationLock } from './platform/operation-lock.service';
     PwaStatusPanel,
     ExperimentPanel,
     OceanControls,
+    AtmosphereControls,
   ],
   templateUrl: './app.html',
   styleUrls: ['./shared/panel.css', './app.css'],

@@ -38,6 +38,7 @@ const artifact = artifactPath;
           textures: new Set(),
           waterTextures: new Set(),
           waterCalls: 0,
+          skyCalls: 0,
           sources: new Set(),
           calls: 0,
           instances: 0,
@@ -77,6 +78,7 @@ const artifact = artifactPath;
           record.instances = 0;
           record.terrainCalls = 0;
           record.waterCalls = 0;
+          record.skyCalls = 0;
           return clear.apply(this, args);
         };
         for (const name of [
@@ -91,6 +93,11 @@ const artifact = artifactPath;
             const program = gl.getParameter(gl.CURRENT_PROGRAM);
             if (program && gl.getUniformLocation(program, "waterTime") !== null)
               record.waterCalls++;
+            if (
+              program &&
+              gl.getUniformLocation(program, "skyProjectionInverse") !== null
+            )
+              record.skyCalls++;
             const location = program
               ? gl.getAttribLocation(program, "biomeId")
               : -1;
@@ -237,6 +244,7 @@ const artifact = artifactPath;
             textures,
             waterTextures,
             waterCalls,
+            skyCalls,
             sources,
             calls,
             terrainCalls,
@@ -252,6 +260,7 @@ const artifact = artifactPath;
             textures: textures.size,
             waterTextures: waterTextures.size,
             waterCalls,
+            skyCalls,
             sources: [...sources].sort(),
             calls,
             terrainCalls,
@@ -285,12 +294,13 @@ const artifact = artifactPath;
           "snow.png",
           "soil.png",
         ]);
-        assert.equal(row.terrainCalls, 1 + row.waterCalls);
+        assert.equal(row.terrainCalls, 1 + row.waterCalls + row.skyCalls);
+        assert.equal(row.skyCalls, 1);
         assert.ok(row.waterCalls <= 1);
         assert.ok(row.waterTextures <= 1);
         assert.ok(
-          row.calls <= 19 + row.waterCalls,
-          "Color pass: terrain, twelve tree, six rock meshes, plus one Ocean draw",
+          row.calls <= 19 + row.waterCalls + row.skyCalls,
+          "Color pass: terrain, twelve tree, six rock meshes, plus one Ocean and one sky draw",
         );
       }
       for (const row of rows.filter((row) => row.lost)) {
@@ -385,7 +395,8 @@ const artifact = artifactPath;
         1 +
           diagnostic.vegetationGroups * 2 +
           diagnostic.rockGroups +
-          actual.find((row) => !row.lost && row.textures > 0).waterCalls,
+          actual.find((row) => !row.lost && row.textures > 0).waterCalls +
+          actual.find((row) => !row.lost && row.textures > 0).skyCalls,
       );
       assert.equal(
         actual.find((row) => !row.lost && row.textures > 0).instances,

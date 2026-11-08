@@ -1,3 +1,5 @@
+import { AtmosphereSettings, DEFAULT_ATMOSPHERE_SETTINGS } from './atmosphere-settings.service';
+import { bindAtmosphere, terrainAtmosphere } from './terrain-atmosphere';
 import { Texture } from 'three';
 import { oceanGeometry } from './ocean-geometry';
 import { oceanMaterial } from './ocean-material';
@@ -20,6 +22,7 @@ export function terrainScene(
   textures: SurfaceTextures,
   environment: SceneEnvironmentSnapshot = DEFAULT_SCENE_ENVIRONMENT,
   water?: { seaLevel: number; normal: Texture; settings: OceanSettings },
+  atmosphereSettings: AtmosphereSettings = DEFAULT_ATMOSPHERE_SETTINGS,
 ) {
   let terrain:
     Mesh<ReturnType<typeof terrainGeometry>, ReturnType<typeof terrainSurfaceMaterial>> | undefined;
@@ -29,6 +32,7 @@ export function terrainScene(
   let ocean:
     | Mesh<NonNullable<ReturnType<typeof oceanGeometry>>, ReturnType<typeof oceanMaterial>>
     | undefined;
+  let atmosphere: ReturnType<typeof terrainAtmosphere> | undefined;
   let pendingGeometry: ReturnType<typeof oceanGeometry>;
   let disposed = false;
   const dispose = () => {
@@ -38,6 +42,7 @@ export function terrainScene(
       scene.remove(ocean);
       ocean.material.dispose();
     }
+    atmosphere?.dispose();
     pendingGeometry?.dispose();
     lighting?.dispose();
     forest?.dispose();
@@ -63,6 +68,21 @@ export function terrainScene(
       [...forest.groups.flatMap((group) => [group.trunks, group.crowns]), ...rocks.meshes],
       environment,
     );
+    const sea = water ? water.seaLevel * Math.fround(request.heightMultiplier) : 0;
+    atmosphere = terrainAtmosphere(
+      scene,
+      lighting.uniforms,
+      Math.max(request.width - 1, request.height - 1, request.heightMultiplier, 1),
+      sea,
+      false,
+      atmosphereSettings,
+    );
+    bindAtmosphere(terrain.material, atmosphere.uniforms, true);
+    for (const group of forest.groups) {
+      bindAtmosphere(group.trunks.material, atmosphere.uniforms);
+      bindAtmosphere(group.crowns.material, atmosphere.uniforms);
+    }
+    for (const rock of rocks.meshes) bindAtmosphere(rock.material, atmosphere.uniforms);
     if (water) {
       pendingGeometry = oceanGeometry(
         result,
@@ -71,15 +91,17 @@ export function terrainScene(
       if (pendingGeometry) {
         ocean = new Mesh(
           pendingGeometry,
-          oceanMaterial(water.normal, lighting.uniforms, water.settings),
+          oceanMaterial(water.normal, lighting.uniforms, water.settings, atmosphere.uniforms),
         );
         ocean.name = 'ocean-presentation-v1';
         ocean.renderOrder = 1;
         scene.add(ocean);
+        atmosphere.uniforms.atmosphereWater.value = 1;
       }
     }
     return {
       dispose,
+      updateAtmosphere: atmosphere.update,
       updateEnvironment: lighting.update,
       environmentUniforms: lighting.uniforms,
       hasOcean: !!ocean,

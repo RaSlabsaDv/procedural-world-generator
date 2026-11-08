@@ -337,3 +337,19 @@ record ocean-presentation-v1, water color/turbidity/foam and motion policy along
 the presentation revision. Normal asset wait contributes to textureWaitMs. Tests of
 software WebGL allocation/draw caps establish correctness, not speed or GPU latency.
 No stage timing, SIMD/AOT improvement or network-overhead attribution is claimed.
+
+
+## Atmosphere presentation
+
+Atmosphere-v1 adds static display work only: shader compilation/bindings, a tiny sky
+triangle and fragment shading. It changes no mathematical field, algorithm/workload
+identity, request or computeMs/requestMs boundary. No new sky animation competes
+with collection; environment/atmosphere updates defer under OperationLock, and the
+existing Ocean hub still pauses synchronously. Display setup and first submission
+remain CPU/submission observations, not GPU-completion measurements.
+
+Freeze enabled/haze/valleyFog, sun settings, wave phase, camera and application
+revision for images or controlled comparisons. Reference mode restores the prior
+linear-fog view and permits visual regression checks. Software WebGL draw/resource
+checks prove bounded behavior, not a performance improvement. No extra stage
+profiling, optimization configuration or controlled campaign is introduced.
