@@ -73,10 +73,10 @@ The API exposes POST /api/v1/terrains and GET /api/health. Removed probe/region/
 
 Current identities:
 
-- Algorithm: diverse-landscape-v7; nested noise: value-noise-fbm-v1.
-- Result: landscape-ecology-v8.
-- Workload: landscape-ecology-hydraulic-v8.
-- Execution profile: landscape-worker-json-v8; RPC: worker-rpc-v1.
+- Algorithm: diverse-landscape-v8; nested noise: value-noise-fbm-v1.
+- Result: landscape-ecology-v9.
+- Workload: landscape-ecology-hydraulic-v9.
+- Execution profile: landscape-worker-json-v9; RPC: worker-rpc-v1.
 - Simulation: hydraulic-grid-v1.
 
 Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances and coastal distance/blending. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
@@ -314,3 +314,60 @@ The materials/coasts diagnostic scripts now collect only terrain parameter contr
 Architecture Race pair-count inputs must never be included in terrain requests.
 Mathematical correctness, texture ownership/retry, all five uploads, offline loading
 and safe PWA replacement continue to be checked separately from visual judgments.
+
+
+## Biome readability: ground and crowns
+
+`terrain/data/biome-presentation.ts` owns base surface, paired biome grass/soil,
+legend and species/variant crown colors. Values are sRGB hex; Three.Color converts
+shader uniforms into the existing linear working space. Do not add climate rules
+or multiply the final mixed material by a biome tint. The compact Uint8 geometry
+attribute aliases validated result IDs, with 262144 additional GPU bytes per
+512x512 view. See [Biome presentation](specs/BIOME_PRESENTATION_V1.md).
+
+With the documented PWG_* browser environment and a matching served publication,
+run `node tests/browser/atlas-materials.cjs --biomes --before` before editing the
+presentation, then `node tests/browser/atlas-materials.cjs --biomes` afterwards.
+The seven requests at three zooms preserve exact camera matrices and complete
+mathematical hashes. Ignored evidence uses `artifacts/biome-readability-*`; do not
+overwrite the old baseline after changing colors. `materials.cjs` records actual
+WebGL attribute encoding, buffer sizes, device limits and geometry replacement
+cleanup, alongside existing texture/draw/instance/shadow/offline checks.
+
+This step improves distinctions in supplied categories; it does not increase snow
+coverage or beach width. Regional climate/snow readability and coastal policy need
+separate Core specifications and cross-mode fixtures.
+
+Verification for this revision: 300 Angular tests, seven build/documentation/asset
+checks, production publication and Chromium paired views/materials/coasts/lighting/
+PWA scenarios pass. The optional WASM optimization warning persists. No controlled
+performance campaign was run; Core and host code are unchanged.
+
+
+## Regional climate and highland snow
+
+The current [climate policy](specs/REGIONAL_CLIMATE_V1.md) replaces original v3
+temperature/moisture and v4 snow equations. Warmth remains normalized rather than
+degrees Celsius. Default suitable highlands can show snow without forcing every
+seed to contain every biome. Global warmth raises temperature and cannot increase
+snow for identical terrain; hot lowlands remain snow-free. Trees/rocks can change
+through ecological eligibility even though placement algorithms stay unchanged.
+
+Run `python3 tests/reference/regional_climate_reference.py` for independent literal
+references. Historical complete v8 fingerprints remain checked through test-only
+frozen ecology. Current preservation tests compare all 23 prior requests' height,
+slope and hydraulic hashes, plus authoritative ocean masks and output invariants.
+
+For paired scenes run `node tests/browser/atlas-materials.cjs --climate --before`
+against the previous v7 publication, then `--climate` against current v8. It compares
+requests (except version), cameras, heights, slopes, ocean and simulation; ecology
+is intentionally different. The after pass invokes the editor's full equivalence
+check. Evidence lives under ignored `artifacts/regional-climate-*`. Original asset/
+biome palette before/after hashes apply only to their unchanged-Core revisions.
+
+Regional-climate verification: 202 Core / 40 API / 300 Angular tests, seven packaging
+checks, worker RPC and production publication pass. Seven full Chromium WASM/API
+cases have maximum observed error zero; 21 paired camera/invariant views plus
+materials/coasts/lighting/PWA regressions pass. Existing render/instance budgets and
+offline update behavior remain unchanged. The optional WASM optimization warning
+persists; no controlled benchmark campaign was run.

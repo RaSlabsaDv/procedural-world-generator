@@ -65,7 +65,8 @@ public sealed class VegetationStructureTests
     public void EdgePassAllocationIsBoundedByTwoIntegerBuffers()
     {
         const int n = 256; var biomes = Enumerable.Repeat(LandscapeBiome.BroadleafForest, n * n).ToArray(); var slopes = new float[n * n];
-        VegetationStructure.EdgeDistances([LandscapeBiome.Grassland, LandscapeBiome.Grassland, LandscapeBiome.Grassland, LandscapeBiome.Grassland], new float[4], 2, 2);
+        // Warm the measured branch/size before reading thread allocation counters.
+        VegetationStructure.EdgeDistances(biomes, slopes, n, n);
         var start = GC.GetAllocatedBytesForCurrentThread();
         var distance = VegetationStructure.EdgeDistances(biomes, slopes, n, n);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - start;

@@ -27,6 +27,11 @@ describe('terrain geometry', () => {
     ]);
     expect([...coverage.array.slice(12, 16)]).toEqual([0.5, 0.5, 0, 0]);
     expect(geometry.getAttribute('color')).toBeUndefined();
+    const ids = geometry.getAttribute('biomeId');
+    expect(ids.itemSize).toBe(1);
+    expect(ids.normalized).toBe(false);
+    expect(ids.array).toBe(input.biomes);
+    expect(Array.from(ids.array)).toEqual([0, 1, 2, 3, 0, 1]);
     expect([...input.values]).toEqual([0, 1, 2, 3, 4, 5]);
     expect([...geometry.index!.array]).toEqual([0, 3, 1, 1, 3, 4, 1, 4, 2, 2, 4, 5]);
     geometry.dispose();
@@ -43,7 +48,37 @@ describe('terrain geometry', () => {
     expect(geometry.getAttribute('surfaceCoverage').array.byteLength).toBe(4 * 1024 * 1024);
     expect(geometry.getAttribute('sandCoverage').itemSize).toBe(1);
     expect(geometry.getAttribute('sandCoverage').array.byteLength).toBe(1024 * 1024);
+    expect(geometry.getAttribute('biomeId').array.byteLength).toBe(256 * 1024);
+    expect(geometry.getAttribute('biomeId').array).toBe(input.biomes);
     expect(geometry.boundingSphere!.radius).toBeGreaterThan(0);
     geometry.dispose();
+  });
+
+  it('uses supplied IDs without deriving new categories or changing geometry/coverage', () => {
+    const input = result();
+    const original = terrainGeometry(input);
+    const classified = { ...input, biomes: Uint8Array.from([8, 7, 6, 5, 4, 3]) };
+    const changed = terrainGeometry(classified);
+    for (const name of ['position', 'normal', 'surfaceCoverage', 'sandCoverage'])
+      expect(Array.from(changed.getAttribute(name).array)).toEqual(
+        Array.from(original.getAttribute(name).array),
+      );
+    expect(Array.from(changed.index!.array)).toEqual(Array.from(original.index!.array));
+    expect(Array.from(changed.getAttribute('biomeId').array)).toEqual([8, 7, 6, 5, 4, 3]);
+    const before = Uint8Array.from(classified.biomes);
+    changed.dispose();
+    original.dispose();
+    expect(classified.biomes).toEqual(before);
+  });
+
+  it('rejects unsupported IDs, wrong lengths and non-byte encoding without fallback', () => {
+    const input = result();
+    expect(() => terrainGeometry({ ...input, biomes: new Uint8Array(1) })).toThrow(/length/);
+    const invalid = Uint8Array.from(input.biomes);
+    invalid[5] = 255;
+    expect(() => terrainGeometry({ ...input, biomes: invalid })).toThrow(/Unsupported biome/);
+    expect(() =>
+      terrainGeometry({ ...input, biomes: new Float32Array(6) as unknown as Uint8Array }),
+    ).toThrow(/encoding/);
   });
 });

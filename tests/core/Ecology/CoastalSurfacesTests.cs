@@ -102,9 +102,9 @@ public sealed class CoastalSurfacesTests
         var sandSamples=0;
         foreach(var item in fixture.RootElement.GetProperty("cases").EnumerateArray())
         {
-            var request=item.GetProperty("request").Deserialize<TerrainRequest>(options)! with{AlgorithmVersion=TerrainLimits.AlgorithmVersion};
-            var result=TerrainGenerator.Generate(request);var m=result.HeightMap;var bound=(float)request.HeightMap.HeightMultiplier;var sea=request.SeaLevel*bound;
-            var baseline=SurfaceCoverage.Derive(m.Values,m.Biomes,m.Moisture,m.Temperature,m.Slope,bound);
+            var request=item.GetProperty("request").Deserialize<TerrainRequest>(options)! with{AlgorithmVersion="diverse-landscape-v7"};
+            var result=Historical.V8.TerrainGenerator.Generate(request);var m=result.HeightMap;var bound=(float)request.HeightMap.HeightMultiplier;var sea=request.SeaLevel*bound;
+            var baseline=Historical.V8.SurfaceCoverage.Derive(m.Values,m.Biomes,m.Moisture,m.Temperature,m.Slope,bound);
             var fields=new Dictionary<string,object>{["values"]=m.Values,["biomes"]=m.Biomes,["moisture"]=m.Moisture,["temperature"]=m.Temperature,["slope"]=m.Slope,["vegetationDensity"]=m.VegetationDensity,["surfaceWeights"]=baseline,["trees"]=m.Trees,["rocks"]=m.Rocks,["simulation"]=result.Simulation};
             foreach(var(name,value)in fields)Assert.Equal(item.GetProperty("hashes").GetProperty(name).GetString(),Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value,options))).ToLowerInvariant());
             var ocean=m.Biomes.Select(b=>b==LandscapeBiome.Ocean).ToArray();var distances=CoastalSurfaces.Distances(ocean,m.Width,m.Height);

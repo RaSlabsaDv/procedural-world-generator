@@ -14,6 +14,8 @@ Current behavior composes the policies below; a historical version label does no
 
 - [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md): experiment protocol, readonly records and immutable configuration, sequential runner and editor UI, summary inclusion/count rules and versioned JSON/CSV export.
 - [Landscape/climate v3](specs/LANDSCAPE_V3.md): base environment and ecological rules; original height composition is historical.
+- [Regional climate v1](specs/REGIONAL_CLIMATE_V1.md): current world-grid climate, elevation cooling and highland snow.
+- [Biome presentation v1](specs/BIOME_PRESENTATION_V1.md): compact biome ground colors and species crown palettes.
 - [Atlas material detail v1](specs/ATLAS_MATERIALS_V1.md): reproducible lower-contrast surface PNGs and presentation-only verification.
 - [Surface coverage v1](specs/SURFACE_TRANSITIONS_V1.md): base weights used before placement.
 - [Vegetation structure v1](specs/VEGETATION_STRUCTURE_V1.md): groves, edges and variants.

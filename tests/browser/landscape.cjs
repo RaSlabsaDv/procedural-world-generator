@@ -3,7 +3,7 @@ const {
   fillParameters,
   artifactPath,
 } = require("./support/editor.cjs");
-// Full v8 WASM/API fields, trees and rocks, maximum work, visible landscapes, instancing and offline 3D.
+// Full v9 WASM/API fields, trees and rocks, maximum work, visible landscapes, instancing and offline 3D.
 const {
   base,
   launchBrowser,
@@ -75,7 +75,7 @@ const assert = require("node:assert/strict"),
           globalWarmth: warmth,
           vegetationDensity: 1,
           landformRegionScale: regionScale,
-          algorithmVersion: "diverse-landscape-v7",
+          algorithmVersion: "diverse-landscape-v8",
         };
         let ticks = 0,
           last = performance.now(),
@@ -111,9 +111,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v8" ||
-            result.executionProfile !== "landscape-worker-json-v8" ||
-            result.result.resultVersion !== "landscape-ecology-v8" ||
+            result.workload !== "landscape-ecology-hydraulic-v9" ||
+            result.executionProfile !== "landscape-worker-json-v9" ||
+            result.result.resultVersion !== "landscape-ecology-v9" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )

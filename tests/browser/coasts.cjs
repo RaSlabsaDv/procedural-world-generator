@@ -13,7 +13,7 @@ const assert = require("node:assert/strict"),
     prefix = baseline ? "before" : "after";
   const algorithmVersion = baseline
     ? "diverse-landscape-v6"
-    : "diverse-landscape-v7";
+    : "diverse-landscape-v8";
   const browser = await launchBrowser();
   try {
     const context = await browser.newContext({

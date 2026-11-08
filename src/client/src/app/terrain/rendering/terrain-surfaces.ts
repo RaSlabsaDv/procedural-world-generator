@@ -6,20 +6,16 @@ import {
   Texture,
   TextureLoader,
 } from 'three';
+import { LANDSCAPE_BIOME } from '../data/terrain.models';
+import { BIOME_GROUND_COLORS, SURFACE_COLORS } from '../data/biome-presentation';
 export const SURFACE_REPEAT_UNITS = 4;
 export const SURFACE_TEXTURE_NAMES = ['grass', 'soil', 'sand', 'rock', 'snow'] as const;
 type SurfaceName = (typeof SURFACE_TEXTURE_NAMES)[number];
 export type SurfaceTextures = Record<SurfaceName, Texture>;
 
-/** Rendering colors only. Coverage and suitability are supplied by Core. */
-export const SURFACE_COLORS = {
-  grass: 0xa7b976,
-  soil: 0xb5a17a,
-  sand: 0xd6c28e,
-  rock: 0xa6a397,
-  snow: 0xe9eff1,
-  ocean: 0x37768b,
-} as const;
+export { SURFACE_COLORS } from '../data/biome-presentation';
+export const BIOME_GROUND_REVISION = 'terrain-biome-ground-v1';
+const BIOME_IDS = Object.values(LANDSCAPE_BIOME);
 
 export interface TerrainSurfaces {
   readonly ready: Promise<SurfaceTextures>;
@@ -65,12 +61,18 @@ export function loadTerrainSurfaces(
 /** Frozen Lambert extension: no displacement, extra lights, ecological fields or extra draw calls. */
 export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number, height: number) {
   const material = new MeshLambertMaterial();
-  material.customProgramCacheKey = () => 'terrain-surface-coverage-v2';
+  material.customProgramCacheKey = () => BIOME_GROUND_REVISION;
   material.onBeforeCompile = (shader) => {
     for (const name of SURFACE_TEXTURE_NAMES)
       shader.uniforms[`detail_${name}`] = { value: textures[name] };
-    for (const [name, hex] of Object.entries(SURFACE_COLORS))
-      shader.uniforms[`surface_${name}`] = { value: new Color(hex) };
+    for (const name of ['sand', 'rock', 'snow', 'ocean'] as const)
+      shader.uniforms[`surface_${name}`] = { value: new Color(SURFACE_COLORS[name]) };
+    shader.uniforms['biomeGrass'] = {
+      value: BIOME_IDS.map((id) => new Color(BIOME_GROUND_COLORS[id].grass)),
+    };
+    shader.uniforms['biomeSoil'] = {
+      value: BIOME_IDS.map((id) => new Color(BIOME_GROUND_COLORS[id].soil)),
+    };
     shader.uniforms['detailOffset'] = { value: [(width - 1) / 2, (height - 1) / 2] };
     shader.uniforms['detailRepeat'] = { value: SURFACE_REPEAT_UNITS };
     shader.vertexShader = shader.vertexShader
@@ -78,6 +80,11 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
         '#include <common>',
         `
       #include <common>
+      attribute float biomeId;
+      uniform vec3 biomeGrass[${BIOME_IDS.length}];
+      uniform vec3 biomeSoil[${BIOME_IDS.length}];
+      varying vec3 vBiomeGrass;
+      varying vec3 vBiomeSoil;
       attribute vec4 surfaceCoverage;
       attribute float sandCoverage;
       uniform vec2 detailOffset;
@@ -91,6 +98,9 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
         '#include <begin_vertex>',
         `
       #include <begin_vertex>
+      // Lookup category colors before interpolation, never interpolate/reclassify IDs.
+      vBiomeGrass = biomeGrass[int(biomeId)];
+      vBiomeSoil = biomeSoil[int(biomeId)];
       vSurfaceCoverage = surfaceCoverage;
       vSandCoverage = sandCoverage;
       vDetailPosition = position + vec3(detailOffset.x, 0.0, detailOffset.y);
@@ -108,8 +118,8 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
       uniform sampler2D detail_rock;
       uniform sampler2D detail_snow;
       uniform float detailRepeat;
-      uniform vec3 surface_grass;
-      uniform vec3 surface_soil;
+      varying vec3 vBiomeGrass;
+      varying vec3 vBiomeSoil;
       uniform vec3 surface_sand;
       uniform vec3 surface_rock;
       uniform vec3 surface_snow;
@@ -133,8 +143,8 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
       vec3 detailPoint = vDetailPosition / detailRepeat;
       float land = dot(vSurfaceCoverage, vec4(1.0)) + vSandCoverage;
       vec3 ground = max(0.0, 1.0-land) * surface_ocean;
-      if (vSurfaceCoverage.x > 0.0) ground += vSurfaceCoverage.x * surface_grass * (0.7 + 0.6 * projectedDetail(detail_grass, detailPoint, detailAxis));
-      if (vSurfaceCoverage.y > 0.0) ground += vSurfaceCoverage.y * surface_soil * (0.7 + 0.6 * projectedDetail(detail_soil, detailPoint, detailAxis));
+      if (vSurfaceCoverage.x > 0.0) ground += vSurfaceCoverage.x * vBiomeGrass * (0.7 + 0.6 * projectedDetail(detail_grass, detailPoint, detailAxis));
+      if (vSurfaceCoverage.y > 0.0) ground += vSurfaceCoverage.y * vBiomeSoil * (0.7 + 0.6 * projectedDetail(detail_soil, detailPoint, detailAxis));
       if (vSurfaceCoverage.z > 0.0) ground += vSurfaceCoverage.z * surface_rock * (0.7 + 0.6 * projectedDetail(detail_rock, detailPoint, detailAxis));
       if (vSurfaceCoverage.w > 0.0) ground += vSurfaceCoverage.w * surface_snow * (0.7 + 0.6 * projectedDetail(detail_snow, detailPoint, detailAxis));
       if (vSandCoverage > 0.0) ground += vSandCoverage * surface_sand * (0.7 + 0.6 * projectedDetail(detail_sand, detailPoint, detailAxis));

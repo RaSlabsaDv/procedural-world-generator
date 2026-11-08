@@ -1,6 +1,6 @@
 namespace WorldGenerator.Core;
 
-/// <summary>V3 ecological rules, including explicit precedence and tree-kind eligibility.</summary>
+/// <summary>Ecological precedence and tree eligibility, with regional-climate highland snow.</summary>
 internal static class LandscapeBiomeClassifier
 {
     internal const double MaxForestSlope = .5;
@@ -9,7 +9,7 @@ internal static class LandscapeBiomeClassifier
         double temperature, double slope, double patch)
     {
         if (ocean) return LandscapeBiome.Ocean;
-        if (height >= .55 && temperature <= .20 && slope <= 1.2) return LandscapeBiome.SnowHighlands;
+        if (SnowCover.IsHighland(height, temperature, slope)) return LandscapeBiome.SnowHighlands;
         if (slope > .8 || height > .86 && temperature < .4) return LandscapeBiome.Rock;
         if (temperature <= .28) return LandscapeBiome.Tundra;
         if (temperature >= .62 && moisture >= .25 && moisture < .53 && slope < MaxForestSlope)

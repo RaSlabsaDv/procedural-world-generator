@@ -57,7 +57,7 @@ function run(): TerrainRun {
         values: new Float32Array([0, 10, 20, 30]),
         biomes: new Uint8Array([0, 1, 2, 3]),
         surfaceWeights: Float32Array.from(testSurfaceWeights([0, 1, 2, 3])),
-        resultVersion: 'landscape-ecology-v8',
+        resultVersion: 'landscape-ecology-v9',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },

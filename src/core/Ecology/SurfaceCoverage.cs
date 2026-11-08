@@ -1,13 +1,10 @@
 namespace WorldGenerator.Core;
 
-/// <summary>Derived appearance only. Frozen arithmetic in docs/specs/SURFACE_TRANSITIONS_V1.md.</summary>
+/// <summary>Derived coverage; current snow policy is in REGIONAL_CLIMATE_V1.md.</summary>
 internal static class SurfaceCoverage
 {
     internal const int ChannelCount = 5;
     internal const double SumTolerance = 1e-6;
-    private const double SnowHeightStart = .45, SnowHeightEnd = .65;
-    private const double SnowTemperatureStart = .18, SnowTemperatureEnd = .30;
-    private const double SnowSlopeStart = 1, SnowSlopeEnd = 1.4;
     private const double RockSlopeStart = .45, RockSlopeEnd = 1.05;
     private const double GrassMoistureStart = .28, GrassMoistureEnd = .60;
     private const double GrassTemperatureStart = .18, GrassTemperatureEnd = .38;
@@ -25,8 +22,7 @@ internal static class SurfaceCoverage
     internal static void Write(Span<float> output, bool ocean, double h, float m, float t, float s)
     {
         if (ocean) { output.Clear(); return; }
-        var snow = Smooth(SnowHeightStart, SnowHeightEnd, h) * (1 - Smooth(SnowTemperatureStart, SnowTemperatureEnd, t))
-            * (1 - Smooth(SnowSlopeStart, SnowSlopeEnd, s));
+        var snow = SnowCover.Fraction(h, t, s);
         var rock = Smooth(RockSlopeStart, RockSlopeEnd, s);
         var grass = Smooth(GrassMoistureStart, GrassMoistureEnd, m) * Smooth(GrassTemperatureStart, GrassTemperatureEnd, t);
         var remaining = (1 - snow) * (1 - rock);

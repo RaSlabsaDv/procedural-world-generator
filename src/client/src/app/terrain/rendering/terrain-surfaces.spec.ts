@@ -1,5 +1,7 @@
+import { LANDSCAPE_BIOME } from '../data/terrain.models';
+import { BIOME_GROUND_COLORS, SURFACE_COLORS } from '../data/biome-presentation';
 import { testSurfaceWeights } from '../testing/terrain-test-fixture';
-import { Texture, RepeatWrapping, ShaderLib, WebGLRenderer } from 'three';
+import { Color, Texture, RepeatWrapping, ShaderLib, WebGLRenderer } from 'three';
 import {
   loadTerrainSurfaces,
   terrainSurfaceMaterial,
@@ -64,7 +66,7 @@ it('unpacks continuous Core weights without category mapping or changed triangle
     biomes = Uint8Array.from({ length: 9 }, (_, i) => i);
   const surfaceWeights = Float32Array.from(testSurfaceWeights(biomes));
   surfaceWeights.set([0.1, 0.2, 0.3, 0.15, 0.25], 5);
-  const geometry = terrainGeometry({ width: 3, height: 3, values, surfaceWeights });
+  const geometry = terrainGeometry({ width: 3, height: 3, values, surfaceWeights, biomes });
   const coverage = geometry.getAttribute('surfaceCoverage');
   expect(coverage.array).toBeInstanceOf(Float32Array);
   expect([...coverage.array.slice(0, 4)]).toEqual([0, 0, 0, 0]);
@@ -104,5 +106,56 @@ it('keeps repeat distance fixed while translating centered rectangular grids bac
   expect(shaders[0].fragmentShader).toContain(' + vSandCoverage');
   expect(shaders[0].fragmentShader).toContain('projectedDetail(detail_sand');
   expect(shaders[0].uniforms['detail_sand'].value).toBe(textures.sand);
+  owner.dispose();
+});
+
+it('looks up linear grass/soil colors at vertices and leaves protected material terms untouched', async () => {
+  const owner = loadTerrainSurfaces(async () => new Texture());
+  const material = terrainSurfaceMaterial(await owner.ready, 3, 3);
+  const shader = {
+    vertexShader: ShaderLib.lambert.vertexShader,
+    fragmentShader: ShaderLib.lambert.fragmentShader,
+    uniforms: {} as Record<string, { value: unknown }>,
+  };
+  material.onBeforeCompile(
+    shader as Parameters<typeof material.onBeforeCompile>[0],
+    {} as WebGLRenderer,
+  );
+  expect(material.customProgramCacheKey()).toBe('terrain-biome-ground-v1');
+  expect(shader.vertexShader).toContain('attribute float biomeId;');
+  expect(shader.vertexShader).toContain('vBiomeGrass = biomeGrass[int(biomeId)]');
+  expect(shader.vertexShader).toContain('vBiomeSoil = biomeSoil[int(biomeId)]');
+  expect(shader.fragmentShader).not.toContain('int(biomeId)');
+  expect(shader.fragmentShader).toContain('vSurfaceCoverage.x * vBiomeGrass *');
+  expect(shader.fragmentShader).toContain('vSurfaceCoverage.y * vBiomeSoil *');
+  expect(shader.fragmentShader).toContain(
+    'vSurfaceCoverage.z * surface_rock * (0.7 + 0.6 * projectedDetail(detail_rock',
+  );
+  expect(shader.fragmentShader).toContain(
+    'vSurfaceCoverage.w * surface_snow * (0.7 + 0.6 * projectedDetail(detail_snow',
+  );
+  expect(shader.fragmentShader).toContain(
+    'vSandCoverage * surface_sand * (0.7 + 0.6 * projectedDetail(detail_sand',
+  );
+  expect(shader.fragmentShader).toContain('vec3 ground = max(0.0, 1.0-land) * surface_ocean;');
+  expect(shader.fragmentShader).toContain('diffuseColor.rgb *= ground;');
+  const grass = shader.uniforms['biomeGrass'].value as Color[],
+    soil = shader.uniforms['biomeSoil'].value as Color[];
+  expect(grass).toHaveLength(9);
+  expect(soil).toHaveLength(9);
+  for (const id of Object.values(LANDSCAPE_BIOME)) {
+    expect(grass[id].getHex()).toBe(BIOME_GROUND_COLORS[id].grass);
+    expect(soil[id].getHex()).toBe(BIOME_GROUND_COLORS[id].soil);
+    expect(grass[id].r).toBeGreaterThan(0);
+    expect(grass[id].r).toBeLessThan(((BIOME_GROUND_COLORS[id].grass >> 16) & 255) / 255);
+  }
+  for (const id of [LANDSCAPE_BIOME.Ocean, LANDSCAPE_BIOME.Rock, LANDSCAPE_BIOME.SnowHighlands]) {
+    expect(grass[id].toArray()).toEqual(new Color(SURFACE_COLORS.grass).toArray());
+    expect(soil[id].toArray()).toEqual(new Color(SURFACE_COLORS.soil).toArray());
+  }
+  // Independent sRGB transfer reference: red=160/255 -> linear 0.3515326, not raw byte/255.
+  expect(grass[LANDSCAPE_BIOME.Grassland].r).toBeCloseTo(0.3515326, 6);
+  expect(grass[LANDSCAPE_BIOME.Grassland]).not.toBe(grass[LANDSCAPE_BIOME.BroadleafForest]);
+  material.dispose();
   owner.dispose();
 });

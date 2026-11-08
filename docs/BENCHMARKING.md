@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v8`, algorithm `diverse-landscape-v7`, result `landscape-ecology-v8`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v8`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v9`, algorithm `diverse-landscape-v8`, result `landscape-ecology-v9`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v9`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7/v8 timings.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7/v8/v9 timings.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -266,3 +266,16 @@ Summaries are not embedded or computed during collection. See the
 [complete rules](specs/ARCHITECTURE_RACE_V1.md#step-4-summary-and-export-rules).
 A controlled campaign must separately freeze builds, environment and network conditions;
 these utilities neither automate those conditions nor establish a performance winner.
+
+
+## Regional climate workload identity
+
+Current workload/profile v9 and algorithm v8 replace climate/snow semantics while
+keeping JSON shape and simulation version unchanged. Core time includes two
+three-octave climate fields (six noise samples/cell, formerly seven), classification,
+coverage and all downstream placement/coastal work. There is no added map-sized
+climate allocation. Changed ecology can alter instance counts, response bytes and
+display setup despite unchanged heights. Use matching v9 identities and complete
+requests for each pair; never compare old/new smoke timings as an architectural
+performance result. The [climate specification](specs/REGIONAL_CLIMATE_V1.md) fixes
+constants and numerical references.

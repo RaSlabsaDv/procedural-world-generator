@@ -1,3 +1,4 @@
+import { TREE_CROWN_COLORS } from '../data/biome-presentation';
 import {
   ConeGeometry,
   CylinderGeometry,
@@ -26,7 +27,7 @@ const APPEARANCE = {
       height: 1,
       y: 0.72,
       scale: [0.9, 1.05, 0.95],
-      color: 0x4b8250,
+      color: TREE_CROWN_COLORS[TREE_KIND.Broadleaf][TREE_VARIANT.Small],
     },
     [TREE_VARIANT.Mature]: {
       trunk: 0.82,
@@ -34,7 +35,7 @@ const APPEARANCE = {
       height: 1,
       y: 1.18,
       scale: [1.05, 0.85, 1],
-      color: 0x37744a,
+      color: TREE_CROWN_COLORS[TREE_KIND.Broadleaf][TREE_VARIANT.Mature],
     },
   },
   [TREE_KIND.Conifer]: {
@@ -44,7 +45,7 @@ const APPEARANCE = {
       height: 0.95,
       y: 0.72,
       scale: [1, 1, 1],
-      color: 0x34634a,
+      color: TREE_CROWN_COLORS[TREE_KIND.Conifer][TREE_VARIANT.Small],
     },
     [TREE_VARIANT.Mature]: {
       trunk: 0.7,
@@ -52,7 +53,7 @@ const APPEARANCE = {
       height: 1.55,
       y: 1.18,
       scale: [1, 1, 1],
-      color: 0x234c3a,
+      color: TREE_CROWN_COLORS[TREE_KIND.Conifer][TREE_VARIANT.Mature],
     },
   },
   [TREE_KIND.Savanna]: {
@@ -62,7 +63,7 @@ const APPEARANCE = {
       height: 1,
       y: 0.86,
       scale: [1.15, 0.45, 1],
-      color: 0x889251,
+      color: TREE_CROWN_COLORS[TREE_KIND.Savanna][TREE_VARIANT.Small],
     },
     [TREE_VARIANT.Mature]: {
       trunk: 1.22,
@@ -70,7 +71,7 @@ const APPEARANCE = {
       height: 1,
       y: 1.28,
       scale: [1.4, 0.32, 1.15],
-      color: 0x788449,
+      color: TREE_CROWN_COLORS[TREE_KIND.Savanna][TREE_VARIANT.Mature],
     },
   },
 } as const;

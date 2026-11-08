@@ -1,4 +1,4 @@
-export const RESULT_VERSION = 'landscape-ecology-v8';
+export const RESULT_VERSION = 'landscape-ecology-v9';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -32,7 +32,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v8';
+  readonly executionProfile: 'landscape-worker-json-v9';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -54,8 +54,8 @@ export class TerrainError extends Error {
   }
 }
 
-export const TERRAIN_ALGORITHM = 'diverse-landscape-v7';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v8';
+export const TERRAIN_ALGORITHM = 'diverse-landscape-v8';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v9';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -97,9 +97,9 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v8';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v9';
 
-/** Wire IDs for landscape-ecology-v8; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v9; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,

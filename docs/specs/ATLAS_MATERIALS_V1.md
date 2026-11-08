@@ -88,3 +88,11 @@ Core/host sources and numerical fixtures were unchanged; native test suites were
 rerun. Raw ignored evidence includes atlas-materials-before/after.json, atlas-textures-
 before/after.json, atlas-materials-before/after-sheet.png and the existing materials/
 coasts/lighting/PWA reports. No controlled benchmark findings are claimed.
+
+
+## Subsequent composition
+
+The assets and their original verification above remain unchanged. Current
+terrain-biome-ground-v1 overlays grass/soil and crown palette changes specified in
+[Biome presentation v1](BIOME_PRESENTATION_V1.md); protected surface contributions
+retain the original equations.

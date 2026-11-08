@@ -27,8 +27,8 @@ public sealed class ClimateV3Tests
     [InlineData(false, .2, .4, .7, .5, .8, LandscapeBiome.Grassland)]
     [InlineData(false, .2, .7, .7, 0, .42, LandscapeBiome.Grassland)]
     [InlineData(false, .2, .2, .7, .81, .8, LandscapeBiome.Rock)]
-    public void ClassificationHasExplicitPrecedenceAndBoundaryRules(bool ocean, double h, double m, double t, double s, double p, LandscapeBiome expected) =>
-        Assert.Equal(expected, LandscapeBiomeClassifier.Classify(ocean, h, m, t, s, p));
+    public void HistoricalV3ClassificationRetainsExplicitPrecedenceAndBoundaries(bool ocean, double h, double m, double t, double s, double p, LandscapeBiome expected) =>
+        Assert.Equal(expected, Historical.V8.LandscapeBiomeClassifier.Classify(ocean, h, m, t, s, p));
 
     [Fact]
     public void MatchesIndependentV3CompositionAndClimateLiterals()

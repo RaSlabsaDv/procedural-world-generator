@@ -318,5 +318,79 @@ five texture uploads, render/resource caps and offline updates pass. No new runt
 dependency or map buffers. Encoded total is 253693 bytes; GPU texture estimate stays
 about 1.67 MiB/view. This is appearance verification, not a performance campaign.
 
-Material palette, foliage, decorative rocks and water remain separately scoped future
-presentation work. Controlled research campaigns remain planned. README stays empty.
+At that milestone, material palette, foliage, decorative rocks and water remained
+separately scoped future presentation work. Controlled research campaigns remain planned. README stays empty.
+
+
+## Biome readability — Step 1 complete
+
+Implemented grass/soil colors from existing Core biome IDs and centralized species/
+variant crown colors. Sand, snow, rock, ocean, trunks and all numerical output stay
+unchanged. One aliased Uint8 attribute adds 0.25 MiB GPU storage at 512x512 per view;
+vertex palette lookup precedes interpolation. No extra textures, draw calls, controls
+or dependencies. See [Biome presentation v1](specs/BIOME_PRESENTATION_V1.md).
+
+Verification: 300 Angular tests, seven build/asset/documentation checks, production
+publication, 21 paired views with exact camera/math hashes, and Chromium materials,
+coasts, lighting and PWA checks pass. Actual maximum-size biome buffers and replacement/
+independent-view cleanup are verified. README remains empty.
+
+Regional climate and snow readability are completed in Step 2 below. Beach width
+and coastal transitions follow separately; neither belongs to this palette step.
+
+
+## Planned: larger, varied rocks with natural scattering
+
+After regional climate/snow and coastal readability, extend decorative rocks beyond
+the current small stones. Keep this as a separate generation/rendering step.
+
+- Add a restrained size mix: occasional large landmark boulders, medium rocks and
+  sparse small companions. Vary silhouettes, proportions, partial burial and rotation
+  so scale changes do not merely repeat the same shape.
+- Replace visibly regular coverage with seeded irregular scattering: isolated rocks,
+  loose clusters and substantial empty areas. Do not place one rock per grid cell,
+  fill the map to its cap, or expose rows/equal spacing. Candidate indexing may use
+  a grid internally, but visible positions and grouping must not reveal it.
+- Let slope, exposed rock and landform context influence placement. Keep plains and
+  forest clearings mostly open; avoid uniform density across every biome. Preserve
+  supported terrain contact, water exclusion and clearance from trees and other
+  rocks, accounting for larger footprints.
+- Compute all selection, sizes and transforms deterministically in shared C# Core.
+  Angular renders supplied instances with a bounded set of shared geometries and
+  materials; no renderer-side random placement or duplicate mathematical logic.
+- Freeze size ranges, spacing, cluster rules, instance/draw/memory limits and version
+  changes in a new specification before implementation. Existing caps are ceilings,
+  not target counts. Preserve fair Local/Remote inputs and timing boundaries.
+- Verify repeatability, full WASM/API equivalence, footprint support/clearance, sparse
+  distribution and large-object bounds/shadows. Inspect overview and close-up scenes
+  across several seeds to check for visible grids, repetition and overcrowding.
+
+This is planned work only; the existing frozen rock specification and implementation
+remain unchanged until this step is explicitly implemented.
+
+
+## Biome readability — Step 2: regional climate and snow complete
+
+Implemented [regional-climate-v1](specs/REGIONAL_CLIMATE_V1.md): two broad world-grid
+climate fields, stronger elevation cooling and smooth static highland snow. Current
+algorithm is diverse-landscape-v8; result/workload/profile are v9 with unchanged JSON
+shape, IDs, request fields and simulation version. No renderer climate decisions,
+controls, dependencies or extra map-sized climate buffers were introduced.
+
+Snow now appears on suitable default highlands; hot lowlands remain snow-free.
+Warmer identical requests cannot increase snow. Terrain, slopes, boundary-connected
+ocean and hydraulic outputs remain exact; ecology and downstream instance records
+may change. Existing palette, texture, placement and coastal equations are retained.
+Historical v8 and earlier fixtures keep their original values through frozen test
+policies. Detailed verification and limitations live in the specification.
+
+Verification: 202 Core, 40 API and 300 Angular tests, seven packaging checks, worker
+RPC and production publication pass. All seven full browser parity cases report
+zero numeric error; 21 paired camera/invariant views and material/coast/light/PWA
+regressions pass. Existing resource caps and offline behavior remain intact.
+
+Next: coastal readability and wider, context-sensitive beaches, with a separate
+frozen Core specification and versioned equivalence tests. Afterwards implement
+the planned larger, varied rocks with sparse natural scattering. Neither feature
+is included in regional climate/snow. Controlled performance campaigns remain
+separate work; this step supplies no performance findings. README remains empty.

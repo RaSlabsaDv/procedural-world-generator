@@ -39,6 +39,8 @@ const artifact = artifactPath;
           calls: 0,
           instances: 0,
           terrainCalls: 0,
+          biomeBuffers: new Map(),
+          biomeAttribute: null,
         };
         window.__surfaceContexts.push(record);
         for (const name of ["texImage2D", "texSubImage2D"]) {
@@ -76,6 +78,39 @@ const artifact = artifactPath;
           const original = gl[name];
           gl[name] = function (...args) {
             record.calls++;
+            const program = gl.getParameter(gl.CURRENT_PROGRAM);
+            const location = program
+              ? gl.getAttribLocation(program, "biomeId")
+              : -1;
+            if (location >= 0) {
+              const buffer = gl.getVertexAttrib(
+                location,
+                gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING,
+              );
+              const previous = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
+              gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+              const bytes = gl.getBufferParameter(
+                gl.ARRAY_BUFFER,
+                gl.BUFFER_SIZE,
+              );
+              gl.bindBuffer(gl.ARRAY_BUFFER, previous);
+              record.biomeBuffers.set(buffer, bytes);
+              record.biomeAttribute = {
+                bytes,
+                type: gl.getVertexAttrib(location, gl.VERTEX_ATTRIB_ARRAY_TYPE),
+                size: gl.getVertexAttrib(location, gl.VERTEX_ATTRIB_ARRAY_SIZE),
+                normalized: gl.getVertexAttrib(
+                  location,
+                  gl.VERTEX_ATTRIB_ARRAY_NORMALIZED,
+                ),
+                activeAttributes: gl.getProgramParameter(
+                  program,
+                  gl.ACTIVE_ATTRIBUTES,
+                ),
+                maxAttributes: gl.getParameter(gl.MAX_VERTEX_ATTRIBS),
+                maxVaryingVectors: gl.getParameter(gl.MAX_VARYING_VECTORS),
+              };
+            }
             if (name.endsWith("Instanced")) record.instances += args.at(-1);
             if (!name.endsWith("Instanced")) record.terrainCalls++;
             return original.apply(this, args);
@@ -115,7 +150,7 @@ const artifact = artifactPath;
           body: JSON.stringify({
             ...parameters,
             heightMap,
-            algorithmVersion: "diverse-landscape-v7",
+            algorithmVersion: "diverse-landscape-v8",
           }),
         });
         if (!response.ok)
@@ -185,8 +220,21 @@ const artifact = artifactPath;
     const resources = async () =>
       page.evaluate(() =>
         window.__surfaceContexts.map(
-          ({ gl, textures, sources, calls, terrainCalls, instances }) => ({
+          ({
+            gl,
+            textures,
+            sources,
+            calls,
+            terrainCalls,
+            instances,
+            biomeBuffers,
+            biomeAttribute,
+          }) => ({
             lost: gl.isContextLost(),
+            biomeAttribute,
+            liveBiomeBuffers: [...biomeBuffers].filter(([buffer]) =>
+              gl.isBuffer(buffer),
+            ).length,
             textures: textures.size,
             sources: [...sources].sort(),
             calls,
@@ -201,6 +249,19 @@ const artifact = artifactPath;
       assert.equal(live.length, views);
       for (const row of live) {
         assert.equal(row.textures, 5);
+        assert.equal(
+          row.liveBiomeBuffers,
+          1,
+          "Replaced geometry must release its biome buffer",
+        );
+        assert.equal(row.biomeAttribute.type, 5121, "UNSIGNED_BYTE");
+        assert.equal(row.biomeAttribute.size, 1);
+        assert.equal(row.biomeAttribute.normalized, false);
+        assert.ok(
+          row.biomeAttribute.activeAttributes <=
+            row.biomeAttribute.maxAttributes,
+        );
+        assert.ok(row.biomeAttribute.maxVaryingVectors > 0);
         assert.deepEqual(row.sources, [
           "grass.png",
           "rock.png",
@@ -214,8 +275,10 @@ const artifact = artifactPath;
           "Color pass: terrain, twelve tree and six rock meshes",
         );
       }
-      for (const row of rows.filter((row) => row.lost))
+      for (const row of rows.filter((row) => row.lost)) {
         assert.equal(row.textures, 0);
+        assert.equal(row.liveBiomeBuffers, 0);
+      }
       const lighting = await lightingResources(page);
       for (const row of lighting.filter(
         (row) => !row.lost && row.detailTextures > 0,
@@ -258,7 +321,8 @@ const artifact = artifactPath;
       ["cold", 2026, 0.25, 0.8],
       ["warm", -7, 0.9, 0.45],
       ["conifer", 2026, 0.38, 0.8],
-      ["mixed", 42, 0.6, 0.65, 129, 32],
+      // v9 climate fixture: exercises all three species and both variants.
+      ["mixed", 42, 0.7, 0.65, 129, 32],
     ]) {
       const fields = {
         seed,
@@ -308,7 +372,7 @@ const artifact = artifactPath;
       captures.push({
         label,
         parameters,
-        algorithmVersion: "diverse-landscape-v7",
+        algorithmVersion: "diverse-landscape-v8",
         wheelDelta: -650,
         resources: await assertResources(1),
         lighting: await lightingResources(page),
@@ -351,6 +415,10 @@ const artifact = artifactPath;
       /16384/,
     );
     const maximum = await assertResources(1);
+    assert.equal(
+      maximum.find((row) => !row.lost && row.textures > 0).biomeAttribute.bytes,
+      262144,
+    );
     const maximumLighting = await lightingResources(page);
     const maxCanvas = page.locator("app-terrain-preview canvas");
     await maxCanvas.screenshot({

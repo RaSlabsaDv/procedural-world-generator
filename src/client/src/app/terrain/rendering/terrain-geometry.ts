@@ -1,10 +1,20 @@
 import { BufferAttribute, BufferGeometry } from 'three';
-import { TerrainResponse, SURFACE_CHANNELS, SURFACE_CHANNEL } from '../data/terrain.models';
+import {
+  TerrainResponse,
+  SURFACE_CHANNELS,
+  SURFACE_CHANNEL,
+  LANDSCAPE_BIOME_IDS,
+} from '../data/terrain.models';
 
 export function terrainGeometry(
-  result: Pick<TerrainResponse['result'], 'width' | 'height' | 'values' | 'surfaceWeights'>,
+  result: Pick<
+    TerrainResponse['result'],
+    'width' | 'height' | 'values' | 'surfaceWeights' | 'biomes'
+  >,
 ): BufferGeometry {
-  const { width, height, values, surfaceWeights } = result;
+  const { width, height, values, surfaceWeights, biomes } = result;
+  if (!(biomes instanceof Uint8Array) || biomes.length !== values.length)
+    throw new Error('Invalid biome attribute length or encoding.');
   const positions = new Float32Array(values.length * 3);
   const coverage = new Float32Array(values.length * 4);
   const sand = new Float32Array(values.length);
@@ -12,6 +22,7 @@ export function terrainGeometry(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
+      if (!LANDSCAPE_BIOME_IDS.has(biomes[i])) throw new Error('Unsupported biome ID.');
       positions.set([x - (width - 1) / 2, values[i], y - (height - 1) / 2], i * 3);
       const offset = i * SURFACE_CHANNELS;
       sand[i] = surfaceWeights[offset + SURFACE_CHANNEL.Sand];
@@ -32,6 +43,8 @@ export function terrainGeometry(
     }
   }
   const geometry = new BufferGeometry();
+  // Alias validated IDs; geometry disposal releases the GPU buffer, not source data.
+  geometry.setAttribute('biomeId', new BufferAttribute(biomes, 1, false));
   geometry.setAttribute('position', new BufferAttribute(positions, 3));
   geometry.setAttribute('surfaceCoverage', new BufferAttribute(coverage, 4));
   geometry.setAttribute('sandCoverage', new BufferAttribute(sand, 1));

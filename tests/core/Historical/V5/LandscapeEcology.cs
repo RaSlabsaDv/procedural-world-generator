@@ -26,11 +26,11 @@ internal static class LandscapeEcology
                 var dx = ((double)values[y * map.Width + right] - values[y * map.Width + left]) / (right - left);
                 var dz = ((double)values[bottom * map.Width + x] - values[top * map.Width + x]) / (bottom - top);
                 slope[i] = (float)Math.Sqrt(dx * dx + dz * dz);
-                biomes[i] = LandscapeBiomeClassifier.Classify(ocean[i], h, moisture[i], temperature[i], slope[i], patch);
-                density[i] = LandscapeBiomeClassifier.Density(biomes[i], moisture[i], slope[i], patch, 1);
+                biomes[i] = global::WorldGenerator.Core.Tests.Historical.V8.LandscapeBiomeClassifier.Classify(ocean[i], h, moisture[i], temperature[i], slope[i], patch);
+                density[i] = global::WorldGenerator.Core.Tests.Historical.V8.LandscapeBiomeClassifier.Density(biomes[i], moisture[i], slope[i], patch, 1);
             }
         VegetationStructure.Apply(density, biomes, slope, request);
-        var surfaceWeights = SurfaceCoverage.Derive(values, biomes, moisture, temperature, slope, bound);
+        var surfaceWeights = global::WorldGenerator.Core.Tests.Historical.V8.SurfaceCoverage.Derive(values, biomes, moisture, temperature, slope, bound);
         var trees = VegetationGenerator.PlaceTrees(values, biomes, slope, density, map.Width, map.Height, seed);
         var rocks = RockPlacement.Place(values, biomes, slope, surfaceWeights, trees, map.Width, map.Height, seed, map.NoiseScale);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,

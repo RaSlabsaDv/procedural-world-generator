@@ -8,16 +8,16 @@ public sealed class SurfaceCoverageTests
     public void PreservesFrozenV3V4TerrainAndHistoricalVegetationFixtures() => Historical.V3.FrozenLandscape.Verify();
 
     [Fact]
-    public void MatchesIndependentLiteralReference()
+    public void HistoricalV8MatchesIndependentLiteralReference()
     {
         var weights = new float[5];
-        SurfaceCoverage.Write(weights, false, .55, .44f, .24f, .75f);
+        Historical.V8.SurfaceCoverage.Write(weights, false, .55, .44f, .24f, .75f);
         Assert.Equal(new float[] { .04049999266862869f, .3344999849796295f, 0, .3749999701976776f, .2500000298023224f }, weights);
-        SurfaceCoverage.Write(weights, false, .7, .65f, .1f, 1.2f);
+        Historical.V8.SurfaceCoverage.Write(weights, false, .7, .65f, .1f, 1.2f);
         Assert.Equal(new float[] { 0, 0, 0, .5000001788139343f, .4999998211860657f }, weights);
-        SurfaceCoverage.Write(weights, false, 0, .65f, .7f, 0);
+        Historical.V8.SurfaceCoverage.Write(weights, false, 0, .65f, .7f, 0);
         Assert.Equal(new float[] { 1, 0, 0, 0, 0 }, weights);
-        SurfaceCoverage.Write(weights, true, 1, 1, 0, 0);
+        Historical.V8.SurfaceCoverage.Write(weights, true, 1, 1, 0, 0);
         Assert.Equal(new float[5], weights);
     }
 
