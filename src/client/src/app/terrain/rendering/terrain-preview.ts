@@ -1,4 +1,9 @@
+import { OceanSettings, OceanSettingsService } from './ocean-settings.service';
+import { OceanAnimationService } from './ocean-animation.service';
+import { loadOceanNormal } from './ocean-normal';
 import { OperationLock } from '../../platform/operation-lock.service';
+import { SceneEnvironmentService } from './scene-environment.service';
+import { SceneEnvironmentSnapshot } from './scene-environment';
 import { terrainScene } from './terrain-scene';
 import {
   afterRenderEffect,
@@ -25,6 +30,11 @@ export const TERRAIN_SURFACES_FACTORY = new InjectionToken<() => TerrainSurfaces
   { providedIn: 'root', factory: () => loadTerrainSurfaces },
 );
 
+export const OCEAN_NORMAL_FACTORY = new InjectionToken<typeof loadOceanNormal>(
+  'Ocean normal texture',
+  { providedIn: 'root', factory: () => loadOceanNormal },
+);
+
 export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
   (canvas: HTMLCanvasElement) => WebGLRenderer
 >('Terrain WebGL renderer', {
@@ -41,6 +51,13 @@ export class TerrainPreview {
   readonly run = input.required<TerrainRun>();
   readonly paused = input(false);
   private readonly operations = inject(OperationLock);
+  private readonly environment = inject(SceneEnvironmentService);
+  private readonly water = inject(OceanSettingsService);
+  private readonly animation = inject(OceanAnimationService);
+  private readonly createNormal = inject(OCEAN_NORMAL_FACTORY);
+  private normalOwner: ReturnType<typeof loadOceanNormal> | undefined;
+  private applyWater: ((settings: OceanSettings) => void) | undefined;
+  private applyEnvironment: ((snapshot: SceneEnvironmentSnapshot) => boolean) | undefined;
   private readonly isPaused = computed(() => this.paused() || this.operations.busy());
   readonly displayMeasured = output<number>();
   private savedCamera:
@@ -68,6 +85,7 @@ export class TerrainPreview {
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
+      this.normalOwner?.dispose();
       this.surfaces?.dispose();
       this.releaseContext?.();
     });
@@ -90,11 +108,18 @@ export class TerrainPreview {
         event.preventDefault();
         fail(new Error('The WebGL context was lost. Generate again to retry.'));
       };
+      let unregisterAnimation: (() => void) | undefined;
+      let visibility: IntersectionObserver | undefined;
+      let visible = true;
       let disposed = false;
       const dispose = () => {
         if (disposed) return;
         disposed = true;
         this.draw = undefined;
+        this.applyEnvironment = undefined;
+        this.applyWater = undefined;
+        unregisterAnimation?.();
+        visibility?.disconnect();
         this.resumeSetup = undefined;
         observer?.disconnect();
         canvas.removeEventListener('webglcontextlost', contextLost);
@@ -139,6 +164,18 @@ export class TerrainPreview {
               }
               throw error;
             });
+            const hasOcean = run.response.result.biomes.includes(0);
+            let normal: Awaited<ReturnType<typeof loadOceanNormal>['ready']> | undefined;
+            if (hasOcean) {
+              const owner = (this.normalOwner ??= this.createNormal());
+              normal = await owner.ready.catch((error: unknown) => {
+                if (!disposed && this.normalOwner === owner) {
+                  owner.dispose();
+                  this.normalOwner = undefined;
+                }
+                throw error;
+              });
+            }
             if (disposed) return;
             this.textureWaitMs.set(performance.now() - waitStarted);
             const buildScene = () => {
@@ -153,7 +190,17 @@ export class TerrainPreview {
                   run.request,
                   run.response.result,
                   textures,
+                  untracked(this.environment.snapshot),
+                  normal
+                    ? {
+                        seaLevel: run.terrain.seaLevel,
+                        normal,
+                        settings: untracked(this.water.settings),
+                      }
+                    : undefined,
                 );
+                this.applyEnvironment = content.updateEnvironment;
+                this.applyWater = content.updateWater;
                 // Bound the view by the request, not by sampled min/max: both modes share the same scale.
                 const span = Math.max(
                   run.request.width - 1,
@@ -179,11 +226,14 @@ export class TerrainPreview {
                     !sceneReady ||
                     disposed ||
                     untracked(this.isPaused) ||
-                    untracked(this.problem)
+                    untracked(this.problem) ||
+                    !visible ||
+                    document.hidden
                   )
                     return;
                   const submissionStarted = performance.now();
                   try {
+                    content!.waterTime(this.animation.time);
                     renderer!.render(scene, camera!);
                     if (shaderFailed) throw new Error('Surface shader compilation failed.');
                     if (!submitted) {
@@ -226,6 +276,21 @@ export class TerrainPreview {
                 setupCpuMs = beforeWaitCpu + performance.now() - resumed;
                 sceneReady = true;
                 render();
+                if (content.hasOcean) {
+                  if (typeof IntersectionObserver !== 'undefined') {
+                    visibility = new IntersectionObserver((entries) => {
+                      visible = entries[0]?.isIntersecting ?? false;
+                      this.animation.refresh();
+                      if (visible) render();
+                    });
+                    visibility.observe(container);
+                  }
+                  unregisterAnimation = this.animation.register(
+                    () =>
+                      !disposed && visible && !untracked(this.isPaused) && !untracked(this.problem),
+                    () => render(),
+                  );
+                }
               } catch (error) {
                 fail(error);
               }
@@ -246,13 +311,18 @@ export class TerrainPreview {
     });
     afterRenderEffect(() => {
       const paused = this.isPaused();
+      const environment = this.environment.snapshot();
+      const water = this.water.settings();
       if (this.controls) this.controls.enabled = !paused;
       if (!paused) {
         const setup = this.resumeSetup;
         this.resumeSetup = undefined;
         setup?.();
+        this.applyEnvironment?.(environment);
+        this.applyWater?.(water);
         this.draw?.();
       }
+      this.animation.refresh();
     });
   }
 }

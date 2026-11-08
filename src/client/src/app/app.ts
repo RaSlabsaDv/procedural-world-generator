@@ -1,3 +1,4 @@
+import { OceanControls } from './terrain/editor/ocean-controls';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { compareTerrains, TerrainComparison } from './terrain/data/terrain.contract';
@@ -16,7 +17,13 @@ import { OperationLock } from './platform/operation-lock.service';
 
 @Component({
   selector: 'app-root',
-  imports: [TerrainParametersPanel, TerrainResultsPanel, PwaStatusPanel, ExperimentPanel],
+  imports: [
+    TerrainParametersPanel,
+    TerrainResultsPanel,
+    PwaStatusPanel,
+    ExperimentPanel,
+    OceanControls,
+  ],
   templateUrl: './app.html',
   styleUrls: ['./shared/panel.css', './app.css'],
 })

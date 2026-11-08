@@ -434,3 +434,82 @@ zero error; 24 paired camera/non-rock views and material/coast/light/PWA regress
 pass. The focused allocation check records 16856656 placement bytes including
 output for 1693 dry-flat rocks at 512x512. The optional WASM optimization warning
 remains; no controlled performance findings are claimed.
+
+
+## Scene environment foundation
+
+The [environment specification](specs/SCENE_ENVIRONMENT_V1.md) freezes settings,
+light-cycle equations and ownership. scene-environment.ts derives immutable linear
+color/direction snapshots; SceneEnvironmentService shares them between views.
+Default settings are timeOfDayHours=12, sunAzimuthDegrees=315, visualTimeSeconds=0.
+Azimuth0 points +Z,90 points +X. This is an illustrative cycle, not astronomy.
+There is no new UI or automatic ticking in this foundation stage.
+
+Future controls call SceneEnvironmentService.set with all three validated members.
+Invalid updates throw without changing the previous snapshot. Existing scene
+bindings apply outside OperationLock and never rebuild terrain to change lighting.
+terrainScene exposes updateEnvironment and environmentUniforms for later water/sky
+integration. These are view-owned ordinary Three uniforms, not a GPU UBO.
+
+Run `node tests/browser/atlas-materials.cjs --environment --before` against the prior
+publication, then `--environment` afterwards with the documented PWG_* environment.
+Six scenes at three zooms compare exact camera matrices, PNG bytes and full numerical
+hashes. Evidence uses ignored artifacts/scene-environment-*. Unit/integration tests
+exercise nondefault settings and deferred/replaced views; production UI currently
+exposes only the default preset. Actual WebGL regression checks cover default
+lighting/materials/comparison ownership and offline behavior. README stays empty.
+
+Environment foundation verification: 313 Angular tests, seven packaging checks,
+production publication and Chromium lighting/materials/editor/PWA checks pass.
+All 18 paired PNG images, camera matrices and complete numerical hashes match
+exactly. Nondefault controls are tested through the service/lighting/preview unit
+interfaces; no new UI is exposed yet. Native sources are unchanged, so native tests
+were not rerun. The optional WASM optimization notice persists. No performance
+findings are claimed.
+
+
+## Ocean surface and controls
+
+The collapsed Water panel changes shallow color, turbidity and foam in both views
+without generation. Reset restores the shared defaults. Controls are disabled during
+operations. The surface is visible only where Core returns Ocean; sea level does
+not fill isolated inland depressions. See [Ocean v1](specs/OCEAN_PRESENTATION_V1.md)
+for units, geometry/shader equations, ownership and known shoreline/reflection limits.
+
+Regenerate the original periodic normal tile with
+`python3 scripts/generate-water-normal.py`. Its provenance/checksum live beside the
+PNG under public/textures/water. The complete production PWA catalog now has 39 assets.
+
+Using the existing PWG_* production-browser setup, run
+`node tests/browser/water.cjs` for controls, animation, shared phase, operation pause,
+maximum/zero-height Ocean and cached offline generation. Run
+`node tests/browser/atlas-materials.cjs --water --before` against a previous publication,
+then `--water` against the new one to compare six scenes at three zooms. Reduced
+motion freezes phases for those images; OceanAnimationService.freeze/resume is
+available for explicit test control. Normal animation draws at most 30 FPS outside
+Angular and pauses while computation/collection owns OperationLock.
+
+Verification: 324 Angular tests, eight packaging/asset checks and worker RPC pass;
+production publication succeeds. Eighteen paired camera/full Core hashes remain
+exact, with intentional water pixel changes. Real WebGL materials and water checks
+pass; resources and wave drawing stay bounded. The original five terrain PNGs and
+all mathematical identities remain unchanged. Native sources are unchanged, so
+native suites were not rerun. The optional WASM optimization notice persists.
+No benchmark performance claim is made. README.md remains empty.
+
+Focused Chromium checks also pass for no-Ocean animation shutdown, 512x512 Ocean
+(11509784 raw GPU geometry bytes), zero-height Ocean, cached new-seed offline water,
+and narrow layout. Lighting, editor and PWA update regressions pass, including
+offline new-tab generation, Remote recovery and update deferral while busy.
+
+Water ripple correction: the original three-wave normal tile produced directional
+bands, especially in foam. The same-size offline tile now combines 64 fixed-seed
+components with independent phases and balanced perpendicular directions. A normal
+covariance regression checks directional balance; geometry, shader sampling cost,
+Core values and resource caps remain unchanged.
+
+Ripple correction verification: nine packaging/asset tests and production publish
+pass. Eighteen paired camera/full numerical hashes are unchanged. Chromium water
+checks pass, including animated comparison views, computation pause and new-seed
+offline rendering. Frozen close-up views show removal of the directional bands;
+the existing low-poly shoreline remains.

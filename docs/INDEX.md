@@ -6,7 +6,7 @@
 - [Architecture](ARCHITECTURE.md): active components, contracts and ownership.
 - [Development](DEVELOPMENT.md): setup, commands, repository layout and verification.
 - [Benchmarking](BENCHMARKING.md): measurement boundaries and experimental methodology.
-- [Implementation plan](IMPLEMENTATION_PLAN.md): completed work and remaining features.
+- [Implementation plan](IMPLEMENTATION_PLAN.md): completed work and remaining features, including the shared sun/fog foundation, water-first visual stages and execution diagnostics/progress/optimization tracks.
 
 ## Frozen policies and specifications
 
@@ -24,6 +24,8 @@ Current behavior composes the policies below; a historical version label does no
 - [Local relief v1](specs/LOCAL_RELIEF_V1.md): current pre-erosion height extension.
 - [Coastal surfaces v2](specs/COASTAL_SURFACES_V2.md): current wider, context-sensitive post-placement coverage.
 - [Coastal surfaces v1](specs/COASTAL_SURFACES_V1.md): historical coastal equations and reference fixtures.
+- [Ocean presentation v1](specs/OCEAN_PRESENTATION_V1.md): sea-level geometry, depth/foam/Fresnel, animation and graphics budgets.
+- [Scene environment v1](specs/SCENE_ENVIRONMENT_V1.md): shared immutable sun/fog/time state and independent viewport bindings.
 - [Lighting v1](specs/LIGHTING_ATMOSPHERE_V1.md): presentation configuration and resource ownership.
 - [Landscape v2](specs/LANDSCAPE_V2.md) and [original workload](specs/TERRAIN_WORKLOAD.md): historical mathematical references.
 

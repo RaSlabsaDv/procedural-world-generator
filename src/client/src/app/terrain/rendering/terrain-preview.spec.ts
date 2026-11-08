@@ -1,18 +1,24 @@
+import { OceanSettingsService } from './ocean-settings.service';
+import { SceneEnvironmentService } from './scene-environment.service';
+import { DEFAULT_ENVIRONMENT_SETTINGS } from './scene-environment';
 import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import {
   BufferGeometry,
   MeshLambertMaterial,
+  ShaderMaterial,
   Texture,
   DirectionalLight,
   LightShadow,
   Scene,
+  Mesh,
   InstancedMesh,
 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import {
   TerrainPreview,
+  OCEAN_NORMAL_FACTORY,
   TERRAIN_RENDERER_FACTORY,
   TERRAIN_SURFACES_FACTORY,
 } from './terrain-preview';
@@ -78,6 +84,11 @@ describe('terrain preview lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     state.fail = false;
+    vi.stubGlobal('matchMedia', () => ({
+      matches: true,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
     vi.stubGlobal(
       'ResizeObserver',
       class {
@@ -88,6 +99,10 @@ describe('terrain preview lifecycle', () => {
     TestBed.configureTestingModule({
       imports: [TerrainPreview],
       providers: [
+        {
+          provide: OCEAN_NORMAL_FACTORY,
+          useValue: () => ({ ready: Promise.resolve(new Texture()), dispose: vi.fn() }),
+        },
         {
           provide: TERRAIN_SURFACES_FACTORY,
           useValue: () => ({
@@ -128,6 +143,7 @@ describe('terrain preview lifecycle', () => {
     const errors = vi.spyOn(console, 'error');
     const geometry = vi.spyOn(BufferGeometry.prototype, 'dispose');
     const material = vi.spyOn(MeshLambertMaterial.prototype, 'dispose');
+    const oceanMaterial = vi.spyOn(ShaderMaterial.prototype, 'dispose');
     const controls = vi.spyOn(OrbitControls.prototype, 'dispose');
     const fixture = TestBed.createComponent(TerrainPreview);
     fixture.componentRef.setInput('run', run());
@@ -136,13 +152,15 @@ describe('terrain preview lifecycle', () => {
     expect(fixture.nativeElement.textContent).toContain('CPU');
     fixture.componentRef.setInput('run', run());
     await settlePreview(fixture);
-    expect(geometry).toHaveBeenCalledTimes(1);
+    expect(geometry).toHaveBeenCalledTimes(2);
     expect(material).toHaveBeenCalledTimes(1);
+    expect(oceanMaterial).toHaveBeenCalledTimes(1);
     expect(controls).toHaveBeenCalledTimes(1);
     expect(state.dispose).toHaveBeenCalledTimes(1);
     fixture.destroy();
-    expect(geometry).toHaveBeenCalledTimes(2);
+    expect(geometry).toHaveBeenCalledTimes(4);
     expect(material).toHaveBeenCalledTimes(2);
+    expect(oceanMaterial).toHaveBeenCalledTimes(2);
     expect(state.disconnect).toHaveBeenCalledTimes(2);
     expect(state.dispose).toHaveBeenCalledTimes(2);
     expect(state.lose).toHaveBeenCalledTimes(1);
@@ -208,7 +226,7 @@ describe('terrain preview lifecycle', () => {
     await settlePreview(fixture);
     expect(fixture.nativeElement.textContent).toContain('Submission failed');
     expect(instances).toHaveBeenCalledTimes(2);
-    expect(geometry).toHaveBeenCalledTimes(4);
+    expect(geometry).toHaveBeenCalledTimes(6);
     expect(material).toHaveBeenCalledTimes(4);
     fixture.destroy();
     expect(instances).toHaveBeenCalledTimes(2);
@@ -513,5 +531,72 @@ describe('terrain preview lifecycle', () => {
     expect((fixture.nativeElement.querySelector('button') as HTMLButtonElement).disabled).toBe(
       true,
     );
+  });
+  it('updates the environment without rebuilding, defers while busy, and retains it on replacement', async () => {
+    const fixture = TestBed.createComponent(TerrainPreview);
+    const measured = vi.fn();
+    fixture.componentInstance.displayMeasured.subscribe(measured);
+    fixture.componentRef.setInput('run', run());
+    await fixture.whenStable();
+    const environment = TestBed.inject(SceneEnvironmentService);
+    const scene = state.render.mock.calls.at(-1)![0] as Scene;
+    const sun = scene.children.find((o) => o instanceof DirectionalLight) as DirectionalLight;
+    const createCount = state.create.mock.calls.length;
+    const release = TestBed.inject(OperationLock).tryAcquire()!;
+    await fixture.whenStable();
+    state.render.mockClear();
+    environment.set({ ...DEFAULT_ENVIRONMENT_SETTINGS, timeOfDayHours: 7 });
+    environment.set({ ...DEFAULT_ENVIRONMENT_SETTINGS, timeOfDayHours: 0 });
+    await fixture.whenStable();
+    expect(sun.intensity).toBe(2.35);
+    expect(state.render).not.toHaveBeenCalled();
+    release();
+    await fixture.whenStable();
+    expect(sun.intensity).toBe(0);
+    expect(state.create).toHaveBeenCalledTimes(createCount);
+    expect(measured).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('run', { ...run(), requestMs: 3 });
+    await fixture.whenStable();
+    const next = state.render.mock.calls.at(-1)![0] as Scene;
+    expect(
+      (next.children.find((o) => o instanceof DirectionalLight) as DirectionalLight).intensity,
+    ).toBe(0);
+    fixture.destroy();
+    state.render.mockClear();
+    environment.set(DEFAULT_ENVIRONMENT_SETTINGS);
+    await TestBed.tick();
+    expect(state.render).not.toHaveBeenCalled();
+  });
+  it('retries a failed normal owner and retains mesh/camera when only water controls change', async () => {
+    const failed = {
+      ready: Promise.resolve(new Texture()).then(() => {
+        throw Error('Water tile missing');
+      }),
+      dispose: vi.fn(),
+    };
+    // Attach rejection handling before Angular setup to avoid an unhandled rejected promise.
+    void failed.ready.catch(() => {});
+    const ready = { ready: Promise.resolve(new Texture()), dispose: vi.fn() };
+    const factory = vi.fn().mockReturnValueOnce(failed).mockReturnValue(ready);
+    TestBed.overrideProvider(OCEAN_NORMAL_FACTORY, { useValue: factory });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Water tile missing');
+    expect(failed.dispose).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('run', { ...run() });
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.textContent).not.toContain('Water tile missing');
+    const scene = state.render.mock.calls.at(-1)![0] as Scene;
+    const ocean = scene.children.find((c) => c.name === 'ocean-presentation-v1') as Mesh;
+    const geometry = ocean.geometry,
+      createCount = state.create.mock.calls.length;
+    TestBed.inject(OceanSettingsService).set({ color: '#11aa99', turbidity: 1, foam: 0.2 });
+    await fixture.whenStable();
+    expect(ocean.geometry).toBe(geometry);
+    expect(state.create).toHaveBeenCalledTimes(createCount);
+    expect((ocean.material as ShaderMaterial).uniforms['turbidity'].value).toBe(1);
+    fixture.destroy();
+    expect(ready.dispose).toHaveBeenCalledTimes(1);
   });
 });

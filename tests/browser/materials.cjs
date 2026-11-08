@@ -22,6 +22,7 @@ const artifact = artifactPath;
   try {
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1050 },
+      reducedMotion: "reduce",
     });
     await instrumentLighting(context);
     await context.addInitScript(() => {
@@ -35,6 +36,8 @@ const artifact = artifactPath;
         const record = {
           gl,
           textures: new Set(),
+          waterTextures: new Set(),
+          waterCalls: 0,
           sources: new Set(),
           calls: 0,
           instances: 0,
@@ -54,12 +57,18 @@ const artifact = artifactPath;
               record.textures.add(gl.getParameter(gl.TEXTURE_BINDING_2D));
               record.sources.add(source.split("/").at(-1));
             }
+            if (
+              typeof source === "string" &&
+              source.includes("/textures/water/")
+            )
+              record.waterTextures.add(gl.getParameter(gl.TEXTURE_BINDING_2D));
             return original.apply(this, args);
           };
         }
         const remove = gl.deleteTexture;
         gl.deleteTexture = function (texture) {
           record.textures.delete(texture);
+          record.waterTextures.delete(texture);
           return remove.call(this, texture);
         };
         const clear = gl.clear;
@@ -67,6 +76,7 @@ const artifact = artifactPath;
           record.calls = 0;
           record.instances = 0;
           record.terrainCalls = 0;
+          record.waterCalls = 0;
           return clear.apply(this, args);
         };
         for (const name of [
@@ -79,6 +89,8 @@ const artifact = artifactPath;
           gl[name] = function (...args) {
             record.calls++;
             const program = gl.getParameter(gl.CURRENT_PROGRAM);
+            if (program && gl.getUniformLocation(program, "waterTime") !== null)
+              record.waterCalls++;
             const location = program
               ? gl.getAttribLocation(program, "biomeId")
               : -1;
@@ -223,6 +235,8 @@ const artifact = artifactPath;
           ({
             gl,
             textures,
+            waterTextures,
+            waterCalls,
             sources,
             calls,
             terrainCalls,
@@ -236,6 +250,8 @@ const artifact = artifactPath;
               gl.isBuffer(buffer),
             ).length,
             textures: textures.size,
+            waterTextures: waterTextures.size,
+            waterCalls,
             sources: [...sources].sort(),
             calls,
             terrainCalls,
@@ -269,14 +285,17 @@ const artifact = artifactPath;
           "snow.png",
           "soil.png",
         ]);
-        assert.equal(row.terrainCalls, 1);
+        assert.equal(row.terrainCalls, 1 + row.waterCalls);
+        assert.ok(row.waterCalls <= 1);
+        assert.ok(row.waterTextures <= 1);
         assert.ok(
-          row.calls <= 19,
-          "Color pass: terrain, twelve tree and six rock meshes",
+          row.calls <= 19 + row.waterCalls,
+          "Color pass: terrain, twelve tree, six rock meshes, plus one Ocean draw",
         );
       }
       for (const row of rows.filter((row) => row.lost)) {
         assert.equal(row.textures, 0);
+        assert.equal(row.waterTextures, 0);
         assert.equal(row.liveBiomeBuffers, 0);
       }
       const lighting = await lightingResources(page);
@@ -363,7 +382,10 @@ const artifact = artifactPath;
       const actual = await assertResources(1);
       assert.equal(
         actual.find((row) => !row.lost && row.textures > 0).calls,
-        1 + diagnostic.vegetationGroups * 2 + diagnostic.rockGroups,
+        1 +
+          diagnostic.vegetationGroups * 2 +
+          diagnostic.rockGroups +
+          actual.find((row) => !row.lost && row.textures > 0).waterCalls,
       );
       assert.equal(
         actual.find((row) => !row.lost && row.textures > 0).instances,

@@ -1,4 +1,9 @@
 import {
+  deriveSceneEnvironment,
+  DEFAULT_ENVIRONMENT_SETTINGS,
+  DEFAULT_SCENE_ENVIRONMENT,
+} from './scene-environment';
+import {
   BoxGeometry,
   DepthTexture,
   DoubleSide,
@@ -156,4 +161,65 @@ it('handles flat all-ocean extent without tree bounds', () => {
   light.dispose();
   terrain.geometry.dispose();
   terrain.material.dispose();
+});
+
+it('owns stable bindings, refits only relevant shadows and recovers from night', () => {
+  const test = setup(),
+    { lighting, renderer } = test,
+    { sun, uniforms } = lighting;
+  const identity = uniforms.environmentSunDirection.value;
+  sun.shadow.needsUpdate = false;
+  renderer.shadowMap.needsUpdate = false;
+  const projection = sun.shadow.camera.projectionMatrix.clone();
+  expect(lighting.update(DEFAULT_SCENE_ENVIRONMENT)).toBe(false);
+  const timed = deriveSceneEnvironment({ ...DEFAULT_ENVIRONMENT_SETTINGS, visualTimeSeconds: 10 });
+  expect(lighting.update(timed)).toBe(true);
+  expect(uniforms.environmentVisualTimeSeconds.value).toBe(10);
+  expect(sun.shadow.needsUpdate).toBe(false);
+  expect(renderer.shadowMap.needsUpdate).toBe(false);
+  expect(sun.shadow.camera.projectionMatrix.equals(projection)).toBe(true);
+  const colorsOnly = {
+    ...timed,
+    sun: { ...timed.sun, color: [0.2, 0.3, 0.4] as const },
+    fill: { ...timed.fill, intensity: 0.5 },
+    fog: { ...timed.fog, color: [0.3, 0.4, 0.5] as const },
+  };
+  lighting.update(colorsOnly);
+  expect(sun.color.toArray()).toEqual([0.2, 0.3, 0.4]);
+  expect(lighting.fill.intensity).toBe(0.5);
+  expect(lighting.fog.color.toArray()).toEqual([0.3, 0.4, 0.5]);
+  expect(test.scene.background).toBe(lighting.fog.color);
+  expect(sun.shadow.needsUpdate).toBe(false);
+  expect(renderer.shadowMap.needsUpdate).toBe(false);
+  const turned = deriveSceneEnvironment({ ...DEFAULT_ENVIRONMENT_SETTINGS, sunAzimuthDegrees: 45 });
+  lighting.update(turned);
+  expect(uniforms.environmentSunDirection.value).toBe(identity);
+  expect(sun.shadow.needsUpdate).toBe(true);
+  expect(renderer.shadowMap.needsUpdate).toBe(true);
+  expect(sun.shadow.camera.projectionMatrix.equals(projection)).toBe(false);
+  expect(sun.color).toBe(uniforms.environmentSunColor.value);
+  expect(lighting.fog.color).toBe(uniforms.environmentHorizonColor.value);
+  lighting.update(deriveSceneEnvironment({ ...DEFAULT_ENVIRONMENT_SETTINGS, timeOfDayHours: 0 }));
+  expect(sun.intensity).toBe(0);
+  expect(sun.castShadow).toBe(false);
+  lighting.update(DEFAULT_SCENE_ENVIRONMENT);
+  expect(sun.castShadow).toBe(true);
+  expect(sun.intensity).toBe(2.35);
+  test.dispose();
+  expect(lighting.update(timed)).toBe(false);
+});
+
+it('isolates mutable uniforms and shadows between views using the same immutable snapshot', () => {
+  const a = setup(),
+    b = setup();
+  expect(a.lighting.uniforms).not.toBe(b.lighting.uniforms);
+  expect(a.lighting.uniforms.environmentSunColor.value).not.toBe(
+    b.lighting.uniforms.environmentSunColor.value,
+  );
+  a.lighting.update(deriveSceneEnvironment({ ...DEFAULT_ENVIRONMENT_SETTINGS, timeOfDayHours: 7 }));
+  expect(b.lighting.sun.intensity).toBe(2.35);
+  expect(b.lighting.sun.color.toArray()).toEqual(DEFAULT_SCENE_ENVIRONMENT.sun.color);
+  a.dispose();
+  expect(b.scene.children).toContain(b.lighting.sun);
+  b.dispose();
 });

@@ -14,6 +14,7 @@
           "/icons/**",
           "/*.css$",
           "/textures/terrain/*.png$",
+          "/textures/water/*.png$",
           "/*.js$",
           "/offline-assets.*.json$",
           "/wasm/**",

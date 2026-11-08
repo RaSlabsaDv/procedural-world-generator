@@ -14,16 +14,22 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
+const waterStudy = process.argv.includes("--water");
+const environmentStudy = process.argv.includes("--environment");
 const rockStudy = process.argv.includes("--rocks");
 const climateStudy = process.argv.includes("--climate");
 const biomeStudy = process.argv.includes("--biomes") || climateStudy;
-const study = rockStudy
-  ? "rocks-v2"
-  : climateStudy
-    ? "regional-climate"
-    : biomeStudy
-      ? "biome-readability"
-      : "atlas-materials";
+const study = waterStudy
+  ? "ocean-presentation"
+  : environmentStudy
+    ? "scene-environment"
+    : rockStudy
+      ? "rocks-v2"
+      : climateStudy
+        ? "regional-climate"
+        : biomeStudy
+          ? "biome-readability"
+          : "atlas-materials";
 const cases = rockStudy
   ? [
       ["mixed", { seed: 42 }],
@@ -101,6 +107,7 @@ const cases = rockStudy
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1050 },
       deviceScaleFactor: 1,
+      reducedMotion: waterStudy ? "reduce" : "no-preference",
     });
     const page = await context.newPage(),
       errors = [];
@@ -147,13 +154,13 @@ const cases = rockStudy
       };
       await page
         .locator(
-          (climateStudy || rockStudy) && !before
+          (climateStudy || rockStudy || waterStudy) && !before
             ? "#verify-equivalence"
             : "#generate-local",
         )
         .click();
       await waitForTerrain(page);
-      if ((climateStudy || rockStudy) && !before)
+      if ((climateStudy || rockStudy || waterStudy) && !before)
         assert.match(
           await page.locator("#numeric-match").innerText(),
           /All heights match/,
@@ -192,10 +199,22 @@ const cases = rockStudy
           camera.projection && camera.modelView,
           "Capture actual camera framing",
         );
-        await canvas.screenshot({
+        const screenshot = await canvas.screenshot({
           path: artifactPath(`${study}-${phase}-${label}-${view}.png`),
         });
-        views.push({ view, wheel, camera });
+        views.push({
+          view,
+          wheel,
+          camera,
+          ...(environmentStudy
+            ? {
+                imageHash: crypto
+                  .createHash("sha256")
+                  .update(screenshot)
+                  .digest("hex"),
+              }
+            : {}),
+        });
       }
       const data = await page.evaluate(async (request) => {
         const response = await fetch("/api/v1/terrains", {

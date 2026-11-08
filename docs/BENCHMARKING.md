@@ -310,3 +310,30 @@ at 512 KiB/view. Six shared polyhedra, supplied-geometry validation and actual
 bounds/shadow/display setup remain outside computeMs. No schema field, dependency
 or control is added. Freeze matching v11 identities for experiments; software WebGL
 smoke checks are correctness evidence, not controlled performance findings.
+
+
+## Shared environment presentation state
+
+The scene-environment-v1 foundation retains the fixed default daylight appearance
+and mathematical identities. Its visualTimeSeconds is an explicit frozen phase,
+not a wall clock; no animation loop or extra draw/pass is added. Environment
+application waits outside the shared operation lock, and later updates do not
+replace the original first-submission display metric. Future interactive sun/water
+controls must record their common settings/time alongside application revision and
+render quality for reproducible campaigns, without altering mathematical requests.
+No instrumented stage profiling or performance claim is introduced by this step.
+
+
+## Animated Ocean presentation
+
+The Ocean stage adds display work only: clipping, geometry buffers, normal loading,
+GPU upload and water frames never enter computeMs or mathematical requests. Its
+shared animation hub stops synchronously under OperationLock, including pending RAF
+callbacks, and resumes without advancing through the paused interval. No wave frames
+compete with collection. First display submission still does not mean GPU completion.
+
+Freeze camera, shared environment time and water phase for visual comparisons;
+record ocean-presentation-v1, water color/turbidity/foam and motion policy alongside
+the presentation revision. Normal asset wait contributes to textureWaitMs. Tests of
+software WebGL allocation/draw caps establish correctness, not speed or GPU latency.
+No stage timing, SIMD/AOT improvement or network-overhead attribution is claimed.

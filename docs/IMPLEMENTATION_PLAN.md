@@ -445,7 +445,386 @@ numeric error; 24 paired camera/non-rock views and materials/coasts/lighting/PWA
 regressions pass. Maximum dry-flat allocation is 16856656 bytes for 1693 rocks,
 within the unchanged 32 MiB budget.
 
-Next: review the visual result, then prepare the separately planned controlled
-performance campaign with frozen matching builds and reproducible environments.
-Further generation or evolution/playback extensions require their own scope; no
-optional feature is implemented here. README remains empty.
+The next approved scope is the visual-realism and execution-feedback roadmap below.
+Water and the shared environment foundation below are complete. Controlled performance campaigns remain planned after
+configuration and workload identities are frozen. README remains empty.
+
+
+## Next roadmap: visual realism and execution feedback
+
+Status: shared environment foundation and Visual Stage 1 implemented; remaining stages are planned.
+The next visual feature is sky/fog integration with the completed Ocean surface.
+Implement incremental, independently reviewable stages, freezing each stage's
+policy, resource budget, acceptance scenes and verification before changing code.
+
+### Existing capabilities to retain
+
+- Local generation already runs C# in a dedicated Web Worker. This keeps generation
+  off the main thread; it does not parallelize the C# algorithm across CPU cores.
+- Total computeMs, request-to-validated-data time, runtime initialization and CPU
+  scene setup/first submission are already separate. Detailed Core stage timings,
+  individual-generation progress and cancellation are not implemented. Race Stop
+  stops further collection; it does not abort the current Core call.
+- Deterministic directional sun, static 2048 PCF shadows, Hemisphere light and linear
+  distance fog already exist. The background is a flat color; there is no sun UI.
+- Five terrain textures already blend from Core coverage with fixed-scale triplanar
+  mapping, slope/climate-aware rock/grass/sand and gradual highland snow. These do
+  not need another independent renderer-side biome classifier.
+- Broadleaf, conifer and savanna trees, Small/Mature variants, seeded sizes/yaws,
+  groves, clearings, forest edges and instancing already exist. Billboard LOD and
+  individual foliage tint variation are not implemented.
+- WASM AOT is not enabled; publishing emits the documented optimization notice.
+  Actual SIMD use has not been audited. Do not equate worker use with SIMD, AOT
+  or multithreaded Core execution.
+
+### Foundation — shared sun, fog and visual time (complete)
+
+Create one coherent presentation state for time of day, sun direction/color/intensity,
+sky parameters, fog and frozen visual time. Define world axes, angle/color/time units,
+normalization and pure state derivation before implementation. It is an illustrative
+lighting model, not Core climate or geographic astronomical simulation.
+
+Use one logical uniform block shared by sun, sky, water, terrain and vegetation.
+Give each viewport its own mutable Three.js uniforms/lights/resources while both
+comparison views receive the same immutable settings snapshot and visual time.
+A native GPU uniform buffer is an implementation choice after auditing installed
+Three.js material support, not a reason to replace existing materials or add a
+rendering framework. Future shader consumers must use the same world-space sun
+state rather than hard-coded independent directions/colors.
+
+Preserve the current daylight preset as the initial exact visual reference. Bind
+existing DirectionalLight, HemisphereLight and fog through the new state, retaining
+fitted single-map shadows and static reuse. Prepare stable interfaces for directional
+sky color and shared fog evaluation; the full atmospheric shader belongs to Stage 2.
+Future time-of-day/azimuth controls must update this state without regenerating Core
+maps. Explicitly define which input is authoritative to avoid conflicting sun angles.
+
+No automatic time advance or animation loop is required for the foundation. Pause
+updates under the operation lock, support a fixed visual time for tests/benchmarks,
+and release subscriptions/bindings on replacement/failure/destruction. Verify default
+appearance, state derivation, two-view isolation, shadow invalidation and unchanged
+Core hashes. Record the presentation revision and interfaces in an English spec.
+
+Implementation: [scene-environment-v1](specs/SCENE_ENVIRONMENT_V1.md) provides pure
+validated settings derivation, an app-scoped immutable snapshot service and stable
+per-view bindings connected to existing lights/fog. Updates preserve scene/camera
+and display measurements; paused views apply the latest state after unlock.
+Default light/shadow/linear-fog settings remain exact. No Core changes, extra
+render pass, animation loop, dependency or UI control was introduced.
+
+Verification: 313 Angular tests, seven packaging/documentation checks and production
+publication pass. Eighteen paired PNG/camera/full-result hashes are exact; lighting,
+materials/compare, editor and PWA browser regressions pass with no page errors.
+Native sources were unchanged; no native suite rerun or performance claim.
+
+### Visual Stage 1 — ocean surface (complete)
+
+Create a separate ocean surface at world height
+seaLevel * float32(heightMultiplier). Use the authoritative Core Ocean mask and
+existing heights, with clipped shoreline geometry or an equivalent bounded mask.
+A full unmasked plane must not cover disconnected dry depressions or interior land.
+Keep terrain, ocean classification, erosion, climate, vegetation, rocks and coverage
+unchanged; no renderer-side hydrology or automatic lowland filling.
+
+Required appearance:
+
+- Depth-dependent transparency/absorption: pale turquoise shallows, darker depth,
+  with the actual bottom visible through sufficiently shallow water.
+- Soft restrained foam at the real shoreline, fading inland/deeper offshore; no
+  wide white outline around every water boundary.
+- Small visual waves from an animated tiled normal map and a sun specular highlight.
+- Fresnel blending: greater sky reflection at grazing angles, more visible bottom
+  from above. Sky reflection must use the same sky/light colors as the scene.
+
+Specify geometry/mask resolution, depth derivation, edge/equality handling, normal
+asset provenance, transparency/depth-writing order, texture/mesh/draw/memory budgets
+and disposal before implementation. Prefer the simplest suitable existing Three.js
+path; inspect installed capabilities before adding dependencies or reflection passes.
+For flat sea-level water, prefer depth=max(0,seaWorldY-terrainHeight) from the existing
+heightfield, with triangle-consistent interpolation and the Ocean mask. This avoids
+an additional scene-depth pass but still has geometry/attribute/texture sampling and
+memory costs; it is not literally free. Evaluate a separate scene depth buffer only
+when it supplies necessary information unavailable from the heightfield. Do not
+subtract nonlinear device-depth values as world-space depth.
+
+Freeze the initial shading policy:
+
+- Transmittance T=exp(-depth*k), k>=0 in inverse world units; base alpha=1-T.
+  Blend shallow turquoise and deep dark-blue colors with the same 1-T weight.
+- Soft foam where depth is below a specified threshold, modulated by bounded noise
+  and an animated offset. Handle zero-depth edges so foam remains visible without
+  turning every shore into an opaque white outline.
+- Two normal-map layers scrolling in distinct directions and at different world
+  scales; they may sample one reusable tile twice or use two justified assets.
+  Decode/blend normals in a consistent space and attenuate aliasing at distance.
+- Schlick Fresnel F=F0+(1-F0)*(1-clamp(dot(N,V),0,1))^5, F0 approximately 0.02 for
+  water. Specify how reflection, transmission, alpha and foam combine; do not lose
+  grazing reflection merely because the depth-only alpha approaches zero.
+- Sun highlights use Blinn-Phong or GGX, driven by the shared sun direction, linear
+  color and intensity. Sky reflection uses the same sky model as atmosphere.
+
+Add compact presentation-only water controls for color, turbidity and foam intensity,
+with explicit ranges/defaults, validation, operation-lock behavior and identical
+settings across comparison views. They must not enter TerrainRequest or change
+computeMs/workload identities. Begin with correct mask/depth geometry, then foam,
+normal animation and highlights within this stage; a flat ocean tint is insufficient.
+
+Animation must stop while the shared operation lock is held, during experiment
+collection, when the page/view is hidden and after disposal. Avoid duplicate render
+loops across interaction, resize and water animation. Resume cleanly, freeze visual
+time for paired screenshots, and do not include wave frames in computeMs. Validate
+independent comparison views, late/failed setup, context loss, replacement and PWA
+asset caching. Existing rendering assumptions must be revised explicitly: an extra
+water draw/normal asset is a presentation cost, not a Core workload change.
+
+Acceptance includes warm/cold, shallow/deep, gentle/steep coast, no/all Ocean, zero
+height, dry disconnected pockets and maximum dimensions; exact Core hashes remain
+unchanged. Compare Local/Remote at identical requests and fixed visual time/camera.
+
+### Visual Stage 2 — sky and atmosphere
+
+- Use an analytic sun-dependent sky: assess Preetham, Hosek-Wilkie or a simplified
+  Rayleigh/Mie model against the required quality and budget. Sky and sun are one
+  system using the foundation state; a gradient is a baseline/fallback rather than
+  a separate hard-coded palette.
+- Use exponential distance fog with in-scattering color sampled from the sky in
+  the view-ray direction, not one constant color. Align the horizon and water
+  reflection; fog softens edges but does not create missing terrain.
+- Height fog uses density(height)=density0*exp(-height*falloff), with documented
+  world-height origin and analytical integration along the view ray. Handle nearly
+  horizontal rays, small exponents and below-origin heights without singularities,
+  overflow or sudden changes. Preserve readable terrain and morning valley haze.
+- Share one fog GLSL implementation/binding policy across terrain, tree crowns and
+  trunks, rocks and water. Define spaces and ordering with lighting, transparency
+  and tone mapping; avoid double application or separate inconsistent formulas.
+
+Define fog equations, sky ownership, transparency interaction, draw/pass costs and
+paired acceptance scenes. Keep the fixed current lighting preset usable as a
+reference. Atmosphere is presentation; do not modify Core climate to fake haze.
+
+### Visual Stage 3 — sun controls and shadow quality
+
+- Add compact time-of-day and sun-direction controls with one unambiguous mapping
+  between time, azimuth/elevation, sun intensity/color, sky and fog. Warm low sun
+  transitions to a cooler/neutral noon appearance; do not expose conflicting
+  independent controls without documenting their interaction.
+- The logical sun uniform block contains normalized direction, linear color and
+  intensity derived from time of day. Water, sky and scene lights consume it.
+- Keep one shadow map fitted to terrain plus actual tree/rock bounds first. Update
+  water highlights/reflections and shadows on light changes; retain Hemisphere fill
+  and static reuse while unchanged. Tree casters use the same shadow map; any distant
+  caster disabling must follow an explicit LOD policy and be checked visually.
+- Improve soft directional shadows and inspect valleys at close/overview distances.
+  Evaluate cascaded shadow maps only if the current fitted map demonstrably lacks
+  resolution under real close-camera use. Evaluate baked terrain AO/horizon shading
+  by bounded heightfield ray marching, especially in valleys. Specify directions,
+  steps, scale, cache/ownership and memory; do not add both CSM and AO by default.
+  If AO is computed in Core, execute it in both WASM/API and version its workload.
+  A WASM-only precomputation must instead be declared a separate presentation cost,
+  never included in a supposedly identical mathematical comparison.
+
+Controls affect presentation only, do not regenerate maps, and respect operation
+locking. Freeze lighting state for comparisons; test repeated slider changes and
+shadow resource cleanup. AO derived in Core would be a new versioned computation,
+not a free renderer tweak; specify its ownership before implementation.
+
+### Visual Stage 4 — terrain material microdetail
+
+Preserve existing Core coverage, five-channel normalization, shoreline/snow policy
+and fixed-scale triplanar texture blending. Improve the existing material rather
+than adding another slope/height/biome classification system in TypeScript.
+
+- Add tiled detail normals at multiple restrained scales, preserving biome colors
+  while reducing obvious repetition. Use correct normal/color-space conventions
+  and triplanar normal orientation on steep rock faces.
+- Fade fine detail with distance to avoid shimmer and excessive sampling.
+- Retain exposed rock on steep slopes, grass on suitable gentle land, sand near
+  actual Ocean and smooth climate/elevation/slope-dependent snow.
+
+Specify assets/provenance, repetition scale, sampler/attribute/pass/memory budgets
+and compatibility with sun/shadows. Check steep faces, transitions and grazing
+views; preserve exact generation hashes and biome distinctions.
+
+### Visual Stage 5 — vegetation variation and LOD
+
+Build on existing Core species, size/yaw, variants and clustered placement.
+
+- Use per-instance attributes for controlled scale, yaw and foliage-tint variation.
+  Supplied Core scale/yaw and biome suitability stay authoritative; presentation
+  tint can derive from stable instance identity without changing placement.
+- Preserve species selection by elevation/climate/moisture/slope. Existing vegetation
+  already applies a separate grove/clearing field over density; refine that field
+  only under a versioned Core change, rather than duplicating clustering in JS.
+  Keep broadleaf/conifer/savanna context, edges and dense patches. New dry-zone shrubs
+  require a separate Core contract; do not silently repurpose a tree ID.
+- Retain instancing through full geometry -> simplified geometry -> billboard LOD,
+  using explicit distance thresholds and dithered transitions. Budget overlap draws,
+  transparency/shadow interaction and conservative bounds. Current cap is 16384 trees,
+  not an assumed 9000; assess the real maximum and two comparison views.
+
+LOD is visualization only and must not change returned records or numerical
+comparison. Budget extra meshes/materials/textures and switching CPU work; prevent
+popping, missing trees, shadow inconsistencies and resource leaks in two views.
+New ecological placement or species advance affected workload identities.
+
+### Visual Stage 6 — restrained postprocessing
+
+- Establish a coherent tone-mapping/exposure policy, evaluating ACES with existing
+  linear material colors, sky, water and snow.
+- Add subtle bloom where useful; preserve highlights and biome readability.
+- Add SSAO only after measuring scene/render-target costs on supported devices.
+- Finish with restrained vignette and color grading rather than hiding material
+  problems behind filters.
+
+Freeze the intended order: SSAO -> bloom -> ACES tone mapping -> color grading ->
+vignette. Specify HDR/linear inputs and avoid double tone mapping or output encoding.
+Each effect needs an independent compact UI toggle; disabled effects should skip
+unnecessary passes/resources. SSAO/bloom remain disableable for weaker devices.
+
+Implement incrementally; record passes, render-target memory, resolution behavior
+and cleanup. Keep a baseline without optional expensive passes. Rendering
+is outside Core timing, but competing GPU/CPU activity must still pause during
+collection. CPU first submission is not GPU completion or an FPS measurement.
+
+### Execution track 1 — detailed timing diagnostics
+
+The shared foundation and water are complete; sky/fog is the next visual task. Timing diagnostics precede WASM
+optimization decisions and the next controlled performance campaign.
+
+Break down height composition, erosion, final conversion/ocean/environment/biome
+and surface work, tree placement, rock placement and final coastal blending. Keep
+whole-call computeMs and request-to-data time; separately show scene construction/
+first submission and GPU time only where actually measured. Do not label combined
+transport/serialization/validation overhead as pure network time.
+
+Core may expose semantic stage boundaries through a minimal optional observer, but
+clocks/timers stay in thin hosts. Use the same observation boundaries in WASM/API.
+Account for allocations and unassigned overhead explicitly; do not force stage sums
+to equal total by inventing numbers. Keep instrumented diagnostics distinct from
+ordinary benchmark measurements because observation has a cost. A diagnostic envelope
+may carry stage entries such as { stage, ms }; Core does not own clocks. Mesh/texture
+setup is measured in the browser, not reported as C# generation time. Separate measured
+JS/WASM transfer/copy, serialization/decoding and GPU upload/submission where boundaries
+are observable. GPU submission is not completion; use a supported GPU measurement or
+mark it unavailable. The reported 4.7-second difference is a hypothesis to investigate,
+not evidence that transfer/GPU caused it. Version envelope/export/profile semantics
+consistently, preserving structured errors.
+
+### Execution track 2 — progress and generation cancellation
+
+Show current stage and completed work, with erosion iteration counts. A percentage
+of iterations is not a prediction of remaining seconds; unknown-length stages use
+indeterminate progress. Bound notification frequency and keep Angular responsive.
+
+- Local: ordinary worker messages cannot interrupt a synchronous C# call while that
+  worker's event loop is occupied. Specify either controlled worker termination
+  with runtime reinitialization or a verified cooperative yielding/shared-signal
+  mechanism. For cooperative cancellation, batch erosion iterations and yield at
+  explicit checkpoints so queued messages can run, or check a verified shared flag
+  through SharedArrayBuffer/Atomics without relying on message delivery. A cosmetic
+  split into synchronous loops does not yield. Keep checkpoints deterministic and
+  budget progress traffic. Reject late replies and retain prior successful maps.
+- Remote: aborting the client request is insufficient by itself. Propagate server
+  cancellation into bounded Core checkpoints and verify computation actually stops.
+  Actual remote progress needs an explicit transport design; do not fake it from
+  elapsed time or expose partial results as complete.
+- Race: distinguish Stop-after-current-call from generation cancellation. Retain
+  attempted/cancelled records with correct status and exclude incomplete calls
+  from verified summaries; update exports/contracts if required.
+
+Core callbacks/checkpoints have no DOM, HTTP or clocks. Test cancellation during
+expensive stages, runtime/server recovery, lock release, retry, stale responses,
+comparison state and safe PWA updates. Do not publish partial generation as success.
+
+### Execution track 3 — measured WASM optimization variants
+
+Audit actual SDK/publish configuration, optimization output, startup costs and SIMD
+use first. A long wall-clock time alone does not identify the slow stage. Use the
+new timings to choose whether AOT, SIMD or Core multithreading addresses the actual
+bottleneck; do not propose adding a worker that already exists. Audit unnecessary
+large-buffer copies across JS/WASM/worker boundaries before changing transport.
+Assess SIMD128, AOT, toolchain optimization (-O3/wasm-opt where actually supported)
+and threads against the pinned .NET SDK and real emitted artifacts. Do not blindly
+paste Emscripten flags into a managed .NET build. Document cross-origin isolation,
+COOP/COEP and shared-memory requirements for any threaded/shared-signal variant,
+including every asset/origin and service-worker/offline update path.
+
+Keep the current sequential implementation as the baseline. AOT, vectorized kernels
+and multithreaded execution are distinct experimental configurations, with documented
+CPU/runtime/browser support, deployment/shared-memory requirements, PWA/offline
+compatibility, startup/download/memory costs and degree of parallelism. Preserve
+algorithm order and numerical equivalence or version and justify any change. Apply
+equivalent strategies across hosts where appropriate; do not attribute different
+algorithms/parallelism solely to Local versus Remote architecture. Never pool
+configuration variants in one verified performance summary.
+
+### Separate future Core extension — rivers and lakes
+
+Retain the earlier hydrology request after ocean presentation is established.
+Erosion's temporary water arrays are not automatically a stable river/lake network.
+Specify post-erosion drainage directions (evaluate D8 versus D-infinity), a separate
+flowAccumulation layer and flow/direction data in shared Core. Freeze units, tie
+rules, edge/outlet behavior, operation order and numerical tests. Rivers can then
+use a documented accumulation threshold; lakes need depression/spill handling such
+as priority-flood, with consistent levels, outlets and mass/flow interpretation.
+Plan the water renderer's future optional river/lake mask input now, but do not emit
+a placeholder river texture or allocate full-map hydrology buffers in the ocean
+stage. Adding real layers changes contracts, memory and computation; integration
+is not assumed free.
+Do not fill every lowland or recreate the previously rejected automatic flooding.
+Advance affected identities, budget fields/costs and verify complete WASM/API
+equivalence. River/lake surfaces then reuse the water presentation where appropriate.
+This extension is separate from Visual Stage 1 and is not implemented here.
+
+### Shared acceptance and sequencing
+
+Implementation sequence:
+
+1. Shared sun/fog/visual-time foundation — complete.
+2. Water — complete; sun-dependent sky/fog integration — next.
+3. Shadow refinement and separately budgeted AO where justified.
+4. Material normals, vegetation variation/LOD, then postprocessing.
+5. Shared Core river/lake hydrology, after the water system is established.
+
+Timing, worker progress/cancellation and optimization diagnostics form an independent
+track that can progress alongside visual work once their contracts are specified.
+They must not introduce measurement interference, mismatched workloads or shared
+mutable state.
+
+Every stage needs fixed-seed paired scenes, exact unchanged-field hashes where
+applicable, narrow layout, replacement/failure/two-view lifecycle, operation-lock
+pause behavior and production offline/update verification. Freeze animation, sun,
+quality settings and camera for visual comparisons. Track graphics budgets as
+explicit presentation revisions without changing mathematical identities when
+Core remains unchanged. Do not claim fair performance comparisons while animated
+rendering competes with the timed work.
+
+After each accepted stage, update architecture/development/benchmark notes and
+this roadmap. Controlled campaigns follow stable matching builds and frozen test
+conditions; additional improvements remain separately scoped. Documentation stays
+English and README.md stays empty.
+
+
+### Visual Stage 1 completion evidence
+
+Implemented [Ocean presentation v1](specs/OCEAN_PRESENTATION_V1.md): bounded indexed
+sea-level clipping, height-derived absorption, shoreline foam, two animated normal
+layers, Schlick Fresnel, shared-sun highlights and compact collapsed water controls.
+A single shared phase/RAF hub pauses under operations and respects visibility and
+reduced motion. Mathematical algorithms, all Core fields and identities stay exact.
+
+324 Angular tests, eight Python packaging/asset checks, worker RPC and production
+publication pass. Eighteen fixed-camera paired views retain exact full numeric
+hashes. Chromium materials and focused water checks verify real shaders, comparison
+ownership, shared animation, operation pause and maximum-size Ocean resource caps.
+The PWA catalog has 39 assets. Native code is unchanged. This is correctness evidence;
+no controlled performance findings are claimed.
+
+Next: Visual Stage 2 sky/atmosphere, preserving the shared environment and water
+bindings. No sun controls, Core AO, river/lake hydrology, stage telemetry or new
+optimization configuration is implemented by this stage.
+
+Focused Chromium checks also pass for no-Ocean animation shutdown, 512x512 Ocean
+(11509784 raw GPU geometry bytes), zero-height Ocean, cached new-seed offline water,
+and narrow layout. Lighting, editor and PWA update regressions pass, including
+offline new-tab generation, Remote recovery and update deferral while busy.

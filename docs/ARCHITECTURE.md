@@ -330,3 +330,54 @@ controls or dependencies. The coastal step introduced result/workload/profile v1
 coverage semantics and traversal work. Old complete fixtures use frozen coastal v1
 under Historical/V8; 23 pre-v2 v9 field fingerprints verify preservation, including
 full trees and rocks.
+
+
+## Shared scene environment
+
+[scene-environment-v1](specs/SCENE_ENVIRONMENT_V1.md) centralizes presentation-only
+sun, hemisphere fill, linear fog/horizon and explicitly frozen visual time. The
+app-scoped SceneEnvironmentService publishes deeply frozen numeric snapshots; no
+mutable Three.js object lives in global settings. Hours/azimuth derive a documented
+illustrative light cycle; the default exactly retains daylight-shadow-v1. No sun UI,
+clock loop, sky/water pass or Core/transport/workload change is introduced.
+
+Each terrainLighting owner creates stable ordinary uniform wrappers, with view-owned
+Color/Vector3 values shared with its Three lights/fog. Future custom materials can
+bind this same world-space sun and horizon state. Comparison views receive one
+immutable snapshot but own independent mutable bindings, scaled fog ranges and
+shadow resources. The environment module remains in the deferred preview path.
+
+TerrainPreview observes environment separately from the run: changes update lights
+and render on demand, retaining geometry, camera and the original display metric.
+OperationLock/paused views defer live changes and apply the latest snapshot on
+resume; delayed setup/replacement also reads the latest state. Direction changes
+refit cached bounds and dirty shadows; color/fog/time-only changes reuse depth.
+Night disables the sun caster and daylight restores it. Existing idempotent scene
+cleanup restores prior references, releases shadow targets and leaves other views
+intact. Full atmospheric fog/scattering follows separately; Ocean shading is implemented below.
+
+
+## Ocean presentation
+
+[ocean-presentation-v1](specs/OCEAN_PRESENTATION_V1.md) adds a separate transparent
+sea-level surface clipped to authoritative Core Ocean triangles. Renderer clipping
+never classifies new water or fills disconnected depressions. Shared settings control
+shallow color, turbidity and foam; these are presentation state, not request fields.
+Depth comes from existing heights, without a depth/reflection render pass. One local
+periodic normal texture supplies two scrolling layers, with Schlick Fresnel, shallow
+foam and highlights from the shared sun. Sky reflection currently approximates the
+horizon/hemisphere colors; existing distance fog remains.
+
+One app-scoped RAF hub outside Angular draws visible Ocean views at most 30 FPS
+with a common phase. OperationLock, document visibility, reduced motion and viewport
+visibility gate animation; dry views need no recurring draw. Preview-owned geometry,
+material, cached normal texture, observers and callbacks follow replacement/retry/
+destruction ownership. Settings updates preserve camera, results and display metrics.
+
+Existing terrain/tree/rock color and caster ceilings remain 19. Water adds one color
+draw (20 total), no caster or repeated shadow update, one 128-square normal texture
+(about 85.3 KiB with RGBA mipmaps), and at most 32 MiB raw geometry storage per view
+on CPU and GPU separately. Five terrain textures and existing shadow targets remain.
+The new offline asset brings the complete PWA catalog to 39 entries. Mathematical
+identities and Core outputs are unchanged. See the specification for conservative
+diagonal clipping and transparency/shadow/reflection limitations.
