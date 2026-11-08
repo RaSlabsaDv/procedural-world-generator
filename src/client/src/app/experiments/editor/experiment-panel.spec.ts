@@ -194,3 +194,54 @@ it('shows stopped/incomplete records and retains their unavailable verification 
   expect(el.querySelectorAll('#race-trials tbody tr')).toHaveLength(1);
   expect(el.querySelector('#race-verification')!.textContent).toContain('Comparison unavailable');
 });
+
+it('shows separate post-run diagnostic and verified summaries, never while active', async () => {
+  const record = await TestBed.inject(ExperimentRunner).start(
+    createExperimentConfiguration(testTerrain(), 1),
+  );
+  fixture.componentRef.setInput('result', record);
+  await fixture.whenStable();
+  expect(el.querySelectorAll('#race-diagnostic-summary [data-summary-mode]')).toHaveLength(2);
+  expect(el.querySelectorAll('#race-verified-summary [data-summary-mode]')).toHaveLength(2);
+  expect(
+    el
+      .querySelector('#race-diagnostic-summary [data-summary-metric=computeMs]')!
+      .getAttribute('data-included'),
+  ).toBe('1');
+  expect(el.querySelector('#race-verified-summary .summary-median')!.textContent).toBe('0 ms');
+  fixture.componentRef.setInput('active', true);
+  await fixture.whenStable();
+  expect(el.querySelector('#race-diagnostic-summary')).toBeNull();
+  expect(button('race-download-json').disabled).toBe(true);
+  expect(button('race-download-csv').disabled).toBe(true);
+});
+
+it('shows unavailable verified statistics for failed collection and retains data after download failure', async () => {
+  local.mockRejectedValueOnce(new TerrainError('availability', 'Offline'));
+  const record = await TestBed.inject(ExperimentRunner).start(
+    createExperimentConfiguration(testTerrain(), 1),
+  );
+  fixture.componentRef.setInput('result', record);
+  await fixture.whenStable();
+  expect(el.querySelector('#race-verified-summary .verified-unavailable')!.textContent).toContain(
+    'Unavailable',
+  );
+  expect(el.querySelector('#race-diagnostic-summary .no-samples')!.textContent).toContain(
+    'No usable samples',
+  );
+  const create = vi.fn(() => {
+    throw new Error('Blob downloads unavailable');
+  });
+  vi.stubGlobal('URL', { createObjectURL: create });
+  try {
+    button('race-download-json').click();
+    await fixture.whenStable();
+    expect(el.querySelector('#race-export-error')!.textContent).toContain(
+      'Blob downloads unavailable',
+    );
+    expect(el.querySelector('#race-export-error')!.textContent).toContain('experiment is retained');
+    expect(fixture.componentInstance.result()).toBe(record);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

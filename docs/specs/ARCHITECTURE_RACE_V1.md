@@ -1,8 +1,8 @@
 # Architecture Race v1
 
-Status: Steps 1–3 implement this protocol, readonly record contracts, immutable
-configuration capture, the sequential runner and editor UI. Statistics and downloads
-remain future steps. This is an experiment schema, not a new mathematical workload.
+Status: Steps 1–4 implement this protocol, readonly record contracts, immutable
+configuration, sequential collection, editor UI, post-run statistics and JSON/CSV
+downloads. Controlled campaigns remain separate work. This is an experiment schema, not a new mathematical workload.
 
 ## Configuration and sequence
 
@@ -108,7 +108,7 @@ Collection retains full results only for the current pair and at most one final
 suitable pair for post-run visualization, releasing obsolete pairs. Small records and
 verification metrics survive. Export must not duplicate arrays or collect map history.
 
-## Future summaries and export (not implemented)
+## Summaries and export
 
 For each mode, separately summarize computeMs and requestMs: eligible count, median,
 Q1, Q3, min/max, failed/excluded counts and reasons. Sort ascending and interpolate
@@ -118,7 +118,7 @@ summaries; an incomplete or excluded experiment cannot claim verified performanc
 Preserve all raw samples, including outliers, failures and negative residuals.
 
 JSON is the authoritative versioned record: full configuration, metadata, raw trials,
-verification and explicit eligibility, without full maps. Future CSV uses one row per
+verification and explicit eligibility, without full maps. CSV uses one row per
 attempted trial, including warmups/errors; stable columns are schemaVersion,
 experimentId, pairId, trialId, phase, pairIndex, position, mode, status, computeMs,
 requestMs, coreBuildId, workload, algorithmVersion, resultVersion, simulationVersion,
@@ -127,8 +127,8 @@ pairVerificationStatus, exclusionReasons. Unavailable cells are empty. Pair IDs 
 to JSON verification records and experimentId links complete inputs/environment;
 CSV is a flat companion, not a replacement for authoritative JSON.
 
-Next: add statistics and export against these contracts. Controlled research campaigns and separate documented cold-start scenarios
-follow. No concurrent Race, Adaptive Mode, AOT, evolution or algorithm optimization is
+Next: conduct separately planned controlled research campaigns and documented
+cold-start scenarios with frozen builds and conditions. No concurrent Race, Adaptive Mode, AOT, evolution or algorithm optimization is
 part of this step. See [benchmarking](../BENCHMARKING.md).
 
 
@@ -201,5 +201,61 @@ App takes the pair once after settlement, checks revision/alive state, and reuse
 comparison without running generation or verification again. No suitable or obsolete
 pair replaces previous editor maps. Full runs remain outside ExperimentResult.
 Destroying App stops its own collection and discards the eventual handoff; closing a
-panel detail does not dispose the root runner. No statistical processing/export is
-implemented, and no benchmark result is claimed from UI regression tests.
+panel detail does not dispose the root runner. Step 3 introduced no statistics or
+export; Step 4 follows below. UI regressions do not constitute benchmark results.
+
+## Step 4 summary and export rules
+
+Derivation version: architecture-race-summary-v1. Warmups never enter summaries.
+Diagnostic samples are successful measured trials with a finite nonnegative value for
+that metric and an observed identity. Individually usable timings from an excluded
+pair (including a negative request-minus-compute residual) remain diagnostic, with
+recorded issues visible. Failed trials never enter distributions, even if a partial
+metric exists. Verified summaries require a completed, complete, eligible experiment;
+only successful measured trials referenced by an eligible compared measured pair enter.
+No correctness/identity checks or generation are repeated.
+
+Each mode/metric reports total measured trials, included samples, failed trials,
+unavailable values (null), and successful-but-excluded samples. Total equals included
+plus failed plus excludedSuccessful. Unavailable overlaps failed/excludedSuccessful;
+issue counts may overlap each other and included diagnostic samples. Issues list
+unique affected trial IDs, with experiment-level reasons applying to every measured
+trial and pair-level reasons to that pair. Nonfinite/negative values are invalid,
+not unavailable. Missing identities or eligible verification references exclude samples
+with explicit reasons. Unattempted calls are never counted as failed trials.
+
+Distributions are separate for each complete observed identity tuple: build, algorithm,
+result, workload, simulation and execution profile, within each mode/metric. Included
+counts may span groups; there is no pooled distribution across identities. Each group
+retains source trial IDs. Quartiles use sorted index (n-1)*p with linear interpolation;
+empty distributions have null extrema/quartiles and count zero. Source arrays are not
+sorted in place. Verified summaries of excluded/incomplete experiments are unavailable,
+not an apparently verified empty result. Summaries run only after collection settles.
+
+JSON wrapper format architecture-race-export-v1 contains experiment (the unchanged
+architecture-race-v1 record) and specialNumbers. Each nonfinite or negative-zero numeric leaf becomes
+a null placeholder with an entry {path, value}, where value is NaN, +Infinity,
+-Infinity or -0 and path is rooted at experiment. Paths use slash-separated object keys or
+array indices; escape ~ as ~0 and / as ~1. An actual unavailable null has no entry.
+The wrapper and sidecar together are authoritative and reversible; summaries are not
+embedded. This preserves all original text without reserving keys inside error fields.
+Unsupported values, cycles and typed/numeric arrays are rejected rather than silently
+dropped. Only trials, verifications, interruptions and assessment reasons are allowed
+array paths. No terrain data/history belongs in this export.
+
+CSV uses the previously frozen columns, UTF-8 without BOM, comma separators, CRLF
+rows (including a final CRLF), and doubled double-quotes inside quoted cells. Cells
+containing quotes/commas/CR/LF are quoted. Numeric cells use locale-independent JS
+number strings without rounding; nonfinite numeric tokens are NaN, +Infinity and
+-Infinity. Unavailable cells are empty. Text beginning with =, +, -, @ after Unicode whitespace, ASCII
+control or BOM prefixes, or beginning with tab/CR/LF, gets an apostrophe prefix
+to mitigate spreadsheet formulas. Numeric negatives are unchanged. Spreadsheet import
+settings still matter; authoritative JSON retains original text without this prefix.
+Exclusion reasons combine deduplicated recorded experiment/pair reasons as JSON in
+one cell. JSON retains full structured error fields and environment information;
+CSV references these through experiment/pair/trial IDs.
+
+Downloads use safe filenames architecture-race-<sanitized experiment ID>.json/.csv.
+They do not regenerate terrain, derive network latency or claim a performance winner.
+Failed/stopped records are downloadable. Active collection disables both download
+buttons and suppresses derivation. Temporary anchors and object URLs are released.

@@ -16,6 +16,36 @@ const {
   lightingResources,
 } = require("./support/lighting.cjs");
 
+// Independent CSV reader for downloaded evidence, including quoted multiline fields.
+function parseCsv(text) {
+  const rows = [];
+  let row = [],
+    cell = "",
+    quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (c === '"') {
+      if (quoted && text[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else quoted = !quoted;
+    } else if (c === "," && !quoted) {
+      row.push(cell);
+      cell = "";
+    } else if (c === "\r" && text[i + 1] === "\n" && !quoted) {
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      i++;
+    } else cell += c;
+  }
+  assert.equal(quoted, false);
+  assert.equal(cell, "");
+  assert.equal(row.length, 0);
+  return rows;
+}
+
 (async () => {
   const http = require("node:http");
   const transport = base.startsWith("https:") ? require("node:https") : http;
@@ -77,6 +107,51 @@ const {
     const page = await context.newPage(),
       errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    const download = async (format, label) => {
+      const pending = page.waitForEvent("download");
+      await page.locator("#race-download-" + format).click();
+      const file = await pending;
+      assert.match(
+        file.suggestedFilename(),
+        new RegExp("^architecture-race-[A-Za-z0-9_-]+\\." + format + "$"),
+      );
+      const target = artifactPath(`race-${label}.${format}`);
+      await file.saveAs(target);
+      const text = await fs.readFile(target, "utf8");
+      return format === "json" ? JSON.parse(text) : parseCsv(text);
+    };
+    const exportsFor = async (label) => {
+      const json = await download("json", label),
+        csv = await download("csv", label);
+      assert.equal(json.formatVersion, "architecture-race-export-v1");
+      assert.equal(
+        json.experiment.configuration.schemaVersion,
+        "architecture-race-v1",
+      );
+      assert.deepEqual(json.specialNumbers, []);
+      assert.equal(csv.length, json.experiment.trials.length + 1);
+      const index = (name) => csv[0].indexOf(name);
+      json.experiment.trials.forEach((trial, i) => {
+        const row = csv[i + 1];
+        assert.equal(
+          row[index("experimentId")],
+          json.experiment.metadata.experimentId,
+        );
+        assert.equal(row[index("pairId")], trial.pairId);
+        assert.equal(row[index("trialId")], trial.trialId);
+        assert.equal(row[index("phase")], trial.phase);
+        assert.equal(row[index("position")], String(trial.position));
+        assert.equal(
+          row[index("coreBuildId")],
+          trial.identity?.coreBuildId ?? "",
+        );
+        assert.equal(
+          row[index("computeMs")],
+          trial.computeMs === null ? "" : String(trial.computeMs),
+        );
+      });
+      return json.experiment;
+    };
     await page.goto(proxyBase);
     await waitForOfflineReady(page);
     await fillParameters(page, {
@@ -107,6 +182,7 @@ const {
     ])
       assert.equal(await page.locator("#" + id).isDisabled(), true);
     assert.match(await page.locator(".snapshot").innerText(), /Seed 42/);
+    assert.equal(await page.locator("#race-diagnostic-summary").count(), 0);
     const before = await lightingResources(page);
     await page.waitForTimeout(150);
     const during = await lightingResources(page);
@@ -178,6 +254,47 @@ const {
       assert.equal(eligibility, "excluded");
     else assert.equal(eligibility, "eligible");
 
+    await page.locator("#race-diagnostic-summary > summary").click();
+    await page.locator("#race-verified-summary > summary").click();
+    const completedExport = await exportsFor("completed");
+    assert.equal(completedExport.status, "completed");
+    for (const mode of ["local", "remote"]) {
+      const summary = page.locator(
+        `#race-diagnostic-summary [data-summary-mode=${mode}]`,
+      );
+      assert.equal(
+        await summary
+          .locator("[data-summary-metric=computeMs]")
+          .getAttribute("data-included"),
+        "2",
+      );
+      const samples = completedExport.trials.filter(
+        (t) => t.phase === "measured" && t.mode === mode,
+      );
+      const expectedMedian = (samples[0].computeMs + samples[1].computeMs) / 2;
+      const actualMedian = parseFloat(
+        await summary
+          .locator("[data-summary-metric=computeMs] .summary-median")
+          .innerText(),
+      );
+      assert.ok(Math.abs(actualMedian - expectedMedian) < 1e-9);
+    }
+    if (eligibility === "eligible")
+      assert.equal(
+        await page
+          .locator("#race-verified-summary [data-summary-mode]")
+          .count(),
+        2,
+      );
+    else
+      assert.equal(
+        await page
+          .locator("#race-verified-summary .verified-unavailable")
+          .count(),
+        1,
+      );
+    assert.equal(requests.length, 3, "Export must not rerun generation");
+
     // Deterministically hold an active Remote warmup for Stop, rather than guessing timing.
     await page.setViewportSize({ width: 390, height: 844 });
     gateNext = true;
@@ -210,6 +327,25 @@ const {
       await page.locator("#race-outcome").innerText(),
       /Incomplete series/,
     );
+    const stoppedExport = await exportsFor("stopped");
+    assert.equal(stoppedExport.status, "stopped");
+    assert.equal(stoppedExport.complete, false);
+    assert.equal(stoppedExport.trials.length, 2);
+    assert.ok(
+      stoppedExport.assessment.reasons.some(
+        (reason) => reason.code === "incomplete",
+      ),
+    );
+    if (
+      !(await page.locator("#race-verified-summary").evaluate((el) => el.open))
+    )
+      await page.locator("#race-verified-summary > summary").click();
+    assert.equal(
+      await page
+        .locator("#race-verified-summary .verified-unavailable")
+        .isVisible(),
+      true,
+    );
     assert.equal(requests.length, 4);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator("#race-start").scrollIntoViewIfNeeded();
@@ -233,6 +369,8 @@ const {
       stoppedWarmupTrials: 2,
       stopCondition:
         "Test-only HTTP proxy gate; excluded from performance conclusions",
+      summaryCounts: "2 measured samples per mode/metric",
+      downloads: ["completed JSON/CSV", "stopped JSON/CSV"],
       narrowLayout: true,
       pageErrors: errors,
     };

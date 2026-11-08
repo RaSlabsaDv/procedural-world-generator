@@ -2,7 +2,7 @@
 
 ## Current application
 
-One Angular editor generates **Rich terrain + hydraulic erosion** locally in a C# WASM worker or remotely through ASP.NET Core. Both use the same Core. Seven detail stages are implemented, including structured vegetation, local relief and coastal surfaces. Architecture Race has protocol/contracts, a sequential collection service and a compact editor panel; summaries and export remain planned. Evolution capture/playback remains future work. README is intentionally empty.
+One Angular editor generates **Rich terrain + hydraulic erosion** locally in a C# WASM worker or remotely through ASP.NET Core. Both use the same Core. Seven detail stages are implemented, including structured vegetation, local relief and coastal surfaces. Architecture Race has protocol/contracts, a sequential collection service and a compact editor panel, post-run summaries and versioned JSON/CSV export. Evolution capture/playback remains future work. README is intentionally empty.
 
 Start with the [documentation index](INDEX.md), [project brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md) and [benchmark methodology](BENCHMARKING.md). Frozen mathematical/presentation policies live in [specs/](specs/); original milestone observations are in [history/DETAILING_VERIFICATION.md](history/DETAILING_VERIFICATION.md).
 
@@ -108,7 +108,7 @@ Use the same environment for all eight entry points:
 | materials.cjs | Five textures, instance/draw budgets, ownership, narrow/offline presentation |
 | lighting.cjs | Actual shadow attachments, static reuse, pause and empty/minimum terrain |
 | editor.cjs | Compact guidance/tips, keyboard sliders, drafts, retained results, equivalence and layout |
-| race.cjs | Real sequential pairs, raw records/build identity, paused scenes, cooperative Stop and narrow layout |
+| race.cjs | Real sequential pairs, raw records/build identity, paused scenes, Stop, summaries, downloaded completed/stopped JSON/CSV and narrow layout |
 | coasts.cjs | Coastal blending/views, steep shores and protected dry depressions |
 | relief.cjs | Pure/eroded plains and mountain views with actual UI equivalence |
 | pwa.cjs | Offline reload/new tab, Remote recovery and deferred safe updates |
@@ -130,7 +130,7 @@ PWA tests temporarily mutate only generated deployment files and restore them in
 - tests/core/Generation, Ecology, Validation: active Core checks; Historical/ and Fixtures/ retain versioned evidence.
 - tests/api, browser, build, reference: host integration, real browser scenarios, packaging and independent numerical references.
 
-Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race Step 1 protocol/contracts and immutable configuration are implemented; see [the specification](specs/ARCHITECTURE_RACE_V1.md). Sequential collection and its editor panel are implemented; summaries and export remain planned.
+Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race Step 1 protocol/contracts and immutable configuration are implemented; see [the specification](specs/ARCHITECTURE_RACE_V1.md). Sequential collection and its editor panel, summaries and export are implemented.
 
 
 ## Architecture Race configuration
@@ -141,8 +141,7 @@ The default is 10 measured pairs; invalid pair counts throw RangeError. Mathemat
 terrain validation remains in Core. No Angular form or browser APIs are required.
 Colocated utility tests cover every captured parameter, caller edits, runtime freezing,
 count boundaries and forwarding invalid terrain drafts unchanged. Run `npm --prefix
-src/client test -- --watch=false` for frontend checks. Steps 2–3 add the collector service and editor panel described below; statistics and
-export remain planned. No performance campaign has been run.
+src/client test -- --watch=false` for frontend checks. Steps 2–4 add collection, editor controls, summaries and export described below. No performance campaign has been run.
 
 
 ## Architecture Race runner
@@ -179,7 +178,8 @@ After completion, expand raw trials, pair verification, exclusion reasons or cap
 inputs/conditions. Collection completed does not imply eligible results. Failed/stopped
 records remain inspectable, unavailable durations are labelled, and zero remains zero.
 Correctness and build compatibility are separate. Matching dirty builds remain
-excluded diagnostics. Summaries, winner claims, charts and downloads are not provided.
+excluded diagnostics. Post-run summaries and downloads follow below; winner claims
+and charts are not provided.
 
 App takes the retained pair once after settlement and reuses its stored verification;
 there is no repeated generation or comparison. No suitable pair leaves prior maps
@@ -205,3 +205,42 @@ Restart the API from the matching publication, then reload/update the applicatio
 and retry. Compare the actual IDs in Captured inputs & conditions; do not bypass
 identity checks or treat matching dirty builds as verified. A generic numerical
 mismatch instead requires inspecting the stored full comparison diagnostics.
+
+
+## Statistics and export
+
+After an experiment settles, expand Diagnostic summaries or Verified summaries.
+Warmups are excluded. Each mode has separate Core/request distributions, partitioned
+again by complete observed build/workload identity. Included counts may cover several
+groups but medians/quartiles are never pooled across groups. Diagnostic usable values
+can come from excluded experiments; verified statistics require a completed eligible
+experiment and eligible compared pair references. Otherwise Verified is unavailable.
+
+For each mode/metric, total = included + failed + excludedSuccessful. Unavailable means
+null and overlaps failed/excluded counts. Issue flags can overlap included diagnostic
+samples; expand issues to see affected IDs and reasons. Individually finite nonnegative
+values from a negative-residual pair remain diagnostic, never verified. Median, Q1/Q3
+and extrema use sorted-index linear interpolation, retaining outliers. The pure data
+modules are tested against independent literal fixtures and never mutate raw records.
+
+Download JSON saves architecture-race-export-v1: experiment is the complete original
+architecture-race-v1 record; specialNumbers restores NaN, +Infinity, -Infinity and -0
+at escaped slash paths rooted inside experiment. Null placeholders with sidecar entries
+are invalid/special readings, while nulls without entries are genuinely unavailable.
+Use the record and sidecar together. Summaries are derived, not embedded. Unsupported
+values, cycles, typed arrays and unexpected array paths produce an error instead of
+silently omitting data. Source records stay untouched.
+
+Download CSV is a flat UTF-8 companion with stable 25-column header and CRLF rows.
+Every attempted call is retained, including warmups/errors. Inputs and environment
+remain in JSON, linked by IDs; raw map arrays are never exported. CSV leaves nulls
+empty, retains numeric precision/-0 and uses explicit nonfinite tokens. Text cells
+with formula-like prefixes receive an apostrophe; original text remains in JSON.
+Quotes, commas and multiline text use standard double-quote escaping. Use explicit
+spreadsheet import settings; CSV text escaping is a mitigation, not a lossless JSON
+replacement. The complete rules are in [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md).
+
+Exports are available for failed/stopped runs, disabled during collection, and require
+no additional computation or verification calls. Failed downloads keep the experiment
+visible for retry. Filenames sanitize the experiment ID; temporary anchors and Blob
+URLs are released. No controlled performance conclusions follow from these UI checks.

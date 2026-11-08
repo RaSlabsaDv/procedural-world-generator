@@ -193,7 +193,7 @@ and build compatibility. Records retain no full map arrays.
 Step 2 implements ExperimentRunner in experiments/: one OperationLock for preparation
 through verification, no scene construction during collection, bounded pair retention
 and honest startup metadata. The preview observes the lock directly, deferring new
-WebGL/asset setup and suppressing resize/draw work until release. Step 3 connects the editor panel; summaries and export follow separately. The interactive Verify action
+WebGL/asset setup and suppressing resize/draw work until release. Step 3 connects the editor panel; Step 4 adds post-run summaries and export below. The interactive Verify action
 remains a single equivalence check, not a repeated measurement campaign.
 
 
@@ -226,4 +226,30 @@ collection is stopped on App destruction; the root service is not disposed by a 
 
 Raw durations, failures, exclusion reasons, input snapshots, startup and actual build
 IDs appear in expandable details. Completed, eligible and compatible remain distinct
-labels. No statistics, download pipeline or campaign conclusions are introduced.
+labels. That UI step introduced no statistics or downloads; Step 4 adds them below.
+No campaign conclusions are inferred.
+
+
+## Experiment summaries and downloads
+
+experiments/data/experiment-statistics.ts derives architecture-race-summary-v1 from
+one settled ExperimentResult. Diagnostic and verified views use the frozen inclusion
+rules; distributions never pool observed build/workload identity tuples. Per-mode,
+per-metric counts distinguish successful exclusions, failed trials and missing values;
+issues retain affected IDs. Quartiles interpolate at sorted index (n-1)*p. Only small
+records are processed, after collection, without new comparisons or Core calls.
+
+experiment-export.ts is a pure serializer. architecture-race-export-v1 wraps the
+unchanged architecture-race-v1 record plus specialNumbers path/value entries, preserving
+nonfinite numbers and signed zero separately from unavailable nulls. No derived
+summaries are embedded. Unsupported values/cycles and arrays outside known record
+paths reject rather than silently losing data. CSV keeps the frozen 25-column order,
+all attempted calls, exact numeric strings, CRLF and explicit spreadsheet text escaping.
+Original text remains authoritative in JSON. See the [v1 specification](specs/ARCHITECTURE_RACE_V1.md).
+
+The panel gates derivation/downloads on collection settlement and renders focused
+ExperimentSummaryPanel components in collapsed Diagnostic/Verified sections. The
+browser-only experiment-download.ts creates UTF-8 Blobs, removes its temporary anchor
+and revokes object URLs after dispatch (immediately on failure). Serialization/download
+errors retain the result. No dependency, transport, runner-policy or timing change is
+included; statistics and exports do not contain full map history.

@@ -104,6 +104,59 @@
         </ul>
       </details>
     }
+    <div class="actions export-actions">
+      <button
+        id="race-download-json"
+        type="button"
+        class="secondary"
+        [disabled]="active()"
+        (click)="download('json')"
+      >
+        Download JSON
+      </button>
+      <button
+        id="race-download-csv"
+        type="button"
+        class="secondary"
+        [disabled]="active()"
+        (click)="download('csv')"
+      >
+        Download CSV
+      </button>
+    </div>
+    @if (exportError(); as problem) {
+      <p id="race-export-error" class="error" role="alert">{{ problem }}</p>
+    }
+    @if (summary(); as stats) {
+      <details id="race-diagnostic-summary">
+        <summary>Diagnostic summaries</summary>
+        <p>
+          Successful usable measured durations; warmups excluded. Excluded experiments can still
+          have diagnostic samples. Unavailable counts overlap failed/excluded counts; recorded
+          issues may also affect included diagnostic samples. Different identities have separate
+          distributions.
+        </p>
+        <app-experiment-summary [modes]="stats.diagnostic" />
+      </details>
+      <details id="race-verified-summary">
+        <summary>Verified summaries</summary>
+        @if (stats.verified.status === 'available') {
+          <p>
+            Completed eligible experiment; only eligible compared measured pairs. Warmups excluded.
+          </p>
+          <app-experiment-summary [modes]="stats.verified.modes" />
+        } @else {
+          <p class="verified-unavailable">
+            Unavailable: a completed eligible experiment is required.
+          </p>
+          <ul>
+            @for (reason of stats.verified.reasons; track $index) {
+              <li>{{ reason.code }}: {{ reason.detail }}</li>
+            }
+          </ul>
+        }
+      </details>
+    }
     <details id="race-trials">
       <summary>Raw trials ({{ record.trials.length }})</summary>
       <p class="hint">
@@ -212,7 +265,8 @@
       </details>
     </details>
     <p class="hint">
-      These records describe this experiment. Summaries and export are a later step.
+      These records describe this experiment. JSON is authoritative; CSV is a spreadsheet-safe
+      companion. Quartiles use linear interpolation at (n−1) × p.
     </p>
   }
 </section>

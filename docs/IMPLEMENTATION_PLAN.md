@@ -142,7 +142,7 @@ Preserve the preferred terrain appearance. Develop diagnostic layers for slope/e
 
 ## Architecture Race and research campaign
 
-Protocol/contracts, the sequential runner and editor UI are implemented in Steps 1–3 below. Statistics and JSON/CSV export remain next. Use the current `landscape-ecology-hydraulic-v8` and `landscape-worker-json-v8` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
+Protocol/contracts, sequential collection, editor UI, statistics and JSON/CSV export are implemented in Steps 1–4 below. A controlled research campaign remains next. Use the current `landscape-ecology-hydraulic-v8` and `landscape-worker-json-v8` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
 
 Run a controlled size/iteration/seed matrix under documented network profiles. Keep compute, initialization, request overhead and rendering separate. Report failures and environment limits; browser smoke checks are correctness evidence, not a performance campaign.
 
@@ -253,7 +253,49 @@ update behavior. The test-only proxy is needed for SW-owned fetches and its timi
 are not campaign results. Existing optional WASM optimization warning remains.
 Core/host sources did not change; native test suites were not rerun. README is empty.
 
-Next: implement the documented per-mode summaries and versioned JSON/CSV export,
-with warmups excluded from measured summaries, diagnostic versus verified eligibility,
-explicit exclusion counts and retention of failed/incomplete records. No statistics,
-charts, downloads or controlled campaign results are included in Step 3.
+Step 4 scope: documented per-mode summaries and versioned JSON/CSV export, excluding
+warmups, separating diagnostic/verified eligibility and preserving failed/incomplete
+records with reasons. Completion follows below. Step 3 itself introduced no statistics,
+charts, downloads or controlled campaign results.
+
+
+## Architecture Race — Step 4 complete
+
+Implemented pure architecture-race-summary-v1 derivation with per-mode/per-metric
+counts and distributions partitioned by actual complete build/workload identity.
+Warmups never enter measured summaries. Diagnostic successful finite nonnegative
+values remain usable even when an experiment is excluded, with issues and affected
+trial IDs retained. Verified statistics require a completed eligible experiment and
+eligible compared measured-pair references. Failed trials, unavailable nulls and
+successful exclusions have explicit documented count semantics. Quartiles interpolate
+at sorted index (n-1)*p; extrema/outliers remain, and source records are unchanged.
+
+Added architecture-race-export-v1 JSON wrapping the unchanged architecture-race-v1
+record plus explicit escaped-path specialNumbers for NaN, infinities and signed zero.
+The complete record and sidecar are authoritative; derived summaries and maps are not
+embedded. CSV keeps the frozen 25 columns, every attempted call including warmups/
+errors, raw numeric strings, null/zero distinction, CRLF, quote/multiline escaping
+and spreadsheet formula mitigation for text. JSON retains original text. Unexpected
+values/cycles/array payloads fail explicitly. Failed/stopped records remain exportable.
+
+The compact panel adds collapsible Diagnostic/Verified summaries and JSON/CSV download
+actions after collection. No derivation/download occurs during collection. Browser
+side effects are isolated in a small helper with temporary anchor removal and object
+URL revocation; failures preserve records for retry. Core, hosts, adapters, runner
+policy and timing boundaries remain unchanged. No dependencies were added.
+
+Verification: 297 Angular tests pass (48 added), production publication/finalization
+and documentation links pass. Real Chromium Race checks validate distributions and
+sample counts, download/parse completed and stopped JSON/CSV, match raw references/
+identities/order, preserve warmups and verify no extra generation calls. Editor,
+lighting and PWA regressions also pass with no page errors, including narrow layout,
+paused scenes, offline new tabs and safe updates. Test proxy timings remain smoke
+evidence only. The serving API was restarted against the matching publication to
+avoid stale in-memory build identity. The known optional WASM optimization warning
+remains; native test suites were not rerun because their sources were unchanged.
+README stays empty; changes are not benchmark campaign findings.
+
+Next: plan a controlled measurement campaign with frozen matching builds, application
+revision, documented browser/client/server hardware and runtime, verified cache/startup
+state and reproducible network conditions. Retain raw exports and report limitations.
+No campaign automation, charts, Adaptive Mode, AOT or generator change is included here.

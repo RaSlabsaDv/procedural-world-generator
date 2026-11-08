@@ -1,0 +1,75 @@
+@for (mode of modes(); track mode.mode) {
+  <section [attr.data-summary-mode]="mode.mode">
+    <h3>{{ mode.mode === 'local' ? 'Local WebAssembly' : 'Remote API' }}</h3>
+    @for (metric of metrics; track metric) {
+      @let data = mode[metric];
+      <section
+        class="metric"
+        [attr.data-summary-metric]="metric"
+        [attr.data-included]="data.included"
+      >
+        <h4>{{ metric === 'computeMs' ? 'Core computation' : 'Request to data ready' }}</h4>
+        <p>
+          Total measured: {{ data.total }} · Included: {{ data.included }} · Failed:
+          {{ data.failed }} · Excluded successful: {{ data.excludedSuccessful }} · Unavailable:
+          {{ data.unavailable }}
+        </p>
+        @for (group of data.groups; track $index) {
+          <p class="build">
+            Build: {{ group.identity.coreBuildId }} · n = {{ group.distribution.count }}
+          </p>
+          <dl>
+            <div>
+              <dt>Median</dt>
+              <dd class="summary-median">{{ value(group.distribution.median) }}</dd>
+            </div>
+            <div>
+              <dt>Q1–Q3</dt>
+              <dd>{{ value(group.distribution.q1) }} – {{ value(group.distribution.q3) }}</dd>
+            </div>
+            <div>
+              <dt>Min–max</dt>
+              <dd>{{ value(group.distribution.min) }} – {{ value(group.distribution.max) }}</dd>
+            </div>
+          </dl>
+          <details>
+            <summary>Identity &amp; sample references</summary>
+            <p>
+              Algorithm: {{ group.identity.algorithmVersion }} · Result:
+              {{ group.identity.resultVersion }} · Workload: {{ group.identity.workload }} ·
+              Simulation: {{ group.identity.simulationVersion }} · Profile:
+              {{ group.identity.executionProfile }}
+            </p>
+            <ul>
+              @for (id of group.trialIds; track id) {
+                <li>{{ id }}</li>
+              }
+            </ul>
+          </details>
+        } @empty {
+          <p class="no-samples">No usable samples. Statistics unavailable.</p>
+        }
+        @if (data.issues.length) {
+          <details class="summary-issues">
+            <summary>Issues &amp; affected samples</summary>
+            <ul>
+              @for (issue of data.issues; track $index) {
+                <li>
+                  {{ issue.code }}: {{ issue.detail }} ({{ issue.trialIds.length }} affected)
+                  <details>
+                    <summary>Trial IDs</summary>
+                    <ul>
+                      @for (id of issue.trialIds; track id) {
+                        <li>{{ id }}</li>
+                      }
+                    </ul>
+                  </details>
+                </li>
+              }
+            </ul>
+          </details>
+        }
+      </section>
+    }
+  </section>
+}

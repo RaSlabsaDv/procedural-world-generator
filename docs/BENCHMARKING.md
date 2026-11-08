@@ -1,6 +1,6 @@
 # Benchmarking Protocol
 
-The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check and repeated-trial runner with its editor panel are implemented; summaries, export and campaign results remain planned. [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes the implementable protocol and record schema; Steps 1–3 supply contracts, immutable configuration, sequential collection and the editor UI. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
+The primary workload is Rich terrain + hydraulic erosion. The sequential equivalence check, repeated-trial runner, editor panel, post-run summaries and export are implemented. Controlled campaign results remain planned. [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes the implementable protocol and record schema; Steps 1–4 supply contracts, immutable configuration, sequential collection, editor UI, summaries and export. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
 
 ## 1. What we compare
 
@@ -220,12 +220,12 @@ still permits attempting the other mode; stop finishes an active call without
 claiming to cancel Core. Incomplete results remain exportable and excluded from
 verified claims. Record observed interruptions; external CPU load is not controlled.
 
-Future summaries exclude warmups and separate diagnostic/verified samples. Quartiles
+Summaries exclude warmups and separate diagnostic/verified samples. Quartiles
 use sorted index (n-1)*p with linear interpolation; preserve outliers and give counts
 and reasons for exclusions. JSON retains complete small records and configuration;
 CSV includes each attempted trial, warmups/errors included. Neither retains full maps.
-Step 2 implements the runner as a service using these boundaries. Statistics functions,
-export remain unimplemented; no controlled campaign is claimed.
+Steps 2–4 implement collection, summaries and export using these boundaries; no
+controlled campaign is claimed.
 
 
 ## Interactive experiment collection
@@ -242,3 +242,27 @@ The race browser regression uses an explicitly artificial HTTP proxy gate to che
 Stop and paused scenes while retaining normal SW behavior. These readings, like other
 browser smoke timings, must not be used as controlled campaign results. The current
 UI does not automate cache resets, server preparation or network/hardware control.
+
+
+## Implemented summary/export derivation
+
+architecture-race-summary-v1 operates only on settled records. Diagnostic distributions
+include individually usable successful measured values; verified distributions require
+an eligible completed experiment and eligible compared measured pair references.
+Recorded exclusions are not reclassified. Actual identity tuples partition distributions
+within each mode/metric, so build/workload changes never produce a pooled median.
+Total measured = included + failed + excludedSuccessful; unavailable nulls overlap
+failed/excluded counts. Issue flags retain unique affected trial IDs and may also apply
+to included diagnostic readings. Nonfinite/negative values never enter distributions.
+Negative residuals remain raw; individually usable diagnostic durations are flagged,
+while verified claims remain excluded. Warmups and unattempted calls never inflate
+measured counts; outliers remain included when otherwise usable.
+
+The authoritative JSON export wrapper retains the complete record, with explicit
+specialNumbers entries for values JSON cannot faithfully preserve (including -0).
+CSV preserves all attempted calls with fixed columns, exact numeric strings, quoted
+multiline text and spreadsheet formula mitigation; JSON retains original text.
+Summaries are not embedded or computed during collection. See the
+[complete rules](specs/ARCHITECTURE_RACE_V1.md#step-4-summary-and-export-rules).
+A controlled campaign must separately freeze builds, environment and network conditions;
+these utilities neither automate those conditions nor establish a performance winner.

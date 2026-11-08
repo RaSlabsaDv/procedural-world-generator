@@ -1,5 +1,5 @@
-import { JsonPipe } from '@angular/common';
-import { Component, computed, input, output, signal } from '@angular/core';
+import { DOCUMENT, JsonPipe } from '@angular/common';
+import { Component, computed, inject, input, output, signal } from '@angular/core';
 import {
   DEFAULT_MEASURED_PAIRS,
   MAX_MEASURED_PAIRS,
@@ -7,11 +7,14 @@ import {
   ExperimentResult,
   WARMUP_PAIRS,
 } from '../data/experiment.models';
+import { summarizeExperiment } from '../data/experiment-statistics';
+import { downloadExperiment } from './experiment-download';
+import { ExperimentSummaryPanel } from './experiment-summary';
 import { ExperimentProgress } from '../experiment-runner.service';
 
 @Component({
   selector: 'app-experiment-panel',
-  imports: [JsonPipe],
+  imports: [JsonPipe, ExperimentSummaryPanel],
   templateUrl: './experiment-panel.html',
   styleUrls: ['../../shared/panel.css', './experiment-panel.css'],
 })
@@ -24,6 +27,12 @@ export class ExperimentPanel {
   readonly plannedPairs = input(DEFAULT_MEASURED_PAIRS);
   readonly start = output<number>();
   readonly stop = output<void>();
+  private readonly document = inject(DOCUMENT);
+  protected readonly exportError = signal<string | null>(null);
+  protected readonly summary = computed(() => {
+    const record = this.result();
+    return !this.active() && record ? summarizeExperiment(record) : null;
+  });
   protected readonly count = signal(DEFAULT_MEASURED_PAIRS);
   protected readonly countError = signal<string | null>(null);
   protected readonly min = MIN_MEASURED_PAIRS;
@@ -70,11 +79,27 @@ export class ExperimentPanel {
       return;
     }
     this.countError.set(null);
+    this.exportError.set(null);
     this.start.emit(count);
   }
 
   protected requestStop(): void {
     if (this.active() && !this.stopping()) this.stop.emit();
+  }
+
+  protected download(format: 'json' | 'csv'): void {
+    const record = this.result();
+    if (this.active() || !record) return;
+    this.exportError.set(null);
+    try {
+      downloadExperiment(record, format, this.document);
+    } catch (error) {
+      this.exportError.set(
+        'Download failed: ' +
+          (error instanceof Error ? error.message : String(error)) +
+          ' The experiment is retained; retry the download.',
+      );
+    }
   }
 
   protected duration(value: number | null): string {

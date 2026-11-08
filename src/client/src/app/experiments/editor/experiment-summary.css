@@ -1,0 +1,37 @@
+:host {
+  display: block;
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+h3 {
+  margin: 0.7rem 0 0.3rem;
+}
+h4,
+p {
+  margin: 0.4rem 0;
+}
+.metric {
+  border-bottom: 1px solid #dce5e5;
+  padding-bottom: 0.5rem;
+}
+dl {
+  margin: 0.4rem 0;
+}
+dl > div {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  gap: 0.4rem;
+}
+dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+details {
+  margin-top: 0.4rem;
+}
+ul {
+  padding-left: 1rem;
+}
+.build {
+  color: #50696c;
+}
