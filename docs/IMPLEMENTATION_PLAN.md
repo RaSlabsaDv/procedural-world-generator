@@ -452,8 +452,8 @@ configuration and workload identities are frozen. README remains empty.
 
 ## Next roadmap: visual realism and execution feedback
 
-Status: shared environment foundation and Visual Stages 1–2 implemented; remaining stages are planned.
-The next visual feature is sun controls and justified shadow-quality improvements.
+Status: shared environment foundation, Visual Stages 1–2 and Stage 3A implemented; remaining stages are planned.
+Sun controls (Visual Stage 3A) are complete; shadow-quality assessment (3B) is next.
 Implement incremental, independently reviewable stages, freezing each stage's
 policy, resource budget, acceptance scenes and verification before changing code.
 
@@ -602,7 +602,7 @@ Define fog equations, sky ownership, transparency interaction, draw/pass costs a
 paired acceptance scenes. Keep the fixed current lighting preset usable as a
 reference. Atmosphere is presentation; do not modify Core climate to fake haze.
 
-### Visual Stage 3 — sun controls and shadow quality
+### Visual Stage 3 — sun controls complete; shadow quality pending
 
 - Add compact time-of-day and sun-direction controls with one unambiguous mapping
   between time, azimuth/elevation, sun intensity/color, sky and fog. Warm low sun
@@ -688,7 +688,7 @@ collection. CPU first submission is not GPU completion or an FPS measurement.
 
 ### Execution track 1 — detailed timing diagnostics
 
-The shared foundation, water and atmosphere are complete; sun controls are next. Timing diagnostics precede WASM
+The shared foundation, water, atmosphere and sun controls are complete; shadow-quality assessment is next. Timing diagnostics precede WASM
 optimization decisions and the next controlled performance campaign.
 
 Break down height composition, erosion, final conversion/ocean/environment/biome
@@ -854,7 +854,7 @@ catalog and existing texture/shadow budgets are retained. No performance claim.
 Known limits include finite map edges, low-poly coasts, approximate output-space
 water blending, no underwater scattering/clouds and an illustrative sky/light cycle.
 Full gradients are visible near the horizon; the initial downward camera is retained.
-Next: Visual Stage 3 compact sun controls and evidence-driven shadow refinements.
+At that milestone, sun controls and evidence-driven shadow refinements were next; Stage 3A completion follows.
 CSM/Core AO still require separate justification/specification before implementation.
 
 The materials matrix observed up to 19 color calls including exactly one sky draw;
@@ -865,3 +865,62 @@ estimate), with one static update per unchanged scene.
 Production PWA regression also passes: cached reload/new tabs and new seeds, Remote
 failure/recovery, deferred update while busy, and updated-version offline 3D terrain.
 Deployment assets were restored after the update simulation.
+
+
+### Visual Stage 3A — sun controls (complete)
+
+Implemented [Sun controls v1](specs/SUN_CONTROLS_V1.md): one collapsed panel edits
+00:00..24:00 in 15-minute steps and 0..359 degrees with compass labels. Reset restores
+12:00/315 degrees while preserving visualTimeSeconds and Water/Atmosphere settings.
+SceneEnvironmentService remains the shared immutable source for both views. The
+existing light-cycle equations, mathematical identities, all Core outputs and
+camera behavior stay unchanged.
+
+Controls load through Angular defer only when opened outside OperationLock; opening
+while busy waits until release. Existing afterRenderEffect coalesces synchronous
+edits and applies latest-only snapshots after unlock. No new animation/scheduler,
+store, texture, rendering pass or external dependency. One inactive night-direction
+edit updates the light transform without shadow-camera refit; active direction and
+activation changes retain the fitted single 2048 map and existing bounds policy.
+
+Verification: 338 Angular tests, nine packaging/asset checks, worker RPC and production
+publication pass. The frozen six-case/18-view atlas preserves exact complete Core
+hashes, camera matrices and all default noon PNG bytes. Chromium Sun UI, materials,
+lighting and editor checks exercise both views, actual dawn/noon/sunset/night and
+cardinal directions, reset, no generation/upload on edits, retained shadow targets,
+operation guards and cached offline interaction. Resource ceilings remain 21 color
+and 19 caster calls with existing textures/shadow storage. The complete catalog has
+40 required assets after the lazy code split. Native sources are unchanged; native
+suites were not rerun. Software WebGL smoke runs are not performance findings.
+
+Next: Visual Stage 3B, assess shadow quality at low sun and close/overview scales.
+Document observed clipping/acne/detachment/resolution and choose bounded fit/bias
+refinements only where justified. CSM and Core AO are not automatically authorized
+by this completion; either requires evidence and a separate policy/budget before
+implementation. Existing near-horizon/night darkness and low-poly/coastal limits
+remain explicit. README stays empty.
+
+Production PWA regression passes: offline reload/new tabs and new seeds, Remote
+failure/recovery, deferred update while busy and updated-version offline 3D terrain.
+Generated deployment assets were restored after the update simulation.
+
+
+### Sun-stage correction — night foam and visible moon
+
+Corrected constant-emission Ocean foam to use actual linear sky/fill illumination
+and bounded direct sun. Added an illustrative full moon opposite the existing sun
+in the shared sky function, including its water reflection. No extra clock, lunar
+calendar, light/shadow pass, geometry/texture or Core computation is introduced.
+Default noon appearance remains exact. See [Night sky and foam v1](specs/NIGHT_SKY_V1.md).
+This follow-up preserves the completed Sun UI and leaves shadow-quality assessment
+as the next planned substep. README stays empty.
+
+Night follow-up verification: 338 Angular tests, nine packaging/asset checks, worker
+RPC, production publish and real Sun/night/offline browser checks pass. All 18 default
+noon image/camera/full Core comparisons remain exact. The night/zero-light pixel
+probe and visible moon/day-absence probe pass without errors; this is correctness
+smoke evidence rather than a controlled performance result.
+
+Night correction PWA regression also passes: cached reload/new tabs/new seeds,
+Remote recovery, deferred update while busy and updated-version offline 3D terrain.
+Generated deployment assets were restored afterwards.

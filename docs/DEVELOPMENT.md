@@ -568,3 +568,81 @@ estimate), with one static update per unchanged scene.
 Production PWA regression also passes: cached reload/new tabs and new seeds, Remote
 failure/recovery, deferred update while busy, and updated-version offline 3D terrain.
 Deployment assets were restored after the update simulation.
+
+
+## Interactive sun
+
+Open the collapsed Sun panel beneath Atmosphere. Time of day spans 00:00..24:00 with
+15-minute steps; direction spans 0..359 degrees with an eight-point compass label.
+0 degrees/N points world +Z; 90/E points+X. Reset sun restores 12:00/315 degrees NW,
+keeping visual-time phase and Water/Atmosphere settings. Both previews update without
+regeneration. The initial sky gradient is easiest to see near the horizon; existing
+camera behavior is preserved.
+
+Controls are disabled during operations and validate events synchronously. First
+opening loads their deferred code only after OperationLock releases. There is no
+sun playback/persistence. The existing illustrative light cycle is unchanged;
+near sunrise/sunset and at night the terrain is deliberately dark. Low sun can
+stretch low-poly shadows. These are recorded limits for the next shadow-quality
+assessment, not a reason to silently change the light model in this interaction step.
+
+Using the documented PWG_* production-browser setup, run:
+
+- node tests/browser/sun.cjs
+- node tests/browser/atlas-materials.cjs --sun
+
+The Sun atlas uses six unchanged scenes/three zooms, frozen waves and the preceding
+atmosphere captures: copy atmosphere-after.json to sun-controls-before.json and
+atmosphere-after-*.png to sun-controls-before-*.png under ignored artifacts before
+publishing. It verifies exact camera/full Core hashes and all 18 default PNG bytes.
+The focused UI harness covers the real slider cycle, direction/reset, independent
+views, rapid-edit coalescing, stable uploads/shadow attachments, busy guards,
+deferred opening, cached offline controls/new seeds and narrow layout. No production
+debug interface or test-only bundle substitution is required for these sun tests.
+
+Production build keeps Three/rendering in lazy chunks; the new Sun entry and shared
+code bring the complete offline catalog to 40 required assets. No texture or external
+dependency is added. Core/hosts are unchanged; native suites were not rerun. Keep
+PWA update checks last because they mutate/restore the generated deployment.
+
+Sun verification: 338 Angular tests, nine packaging/asset checks, worker RPC and
+production publication pass. All 18 default camera/full Core/PNG comparisons pass.
+Real Sun UI/materials/lighting/editor scenarios verify actual shared sun updates,
+exact reset, unchanged uploads, one shadow update per synchronous edit batch,
+night/day target reuse, busy input restoration, deferred opening until unlock,
+narrow layout and cached offline first interaction/new-seed generation. Native
+sources remain unchanged; the optional WASM optimization notice persists. No
+performance claim is made. Raw evidence uses ignored artifacts/sun-*.
+
+Production PWA regression passes: offline reload/new tabs and new seeds, Remote
+failure/recovery, deferred update while busy and updated-version offline 3D terrain.
+Generated deployment assets were restored after the update simulation.
+
+
+## Night foam and moon correction
+
+Foam now responds to the actual linear ambient sky/fill and direct sun, including
+when Atmosphere is disabled. Previously its constant pale albedo acted as emission.
+The shared sky also shows a simple full moon opposite the sun at night; it appears
+in water sky reflection automatically. Enable Atmosphere and orient toward the sky
+to see it. There is no lunar-phase/calendar simulation or new lunar shadow light.
+
+Run node tests/browser/night.cjs with the production PWG_* setup for pixel-level
+noon/night/zero-light foam checks, visible night moon/day absence and offline use.
+The zero-light case uses a test-only draw-time uniform override; original values
+are restored after each draw and no app debug interface is introduced. The moon
+probe uses the existing OrbitControls on a zero-height back-face-culled test plane
+so its optical axis faces the moon; normal map-camera defaults stay unchanged.
+See [Night sky and foam v1](specs/NIGHT_SKY_V1.md) for the frozen equations and limits.
+
+Night correction verification: 338 Angular tests, nine packaging/asset checks, worker
+RPC and production publish pass. Real Sun UI and night pixel/offline browser checks
+pass. All 18 prior default noon PNGs/camera/full Core comparisons remain exact.
+No texture/catalog entry, render pass or mathematical identity changes. The
+zero-light image probe tolerates small coverage/fog-compositing differences while
+checking that foam is no longer a bright emissive contribution. Raw evidence uses
+ignored artifacts/night-*. Native suites were not rerun because native code is unchanged.
+
+Night correction PWA regression also passes: cached reload/new tabs/new seeds,
+Remote recovery, deferred update while busy and updated-version offline 3D terrain.
+Generated deployment assets were restored afterwards.

@@ -54,6 +54,7 @@ export function terrainLighting(
   // Stable view-owned wrappers: future shaders and Three lights consume the same values.
   const uniforms = {
     environmentSunDirection: { value: new Vector3() },
+    environmentMoonColor: { value: new Color(0xc8d8f4) },
     environmentSunColor: { value: new Color(0) },
     environmentSunIntensity: { value: 0 },
     environmentSkyColor: { value: new Color(0) },
@@ -87,7 +88,7 @@ export function terrainLighting(
     if (scene.fog === fog) scene.fog = previousFog;
     if (scene.background === background) scene.background = previousBackground;
   };
-  const refitShadow = () => {
+  const updateSunTransform = () => {
     sun.position
       .copy(center)
       .addScaledVector(
@@ -95,6 +96,10 @@ export function terrainLighting(
         bounds.getSize(new Vector3()).length() + 2 * span,
       );
     sun.target.position.copy(center);
+    sun.updateMatrixWorld(true);
+    sun.target.updateMatrixWorld(true);
+  };
+  const refitShadow = () => {
     const camera = sun.shadow.camera;
     camera.position.copy(sun.position);
     camera.lookAt(center);
@@ -146,8 +151,9 @@ export function terrainLighting(
     fog.near = uniforms.environmentFogNear.value;
     fog.far = uniforms.environmentFogFar.value;
     sun.castShadow = snapshot.sun.intensity > 0;
-    if (directionChanged || activeChanged) {
-      refitShadow();
+    if (directionChanged || activeChanged) updateSunTransform();
+    if ((directionChanged && sun.castShadow) || activeChanged) {
+      if (sun.castShadow) refitShadow();
       sun.shadow.needsUpdate = true;
       renderer.shadowMap.needsUpdate = true;
     }

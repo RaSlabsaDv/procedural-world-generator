@@ -353,3 +353,21 @@ revision for images or controlled comparisons. Reference mode restores the prior
 linear-fog view and permits visual regression checks. Software WebGL draw/resource
 checks prove bounded behavior, not a performance improvement. No extra stage
 profiling, optimization configuration or controlled campaign is introduced.
+
+
+## Sun control presentation
+
+Interactive sun edits are presentation work outside computeMs/requestMs: light
+updates, shadow fitting/submission and shader uniform changes must never be billed
+to Core. Both views share one environment snapshot; no HTTP/worker generation is
+invoked. Controls and synchronous event guards respect OperationLock. Deferred
+first opening waits for unlock; latest programmatic environment state applies only
+after release. The existing Ocean animation pause remains in force.
+
+Record time-of-day, azimuth, atmosphere/water settings, frozen wave phase, camera and
+application revision for reproducibility. Time slider step .25 hours and azimuth
+step 1 degree are UI restrictions, not a change to the underlying environment contract.
+No automatic clock advances the sun. A new lazy Sun code chunk changes application
+packaging/offline identity, not the mathematical workload. First display submission
+still is not GPU completion; software WebGL smoke evidence supports correctness,
+not a controlled performance claim.

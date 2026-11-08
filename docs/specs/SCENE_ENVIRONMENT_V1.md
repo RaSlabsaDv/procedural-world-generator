@@ -111,3 +111,14 @@ foundation. Future water/sky controls need their own real-browser visual accepta
 Core/hosts and numerical identities are unchanged, so native suites were not rerun.
 No controlled performance campaign was run. README stays empty. Raw ignored
 evidence uses artifacts/scene-environment-*.
+
+
+## Interactive controls follow-up
+
+[Sun controls v1](SUN_CONTROLS_V1.md) now exposes time-of-day and azimuth in the UI.
+The foundation equations/settings contract above remain unchanged. Controls defer
+loading until opened outside OperationLock; reset preserves visualTimeSeconds.
+Night-direction edits update the light transform without refitting an inactive
+shadow camera. Existing latest-state/independent-view ownership remains in place.
+The original foundation verification and no-UI statements above describe its
+historical milestone; current interaction verification is recorded in Sun v1.

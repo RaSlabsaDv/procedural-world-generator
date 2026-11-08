@@ -48,6 +48,21 @@
       </details>
       <app-ocean-controls />
       <app-atmosphere-controls />
+      <details
+        id="sun-settings"
+        class="sun-settings"
+        #sunPanel
+        (toggle)="sunRequested.set(sunPanel.open)"
+      >
+        <summary>Sun <span>Lighting</span></summary>
+        @defer (when sunRequested() && !busy()) {
+          <app-sun-controls />
+        } @placeholder {
+          <p class="sun-placeholder">
+            {{ busy() ? 'Available after computation.' : 'Open to adjust the sun.' }}
+          </p>
+        }
+      </details>
     </aside>
     <app-terrain-results
       [local]="local()"

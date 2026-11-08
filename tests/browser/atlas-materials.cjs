@@ -14,6 +14,7 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
+const sunStudy = process.argv.includes("--sun");
 const reference = process.argv.includes("--reference");
 const atmosphereStudy = process.argv.includes("--atmosphere");
 const waterStudy = process.argv.includes("--water");
@@ -21,21 +22,23 @@ const environmentStudy = process.argv.includes("--environment");
 const rockStudy = process.argv.includes("--rocks");
 const climateStudy = process.argv.includes("--climate");
 const biomeStudy = process.argv.includes("--biomes") || climateStudy;
-const study = atmosphereStudy
-  ? reference
-    ? "atmosphere-reference"
-    : "atmosphere"
-  : waterStudy
-    ? "ocean-presentation"
-    : environmentStudy
-      ? "scene-environment"
-      : rockStudy
-        ? "rocks-v2"
-        : climateStudy
-          ? "regional-climate"
-          : biomeStudy
-            ? "biome-readability"
-            : "atlas-materials";
+const study = sunStudy
+  ? "sun-controls"
+  : atmosphereStudy
+    ? reference
+      ? "atmosphere-reference"
+      : "atmosphere"
+    : waterStudy
+      ? "ocean-presentation"
+      : environmentStudy
+        ? "scene-environment"
+        : rockStudy
+          ? "rocks-v2"
+          : climateStudy
+            ? "regional-climate"
+            : biomeStudy
+              ? "biome-readability"
+              : "atlas-materials";
 const cases = rockStudy
   ? [
       ["mixed", { seed: 42 }],
@@ -113,7 +116,8 @@ const cases = rockStudy
     const context = await browser.newContext({
       viewport: { width: 1600, height: 1050 },
       deviceScaleFactor: 1,
-      reducedMotion: waterStudy || atmosphereStudy ? "reduce" : "no-preference",
+      reducedMotion:
+        waterStudy || atmosphereStudy || sunStudy ? "reduce" : "no-preference",
     });
     const page = await context.newPage(),
       errors = [];
@@ -164,7 +168,11 @@ const cases = rockStudy
       };
       await page
         .locator(
-          (climateStudy || rockStudy || waterStudy || atmosphereStudy) &&
+          (climateStudy ||
+            rockStudy ||
+            waterStudy ||
+            atmosphereStudy ||
+            sunStudy) &&
             !before
             ? "#verify-equivalence"
             : "#generate-local",
@@ -172,7 +180,11 @@ const cases = rockStudy
         .click();
       await waitForTerrain(page);
       if (
-        (climateStudy || rockStudy || waterStudy || atmosphereStudy) &&
+        (climateStudy ||
+          rockStudy ||
+          waterStudy ||
+          atmosphereStudy ||
+          sunStudy) &&
         !before
       )
         assert.match(
@@ -216,13 +228,13 @@ const cases = rockStudy
         const screenshot = await canvas.screenshot({
           path: artifactPath(`${study}-${phase}-${label}-${view}.png`),
         });
-        if (reference && !before) {
+        if ((reference || sunStudy) && !before) {
           assert.deepEqual(
             screenshot,
             await fs.readFile(
               artifactPath(`${study}-before-${label}-${view}.png`),
             ),
-            "Disabled atmosphere must retain the preceding frozen Ocean pixels",
+            "Frozen reference must retain the preceding presentation pixels",
           );
         }
         views.push({

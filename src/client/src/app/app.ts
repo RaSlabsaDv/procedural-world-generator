@@ -1,3 +1,4 @@
+import { SunControls } from './terrain/editor/sun-controls';
 import { AtmosphereControls } from './terrain/editor/atmosphere-controls';
 import { OceanControls } from './terrain/editor/ocean-controls';
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
@@ -25,11 +26,13 @@ import { OperationLock } from './platform/operation-lock.service';
     ExperimentPanel,
     OceanControls,
     AtmosphereControls,
+    SunControls,
   ],
   templateUrl: './app.html',
   styleUrls: ['./shared/panel.css', './app.css'],
 })
 export class App {
+  protected readonly sunRequested = signal(false);
   protected readonly experiments = inject(ExperimentRunner);
   protected readonly experimentRunning = signal(false);
   protected readonly experimentPairs = signal(DEFAULT_MEASURED_PAIRS);

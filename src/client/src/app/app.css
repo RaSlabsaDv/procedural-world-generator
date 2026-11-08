@@ -139,3 +139,25 @@ app-terrain-results {
 .sidebar-heading {
   background: var(--atlas-surface);
 }
+
+.sun-settings {
+  margin-top: 0.6rem;
+  border: 1px solid var(--atlas-input-border);
+  border-radius: var(--atlas-radius-sm);
+  padding: 0.6rem;
+}
+.sun-settings summary {
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.sun-settings summary span {
+  float: right;
+  font-weight: 400;
+  opacity: 0.65;
+}
+.sun-placeholder {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  margin: 0.5rem 0 0;
+}

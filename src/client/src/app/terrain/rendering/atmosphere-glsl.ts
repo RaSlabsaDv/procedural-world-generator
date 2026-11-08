@@ -2,6 +2,7 @@
 export const ATMOSPHERE_GLSL = `
 uniform vec3 environmentSunDirection, environmentSunColor, environmentSkyColor, environmentHorizonColor;
 uniform float environmentSunIntensity, environmentFillIntensity;
+uniform vec3 environmentMoonColor;
 uniform float atmosphereEnabled, atmosphereSpan, atmosphereHaze, atmosphereValleyFog;
 uniform float atmosphereSea, atmosphereWater;
 vec3 skyRadiance(vec3 direction) {
@@ -15,7 +16,14 @@ vec3 skyRadiance(vec3 direction) {
   vec3 base=mix(environmentHorizonColor,zenith,pow(up,.45));
   vec3 scatter=environmentSunColor*daylight*(.025*rayleigh+.018*mie)*exp(-up*3.0);
   float disc=smoothstep(.9995,.99985,mu)*smoothstep(-.03,.02,d.y);
-  return max(vec3(0.0),base+scatter+environmentSunColor*daylight*disc*1.5);
+  // Illustrative full moon opposite the sun; no independent orbit or clock.
+  float moonVisibility=(1.0-daylight)*smoothstep(0.0,.08,-environmentSunDirection.y);
+  float moonDot=clamp(dot(d,-environmentSunDirection),-1.0,1.0);
+  float moonEdge=max(fwidth(moonDot),.000001);
+  float moonDisc=smoothstep(.99995-moonEdge,.99995+moonEdge,moonDot);
+  float moonHalo=.012*exp(-max(0.0,1.0-moonDot)*350.0);
+  vec3 moon=environmentMoonColor*moonVisibility*(moonDisc*.8+moonHalo);
+  return max(vec3(0.0),base+scatter+environmentSunColor*daylight*disc*1.5+moon);
 }
 float atmosphereDepth(vec3 from,vec3 to) {
   float L=length(to-from);

@@ -223,3 +223,42 @@ it('isolates mutable uniforms and shadows between views using the same immutable
   expect(b.scene.children).toContain(b.lighting.sun);
   b.dispose();
 });
+
+it('reuses shadow targets for color/intensity changes and skips refits for night direction edits', () => {
+  const test = setup(),
+    { lighting, renderer } = test,
+    { sun } = lighting;
+  const refit = vi.spyOn(sun.shadow.camera, 'updateProjectionMatrix');
+  const consume = () => {
+    sun.shadow.needsUpdate = false;
+    renderer.shadowMap.needsUpdate = false;
+    refit.mockClear();
+  };
+  consume();
+  lighting.update({
+    ...DEFAULT_SCENE_ENVIRONMENT,
+    sun: { ...DEFAULT_SCENE_ENVIRONMENT.sun, intensity: 1, color: [0.1, 0.2, 0.3] },
+  });
+  expect(refit).not.toHaveBeenCalled();
+  expect(sun.shadow.needsUpdate).toBe(false);
+  lighting.update(deriveSceneEnvironment({ ...DEFAULT_ENVIRONMENT_SETTINGS, timeOfDayHours: 0 }));
+  expect(sun.castShadow).toBe(false);
+  consume();
+  const previous = sun.position.clone();
+  lighting.update(
+    deriveSceneEnvironment({
+      ...DEFAULT_ENVIRONMENT_SETTINGS,
+      timeOfDayHours: 0,
+      sunAzimuthDegrees: 90,
+    }),
+  );
+  expect(sun.position.equals(previous)).toBe(false);
+  expect(refit).not.toHaveBeenCalled();
+  expect(sun.shadow.needsUpdate).toBe(false);
+  expect(renderer.shadowMap.needsUpdate).toBe(false);
+  lighting.update(DEFAULT_SCENE_ENVIRONMENT);
+  expect(refit).toHaveBeenCalledTimes(1);
+  expect(sun.castShadow).toBe(true);
+  expect(sun.shadow.needsUpdate).toBe(true);
+  test.dispose();
+});

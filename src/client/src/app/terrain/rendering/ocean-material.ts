@@ -3,6 +3,7 @@ import type { terrainAtmosphere } from './terrain-atmosphere';
 import { Color, ShaderMaterial, Texture } from 'three';
 import { OceanSettings } from './ocean-settings.service';
 import { terrainLighting } from './terrain-lighting';
+import { DAYLIGHT_REFERENCE } from './scene-environment';
 
 export function oceanMaterial(
   normal: Texture,
@@ -29,6 +30,10 @@ export function oceanMaterial(
       ...atmosphere,
       normalMap: { value: normal },
       waterColor: { value: new Color(settings.color) },
+      foamSkyReference: { value: new Color(DAYLIGHT_REFERENCE.sky) },
+      foamSunReference: { value: new Color(DAYLIGHT_REFERENCE.sun) },
+      foamFillReference: { value: DAYLIGHT_REFERENCE.fillIntensity },
+      foamSunIntensityReference: { value: DAYLIGHT_REFERENCE.sunIntensity },
       turbidity: { value: settings.turbidity },
       foamIntensity: { value: settings.foam },
       waterTime: { value: 0 },
@@ -43,7 +48,8 @@ export function oceanMaterial(
     fragmentShader: `
       uniform sampler2D normalMap;
       ${ATMOSPHERE_GLSL}
-      uniform vec3 waterColor;
+      uniform vec3 waterColor,foamSkyReference,foamSunReference;
+      uniform float foamFillReference,foamSunIntensityReference;
       uniform float environmentFogNear,environmentFogFar,turbidity,foamIntensity,waterTime;
       varying vec3 vWorld; varying float vDepth; varying float vShore; varying float vFog;
       void main(){
@@ -62,7 +68,11 @@ export function oceanMaterial(
         float noise=texture2D(normalMap,vWorld.xz/3.0+waterTime*vec2(.025,-.018)).r;
         float foam=(1.0-smoothstep(.04,.65,vDepth))*(1.0-smoothstep(.5,2.5,vShore))*foamIntensity*(.4+.6*smoothstep(.3,.7,noise));
         float alpha=foam+(1.0-foam)*(A+F);
-        vec3 energy=foam*vec3(.87,.93,.94)+(1.0-foam)*(A*tint*clamp(environmentFillIntensity/1.05,.05,1.5)+F*sky+environmentSunColor*spec);
+        // Foam is diffuse albedo, not emission. Include the actual linear sky color.
+        vec3 ambientFoam=environmentSkyColor/max(foamSkyReference,vec3(.0001))*max(0.0,environmentFillIntensity/foamFillReference);
+        float directFoam=clamp(environmentSunIntensity/foamSunIntensityReference,0.0,1.0)*max(dot(N,environmentSunDirection),0.0);
+        vec3 foamLight=clamp(mix(ambientFoam,environmentSunColor/max(foamSunReference,vec3(.0001)),directFoam),vec3(0.0),vec3(1.5));
+        vec3 energy=foam*vec3(.87,.93,.94)*foamLight+(1.0-foam)*(A*tint*clamp(environmentFillIntensity/1.05,.05,1.5)+F*sky+environmentSunColor*spec);
         vec3 color=energy/max(alpha,.0001);
         float fog=smoothstep(environmentFogNear,environmentFogFar,vFog);
         gl_FragColor=vec4(atmosphereEnabled>.5 ? applyAtmosphere(color,vWorld,1.0) : mix(color,environmentHorizonColor,fog),alpha);

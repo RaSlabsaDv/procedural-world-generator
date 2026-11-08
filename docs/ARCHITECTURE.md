@@ -392,7 +392,7 @@ immutable shared presentation state: enabled, haze and valleyFog. A collapsed pa
 updates both views without Core/transport work or scene/camera replacement.
 
 One view-owned fullscreen triangle (36 raw position bytes) adds at most one color
-draw: total ceiling21, existing caster ceiling19. It has no depth writes, shadow,
+draw: total ceiling 21, existing caster ceiling 19. It has no depth writes, shadow,
 texture, render target or recurring loop. Its camera inverse-projection/world
 matrices update before draw. Atmosphere updates do not invalidate static shadows.
 Resources are disposed with the scene, including partial setup failures.
@@ -410,3 +410,43 @@ underwater scattering or linear offscreen compositing pass. Disabled atmosphere
 restores the preceding background, native fog and water reflection. Low-poly coast
 and conservative diagonal clipping limits remain. The sky is illustrative and has
 no clouds, astronomical calibration or infinite ground beyond the finite map.
+
+
+## Interactive sun controls
+
+[Sun controls v1](specs/SUN_CONTROLS_V1.md) exposes the existing immutable
+SceneEnvironmentService snapshot. One collapsed panel edits time 0..24 hours in
+quarter-hour steps and azimuth 0..359 in one-degree steps. Reset restores 12/315
+while preserving visualTimeSeconds, water and atmosphere. Directions use world
++Z/N and+X/E; this is the existing illustrative cycle, not astronomy.
+
+Angular defer loads controls on first panel opening outside OperationLock. A panel
+opened during computation waits until unlock, preserving the initial editor's
+lazy Three boundary. There is no extra clock/store/scheduler. Existing preview
+afterRenderEffect coalesces synchronous changes and applies latest-only after
+unlock. Stable wrappers update lights, sky, fog and water in independent views
+without replacing geometry, materials, textures, cameras or first-display metrics.
+
+Active shadow direction changes refit the single fitted 2048 map and invalidate it
+for the next permitted render. Inactive night-direction edits update the light
+transform without shadow-camera work. Activation changes recover day/night/day;
+color/intensity-only edits retain the map unless activation changes. Atmosphere,
+water and visual-time edits keep static reuse. Existing targets and draw ceilings
+remain. Sun edits never enter mathematical requests, Core or transport execution.
+
+
+## Night foam and moon
+
+[Night sky and foam v1](specs/NIGHT_SKY_V1.md) corrects the Ocean foam term from
+constant emission to illumination-scaled albedo. Linear sky color and fill strength
+both matter at night; bounded direct-sun color influence preserves warm daylight.
+Reference values come from DAYLIGHT_REFERENCE. Default noon pixels are preserved;
+night and atmosphere-off reference views no longer retain an emissive white coast.
+
+The existing shared sky function adds a derivative-softened full-moon disk and a
+small halo opposite the sun. One view-owned linear moon-color uniform feeds visible
+sky, water reflection and fog in-scattering. The existing sun state controls its
+visibility, with no extra clock, orbit, monthly phase, mesh, texture, directional
+light or shadow pass. Existing night Hemisphere fill is retained. Sky-facing camera
+orientation is needed; the downward map view does not show overhead sky bodies.
+No Core result, workload identity or computation timing boundary changes.

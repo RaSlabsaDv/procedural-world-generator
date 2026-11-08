@@ -24,6 +24,8 @@ Current behavior composes the policies below; a historical version label does no
 - [Local relief v1](specs/LOCAL_RELIEF_V1.md): current pre-erosion height extension.
 - [Coastal surfaces v2](specs/COASTAL_SURFACES_V2.md): current wider, context-sensitive post-placement coverage.
 - [Coastal surfaces v1](specs/COASTAL_SURFACES_V1.md): historical coastal equations and reference fixtures.
+- [Night sky and foam v1](specs/NIGHT_SKY_V1.md): illuminated foam and a shared illustrative full moon.
+- [Sun controls v1](specs/SUN_CONTROLS_V1.md): interactive shared time/direction, reset, deferred loading and shadow invalidation.
 - [Atmosphere v1](specs/ATMOSPHERE_V1.md): shared sky, exponential/height fog, water composition and reference mode.
 - [Ocean presentation v1](specs/OCEAN_PRESENTATION_V1.md): sea-level geometry, depth/foam/Fresnel, animation and graphics budgets.
 - [Scene environment v1](specs/SCENE_ENVIRONMENT_V1.md): shared immutable sun/fog/time state and independent viewport bindings.
