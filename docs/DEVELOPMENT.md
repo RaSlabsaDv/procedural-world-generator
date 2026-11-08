@@ -646,3 +646,43 @@ ignored artifacts/night-*. Native suites were not rerun because native code is u
 Night correction PWA regression also passes: cached reload/new tabs/new seeds,
 Remote recovery, deferred update while busy and updated-version offline 3D terrain.
 Generated deployment assets were restored afterwards.
+
+
+## Shadow quality assessment
+
+Run node tests/browser/shadow-quality.cjs --before against the prior production
+publication, then run it with --unchanged after publication. Add --contact on both
+runs for the two closer forest/maximum scenes. The combined 54 views require exact
+request/full Core hashes, actual camera and GPU shadow uniforms, and PNG hashes.
+Reduced motion freezes waves. JSON/screenshots live under ignored artifacts using
+shadow-quality-* and shadow-contact-* names. Retain the baseline before publishing.
+
+The --before --contact --probe diagnostic overrides only the terrain receiver's
+comparison bias at draw time. It writes separate shadow-contact-probe-* evidence
+and never changes production configuration. This probe was rejected: a world bias
+clamped to .002.. .08 with .35 texel scaling produced visible surface acne at 512-square
+noon/low sun. The accepted policy retains the original bias, normal offset, PCF
+radius, map size and conservative request/instance fit. Do not publish the probe
+as an improvement or mix its captures with the accepted baseline.
+
+[Shadow quality v1](specs/SHADOW_QUALITY_V1.md) records observed limits and installed
+Three source behavior. Extra tests include quantized GPU instance transforms,
+rotation/scale and shifted edge meshes, height 0/1/1000 and near-horizontal sunlight.
+The thin-contact resolution limit remains; CSM/AO is a separately scoped decision.
+No production rendering or mathematical identity changes are made in this step.
+Keep native suites unchanged, run relevant frontend/production/browser checks and
+leave PWA update checks last. README remains empty.
+
+
+Shadow assessment verification: 342 Angular tests, nine packaging/asset checks,
+worker RPC and production publication pass. Both accepted atlases pass with exact
+54 PNG hashes, GPU shadow values, request/full Core hashes and camera matrices
+(42 standard views plus 12 contact views). Sun UI and night pixel/offline regressions
+pass, preserving independent views, operation pause, shadow-target reuse, Moon
+visibility and non-emissive foam. No runtime rendering parameter was changed.
+The rejected probe is isolated in shadow-contact-probe-*; accepted evidence and
+summary are under ignored artifacts/shadow-quality-*/shadow-contact-*.
+
+Shadow assessment PWA regression passes: cached reload/new tabs and new seeds,
+Remote recovery, deferred update while busy and updated-version offline 3D terrain.
+Generated deployment assets were restored after the update simulation.

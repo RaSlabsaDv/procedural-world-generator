@@ -262,3 +262,90 @@ it('reuses shadow targets for color/intensity changes and skips refits for night
   expect(sun.shadow.needsUpdate).toBe(true);
   test.dispose();
 });
+
+it.each([
+  [2, 2, 0],
+  [3, 512, 1000],
+  [512, 3, 1],
+  [512, 512, 1000],
+])(
+  'contains rotated/scaled edge instances at near-horizontal sun (%j,%j,%j)',
+  (width, height, heightMultiplier) => {
+    const scene = new Scene(),
+      terrain = new Mesh(new BoxGeometry(1, 1, 1), new MeshLambertMaterial());
+    const instances = new InstancedMesh(new BoxGeometry(2, 4, 3), new MeshLambertMaterial(), 2);
+    const poses = [
+      new Matrix4()
+        .makeRotationY(0.73)
+        .scale(new Vector3(4, 3, 2))
+        .setPosition((width - 1) / 2, heightMultiplier + 10, (height - 1) / 2),
+      new Matrix4()
+        .makeRotationZ(0.4)
+        .scale(new Vector3(3, 2, 5))
+        .setPosition(-(width - 1) / 2, -1, -(height - 1) / 2),
+    ];
+    poses.forEach((m, i) => instances.setMatrixAt(i, m));
+    // Test the actual float32 instance transforms uploaded to the GPU, not the
+    // higher-precision construction matrices that can exceed those bounds slightly.
+    const renderedPoses = poses.map((_, i) => {
+      const matrix = new Matrix4();
+      instances.getMatrixAt(i, matrix);
+      return matrix;
+    });
+    instances.position.set(2, 1, -3);
+    scene.add(instances);
+    instances.updateMatrixWorld(true);
+    const renderer = { shadowMap: {} } as Pick<WebGLRenderer, 'shadowMap'>;
+    const lighting = terrainLighting(
+      scene,
+      renderer,
+      { ...testMap, width, height, heightMultiplier },
+      terrain,
+      [instances],
+    );
+    for (const [hour, azimuth] of [
+      [6.01, 0],
+      [7, 90],
+      [12, 315],
+      [17.99, 225],
+    ]) {
+      lighting.update(
+        deriveSceneEnvironment({
+          ...DEFAULT_ENVIRONMENT_SETTINGS,
+          timeOfDayHours: hour,
+          sunAzimuthDegrees: azimuth,
+        }),
+      );
+      const camera = lighting.sun.shadow.camera;
+      expect(camera.near).toBeGreaterThan(0);
+      expect(camera.far).toBeGreaterThan(camera.near);
+      expect(
+        [...camera.projectionMatrix.elements, ...camera.matrixWorldInverse.elements].every(
+          Number.isFinite,
+        ),
+      ).toBe(true);
+      const visible = (world: Vector3) => {
+        expect(lighting.bounds.containsPoint(world)).toBe(true);
+        const p = world
+          .clone()
+          .applyMatrix4(camera.matrixWorldInverse)
+          .applyMatrix4(camera.projectionMatrix);
+        expect(Math.max(Math.abs(p.x), Math.abs(p.y), Math.abs(p.z))).toBeLessThan(1);
+      };
+      for (const x of [-(width - 1) / 2, (width - 1) / 2])
+        for (const y of [0, heightMultiplier])
+          for (const z of [-(height - 1) / 2, (height - 1) / 2]) visible(new Vector3(x, y, z));
+      for (const pose of renderedPoses)
+        for (const x of [-1, 1])
+          for (const y of [-2, 2])
+            for (const z of [-1.5, 1.5])
+              visible(new Vector3(x, y, z).applyMatrix4(pose).applyMatrix4(instances.matrixWorld));
+    }
+    lighting.dispose();
+    instances.dispose();
+    instances.geometry.dispose();
+    instances.material.dispose();
+    terrain.geometry.dispose();
+    terrain.material.dispose();
+  },
+);

@@ -371,3 +371,15 @@ No automatic clock advances the sun. A new lazy Sun code chunk changes applicati
 packaging/offline identity, not the mathematical workload. First display submission
 still is not GPU completion; software WebGL smoke evidence supports correctness,
 not a controlled performance claim.
+
+
+## Shadow assessment evidence
+
+Shadow-quality-v1 is a correctness/visual assessment with unchanged production
+rendering parameters and workload identities. Test-only bias probing is isolated
+from accepted captures and must never be treated as a performance configuration
+or a proven optimization. Recorded GPU uniforms, attachment formats and image
+hashes describe rendering state, not GPU elapsed time. Software WebGL smoke runs
+are not controlled performance measurements. Fit/update work remains presentation
+CPU work outside computeMs/requestMs; operation-lock and first-submission rules
+are unchanged. Freeze camera, sun and wave phase for paired views.

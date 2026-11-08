@@ -450,3 +450,27 @@ visibility, with no extra clock, orbit, monthly phase, mesh, texture, directiona
 light or shadow pass. Existing night Hemisphere fill is retained. Sky-facing camera
 orientation is needed; the downward map view does not show overhead sky bodies.
 No Core result, workload identity or computation timing boundary changes.
+
+
+## Shadow quality assessment
+
+[Shadow quality v1](specs/SHADOW_QUALITY_V1.md) retains daylight-shadow-v1 unchanged.
+A seven-scene/42-view baseline plus 12 closer contact views checks actual GPU shadow
+matrices, comparison bias, radius, cameras and complete Core hashes. A test-only
+world-bounded bias probe reduced contact separation slightly but introduced broad
+self-shadow striping on512-square terrain, so it was rejected before production
+changes. Fit padding, near/far policy, bias -.0005, world normalBias .08, PCF/radius 1
+and2048 map size remain. No new target, pass, light, texture or runtime control.
+
+The installed Three 187 PCF path uses radius-scaled Vogel offsets with hardware
+linear shadow sampling; PCFSoftShadowMap is removed/redirected in this version.
+Expanded conservative-fit tests project the full request box and actual float32
+rotated/scaled edge-instance vertices at near-horizontal sun into clip space,
+covering minimum, elongated and maximum extents. Actual rendering transforms, not
+higher-precision construction matrices, define the instance bounds being tested.
+
+Maximum noon world-texel size is about .366 units in the inspected map: small trunks
+can remain subtexel and close-up shadows lose detail. A single global map has this
+spatial-resolution limit. CSM/AO need separate evidence and budgets, not an automatic
+change in this assessment. Camera, light cycle, moon/foam and workload identities
+stay unchanged; next planned visual work is material microdetail.
