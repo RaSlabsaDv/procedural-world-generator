@@ -27,6 +27,16 @@
   }
   <div class="workspace">
     <aside class="parameter-sidebar" aria-label="Parameter sidebar">
+      <app-experiment-panel
+        [busy]="busy()"
+        [active]="experimentRunning()"
+        [stopping]="experiments.stopRequested()"
+        [progress]="experiments.progress()"
+        [result]="experiments.result()"
+        [plannedPairs]="experimentPairs()"
+        (start)="startExperiment($event)"
+        (stop)="experiments.stop()"
+      />
       <details open>
         <summary class="sidebar-heading">Parameters <span>Draft settings</span></summary>
         <app-terrain-parameters

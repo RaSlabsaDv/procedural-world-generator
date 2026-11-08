@@ -349,6 +349,10 @@ it('invalidates cross-mode build mismatch while retaining the actual IDs and com
   expect(result.status).toBe('failed');
   expect(result.trials).toHaveLength(2);
   expect(result.metadata.coreBuildIds.remote).toBe('other-build');
+  if (result.status !== 'failed') throw new Error('Expected a failed experiment.');
+  expect(result.failure.message).toContain('build-mismatch');
+  expect(result.failure.message).toContain('git:123456789abc');
+  expect(result.failure.message).toContain('other-build');
   expect(result.verifications[0]).toMatchObject({
     comparison: { identity: 'different', numericMatch: true },
   });
@@ -421,6 +425,7 @@ it('stops during preparation only after it settles, retaining the lock', async (
   initialize.mockReturnValueOnce(ready.promise);
   const promise = runner.start(config());
   runner.stop();
+  expect(runner.stopRequested()).toBe(true);
   expect(lock.busy()).toBe(true);
   ready.resolve({});
   const result = await promise;
@@ -435,6 +440,7 @@ it('finishes an active call on stop and records a half-pair without a fabricated
   const promise = runner.start(config());
   await vi.waitFor(() => expect(local).toHaveBeenCalledTimes(1));
   runner.stop();
+  expect(runner.stopRequested()).toBe(true);
   expect(lock.busy()).toBe(true);
   expect(runner.result()).toBeNull();
   pending.resolve(run());
@@ -526,6 +532,7 @@ it('retains only a final suitable pair, transfers it once, and keeps final recor
   const pair = runner.takePreviewPair();
   expect(pair?.local).toBe(finalLocal);
   expect(pair?.remote).toBe(finalRemote);
+  expect(pair?.verification).toBe(result.verifications.at(-1));
   expect(runner.takePreviewPair()).toBeNull();
   const visit = (value: unknown) => {
     expect(ArrayBuffer.isView(value)).toBe(false);

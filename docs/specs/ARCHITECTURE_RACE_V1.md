@@ -1,8 +1,8 @@
 # Architecture Race v1
 
-Status: Steps 1–2 implement this protocol, readonly record contracts, immutable
-configuration capture and the sequential runner. Collection UI, statistics and
-downloads remain future steps. This is an experiment schema, not a new mathematical workload.
+Status: Steps 1–3 implement this protocol, readonly record contracts, immutable
+configuration capture, the sequential runner and editor UI. Statistics and downloads
+remain future steps. This is an experiment schema, not a new mathematical workload.
 
 ## Configuration and sequence
 
@@ -127,7 +127,7 @@ pairVerificationStatus, exclusionReasons. Unavailable cells are empty. Pair IDs 
 to JSON verification records and experimentId links complete inputs/environment;
 CSV is a flat companion, not a replacement for authoritative JSON.
 
-Next: add experiment UI, then statistics and export against these contracts. Controlled research campaigns and separate documented cold-start scenarios
+Next: add statistics and export against these contracts. Controlled research campaigns and separate documented cold-start scenarios
 follow. No concurrent Race, Adaptive Mode, AOT, evolution or algorithm optimization is
 part of this step. See [benchmarking](../BENCHMARKING.md).
 
@@ -179,5 +179,27 @@ adapter timings, and no API/WASM host or Core change is included.
 The preview observes OperationLock directly as well as its paused input, so a delayed
 Angular input update cannot permit a draw. New WebGL/asset setup and scene construction
 wait until unlock; resize work and render submissions are suppressed while locked.
-This does not wait for completion of previously submitted GPU work. The service is
-not connected to an App action yet; current Verify remains a single equivalence check.
+This does not wait for completion of previously submitted GPU work. The service is connected to the separate Architecture Race panel in Step 3;
+current Verify remains a single equivalence check.
+
+
+## Step 3 UI integration
+
+The panel validates only measured-pair count, reads readonly runner progress/result
+and emits actions to App. App captures forms once and delegates collection; Core
+remains canonical for terrain validation. Validation failures map back to editor
+fields, while availability/protocol failures and partial records remain inspectable.
+Draft actions and Start are disabled during shared operations; Stop stays available
+for App-owned collection until requested. Warmup and measured settled counts are
+labelled separately. Table cells outside the status live region are not announced
+on every update. Detailed records scroll within the panel on narrow screens.
+
+The additive stopRequested signal exposes the existing cooperative stop flag.
+ExperimentPreviewPair now also carries the exact compared verification used when
+retaining those maps, including if the most recent suitable pair preceded a failure.
+App takes the pair once after settlement, checks revision/alive state, and reuses its
+comparison without running generation or verification again. No suitable or obsolete
+pair replaces previous editor maps. Full runs remain outside ExperimentResult.
+Destroying App stops its own collection and discards the eventual handoff; closing a
+panel detail does not dispose the root runner. No statistical processing/export is
+implemented, and no benchmark result is claimed from UI regression tests.

@@ -1,6 +1,6 @@
 # Benchmarking Protocol
 
-The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check and service-level repeated-trial runner are implemented; experiment UI, summaries, export and campaign results remain planned. [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes the implementable protocol and record schema; Steps 1–2 supply contracts, immutable configuration and sequential collection. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
+The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check and repeated-trial runner with its editor panel are implemented; summaries, export and campaign results remain planned. [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes the implementable protocol and record schema; Steps 1–3 supply contracts, immutable configuration, sequential collection and the editor UI. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
 
 ## 1. What we compare
 
@@ -225,4 +225,20 @@ use sorted index (n-1)*p with linear interpolation; preserve outliers and give c
 and reasons for exclusions. JSON retains complete small records and configuration;
 CSV includes each attempted trial, warmups/errors included. Neither retains full maps.
 Step 2 implements the runner as a service using these boundaries. Statistics functions,
-export and experiment UI remain unimplemented; no controlled campaign is claimed.
+export remain unimplemented; no controlled campaign is claimed.
+
+
+## Interactive experiment collection
+
+The Architecture Race panel now captures the editor draft once and runs the v1
+sequence through ExperimentRunner. Its progress UI reads only compact state; it
+publishes no intermediate maps and performs no statistics during collection.
+Final visualization reuses the retained pair's existing comparison after settlement.
+Raw trial tables include warmups and failed calls; unavailable durations are distinct
+from zero. Collection status, correctness, build compatibility and exclusions remain
+separate. No winner, speedup or aggregate is inferred by this UI.
+
+The race browser regression uses an explicitly artificial HTTP proxy gate to check
+Stop and paused scenes while retaining normal SW behavior. These readings, like other
+browser smoke timings, must not be used as controlled campaign results. The current
+UI does not automate cache resets, server preparation or network/hardware control.

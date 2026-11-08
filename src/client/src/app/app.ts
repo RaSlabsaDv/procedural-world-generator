@@ -8,15 +8,22 @@ import { TerrainParametersPanel, GenerationMode } from './terrain/editor/terrain
 import { TerrainResultsPanel } from './terrain/editor/terrain-results-panel';
 import { PwaStatusPanel } from './platform/pwa-status-panel';
 import { TerrainService } from './terrain/data/terrain.service';
+import { ExperimentPanel } from './experiments/editor/experiment-panel';
+import { ExperimentRunner } from './experiments/experiment-runner.service';
+import { createExperimentConfiguration } from './experiments/data/experiment-configuration';
+import { DEFAULT_MEASURED_PAIRS } from './experiments/data/experiment.models';
 import { OperationLock } from './platform/operation-lock.service';
 
 @Component({
   selector: 'app-root',
-  imports: [TerrainParametersPanel, TerrainResultsPanel, PwaStatusPanel],
+  imports: [TerrainParametersPanel, TerrainResultsPanel, PwaStatusPanel, ExperimentPanel],
   templateUrl: './app.html',
   styleUrls: ['./shared/panel.css', './app.css'],
 })
 export class App {
+  protected readonly experiments = inject(ExperimentRunner);
+  protected readonly experimentRunning = signal(false);
+  protected readonly experimentPairs = signal(DEFAULT_MEASURED_PAIRS);
   private readonly generator = inject(TerrainService);
   private readonly inputRevision = signal(0);
   private alive = true;
@@ -42,6 +49,7 @@ export class App {
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.alive = false;
+      if (this.experimentRunning()) this.experiments.stop();
     });
     this.terrainForm.valueChanges
       .pipe(takeUntilDestroyed(inject(DestroyRef)))
@@ -103,6 +111,55 @@ export class App {
       this.status.set('Generation failed');
     } finally {
       release();
+    }
+  }
+
+  protected async startExperiment(measuredPairs: number): Promise<void> {
+    if (this.busy() || this.experimentRunning()) return;
+    const revision = this.inputRevision();
+    try {
+      const configuration = createExperimentConfiguration(
+        captureTerrainRequest(this.form, this.terrainForm),
+        measuredPairs,
+      );
+      this.error.set(null);
+      this.experimentPairs.set(measuredPairs);
+      this.experimentRunning.set(true);
+      this.status.set('Architecture Race running…');
+      const result = await this.experiments.start(configuration);
+      // Transfer once after settlement, including when stale/destroyed, to drop retained maps.
+      const pair = this.experiments.takePreviewPair();
+      if (!this.alive) return;
+      if (revision !== this.inputRevision()) {
+        this.status.set('Experiment finished. Draft changed; existing maps were retained.');
+        return;
+      }
+      if (pair) {
+        this.local.set(pair.local);
+        this.remote.set(pair.remote);
+        this.comparison.set(pair.verification.comparison);
+        this.preferred.set('local');
+      }
+      const validation = result.trials.find(
+        (t) => t.status === 'error' && t.failure.kind === 'validation',
+      );
+      if (validation?.status === 'error')
+        this.error.set(
+          new TerrainError('validation', validation.failure.message, validation.failure.fields),
+        );
+      this.status.set(
+        `Experiment ${result.status}${result.assessment.status === 'excluded' ? ' · excluded from verified performance claims' : ''}${pair ? '' : ' · previous maps retained'}`,
+      );
+    } catch (error) {
+      if (!this.alive || revision !== this.inputRevision()) return;
+      this.error.set(
+        error instanceof TerrainError
+          ? error
+          : new TerrainError('protocol', error instanceof Error ? error.message : String(error)),
+      );
+      this.status.set('Experiment could not start');
+    } finally {
+      this.experimentRunning.set(false);
     }
   }
 

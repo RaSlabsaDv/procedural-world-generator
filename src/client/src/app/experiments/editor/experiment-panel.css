@@ -1,0 +1,95 @@
+:host {
+  display: block;
+  min-width: 0;
+  border-bottom: 1px solid #dce5e5;
+}
+.experiment-panel {
+  padding: 0.8rem;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+h2 {
+  margin: 0 0 0.35rem;
+}
+p {
+  margin: 0.4rem 0;
+}
+.hint,
+small {
+  color: #627c7b;
+  font-size: 0.7rem;
+}
+.pair-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+label small {
+  display: block;
+}
+input {
+  width: 4rem;
+  padding: 0.35rem;
+  border: 1px solid #b8ccca;
+  border-radius: 0.35rem;
+  font: inherit;
+}
+.actions {
+  gap: 0.3rem;
+}
+button {
+  padding: 0.45rem 0.5rem;
+  font-size: 0.7rem;
+}
+#race-count-error:empty {
+  display: none;
+}
+#race-status {
+  min-height: 1.2em;
+}
+progress {
+  width: 100%;
+  accent-color: #226b5b;
+}
+details {
+  margin-top: 0.55rem;
+}
+summary {
+  color: #365a55;
+  font-weight: 600;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 0.65rem;
+}
+ul {
+  padding-left: 1rem;
+}
+li {
+  margin: 0.35rem 0;
+}
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  margin-top: 0.4rem;
+}
+table {
+  border-collapse: collapse;
+  font-size: 0.68rem;
+  min-width: 26rem;
+}
+th,
+td {
+  padding: 0.3rem;
+  border-bottom: 1px solid #e6eded;
+  text-align: left;
+  white-space: nowrap;
+}
+th {
+  background: #eff5f2;
+}
+.pair-check {
+  border-bottom: 1px solid #e6eded;
+}

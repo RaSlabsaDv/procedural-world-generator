@@ -1,0 +1,218 @@
+<section aria-labelledby="race-heading" class="experiment-panel">
+  <h2 id="race-heading">Architecture Race</h2>
+  <p class="hint">One warmup per mode, then sequential pairs with alternating order.</p>
+  <div class="pair-control">
+    <label for="race-pairs"
+      >Measured pairs <small>{{ min }}–{{ max }}</small></label
+    >
+    <input
+      id="race-pairs"
+      type="number"
+      [min]="min"
+      [max]="max"
+      step="1"
+      [value]="count()"
+      (input)="changeCount($event)"
+      [disabled]="busy() || active()"
+      [attr.aria-invalid]="countError() ? 'true' : null"
+      aria-describedby="race-count-error"
+    />
+  </div>
+  <p id="race-count-error" class="field-error" [attr.role]="countError() ? 'alert' : null">
+    {{ countError() }}
+  </p>
+  <div class="actions">
+    <button id="race-start" type="button" [disabled]="busy() || active()" (click)="begin()">
+      Start experiment
+    </button>
+    <button
+      id="race-stop"
+      type="button"
+      class="secondary"
+      [disabled]="!active() || stopping()"
+      (click)="requestStop()"
+    >
+      {{ stopping() && active() ? 'Stop requested' : 'Stop after call' }}
+    </button>
+  </div>
+  <p id="race-status" role="status" aria-live="polite" [attr.data-active]="active()">
+    {{ progressLabel() }}
+  </p>
+  @if (active()) {
+    <progress
+      aria-label="Settled experiment calls"
+      [value]="progress().completedTrials"
+      [max]="warmupCalls + plannedPairs() * 2"
+    ></progress>
+    <p class="hint" id="race-counts">
+      Settled: {{ settledWarmups() }} / {{ warmupCalls }} warmups; {{ settledMeasured() }} /
+      {{ plannedPairs() * 2 }} measured calls. Stop finishes the active call; it does not cancel
+      computation.
+    </p>
+  } @else if (busy()) {
+    <p class="hint">Another operation is active. Start when it finishes.</p>
+  }
+  @if (result(); as record) {
+    <p
+      id="race-outcome"
+      [attr.data-status]="record.status"
+      [attr.data-eligibility]="record.assessment.status"
+    >
+      <strong>Collection {{ record.status }}</strong> ·
+      {{ record.complete ? 'Full series attempted' : 'Incomplete series' }}.<br />
+      {{
+        record.assessment.status === 'eligible'
+          ? 'Eligible paired measurements.'
+          : 'Excluded from verified performance claims.'
+      }}
+    </p>
+    @if (buildMismatch()) {
+      <p id="race-build-mismatch" class="error">
+        Local and Remote build IDs differ. Restart the API from the matching publication, then
+        reload or update the application before retrying.
+      </p>
+    }
+    @if (record.status === 'failed') {
+      <p class="error">{{ record.failure.kind }}: {{ record.failure.message }}</p>
+    }
+    @if (failures().length) {
+      <ul id="race-failures" class="field-error">
+        @for (trial of failures(); track trial.trialId) {
+          @if (trial.status === 'error') {
+            <li>
+              {{ trial.phase }} · {{ trial.mode }} · {{ trial.failure.kind }}:
+              {{ trial.failure.message }}
+              <details>
+                <summary>Error fields</summary>
+                <pre>{{ trial.failure.fields | json }}</pre>
+              </details>
+            </li>
+          }
+        }
+      </ul>
+    }
+    @if (record.assessment.status === 'excluded') {
+      <details id="race-exclusions">
+        <summary>Exclusion reasons ({{ record.assessment.reasons.length }})</summary>
+        <ul>
+          @for (reason of record.assessment.reasons; track $index) {
+            <li>
+              <strong>{{ reason.code }}</strong
+              >: {{ reason.detail }}
+            </li>
+          }
+        </ul>
+      </details>
+    }
+    <details id="race-trials">
+      <summary>Raw trials ({{ record.trials.length }})</summary>
+      <p class="hint">
+        Warmups are separate. Unavailable durations are not zero. Request time includes transport
+        and decoding.
+      </p>
+      <div
+        class="table-scroll"
+        tabindex="0"
+        role="region"
+        aria-label="Scrollable raw trial records"
+      >
+        <table>
+          <caption class="sr-only">
+            Attempted calls in actual execution order
+          </caption>
+          <thead>
+            <tr>
+              <th>Phase / pair</th>
+              <th>Order</th>
+              <th>Mode</th>
+              <th>Status</th>
+              <th>Core</th>
+              <th>Request</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (trial of record.trials; track trial.trialId) {
+              <tr
+                [attr.data-phase]="trial.phase"
+                [attr.data-index]="trial.pairIndex"
+                [attr.data-position]="trial.position"
+                [attr.data-mode]="trial.mode"
+              >
+                <td>
+                  {{ trial.phase === 'warmup' ? 'Warmup' : 'Measured ' + (trial.pairIndex! + 1) }}
+                </td>
+                <td>{{ trial.position + 1 }}</td>
+                <td>{{ trial.mode }}</td>
+                <td>{{ trial.status }}</td>
+                <td>{{ duration(trial.computeMs) }}</td>
+                <td>{{ duration(trial.requestMs) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </details>
+    <details id="race-verification">
+      <summary>Pair verification</summary>
+      @for (pair of record.verifications; track pair.pairId) {
+        <section class="pair-check">
+          <h3>
+            {{ pair.phase === 'warmup' ? 'Warmup' : 'Measured pair ' + (pair.pairIndex! + 1) }}
+          </h3>
+          @if (pair.status === 'compared') {
+            <p>
+              Numeric agreement: {{ pair.comparison.numericMatch ? 'yes' : 'no' }}.<br />Biome IDs:
+              {{ pair.comparison.biomesMatch ? 'match' : 'differ' }}.<br />Build compatibility:
+              {{ pair.comparison.identity }}.
+            </p>
+            <details>
+              <summary>Full comparison metrics</summary>
+              <pre>{{ pair.comparison | json }}</pre>
+            </details>
+          } @else {
+            <p>Comparison unavailable. See the recorded reasons below.</p>
+          }
+          <p>Pair {{ pair.assessment.status }}.</p>
+          @if (pair.assessment.status === 'excluded') {
+            <ul>
+              @for (reason of pair.assessment.reasons; track $index) {
+                <li>{{ reason.code }}: {{ reason.detail }}</li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    </details>
+    <details id="race-snapshot">
+      <summary>Captured inputs &amp; conditions</summary>
+      <p>
+        Local build:
+        <span class="race-local-build">{{ record.metadata.coreBuildIds.local ?? 'Unknown' }}</span
+        ><br />Remote build:
+        <span class="race-remote-build">{{
+          record.metadata.coreBuildIds.remote ?? 'Unknown'
+        }}</span>
+      </p>
+      <p>
+        Initialization origin: {{ record.metadata.startup.origin }}.<br />Worker + runtime:
+        {{ duration(record.metadata.startup.initMs) }}.<br />Runtime startup:
+        {{ duration(record.metadata.startup.runtimeMs) }}.
+      </p>
+      <details>
+        <summary>Captured configuration</summary>
+        <pre>{{ record.configuration | json }}</pre>
+      </details>
+      <details>
+        <summary>Environment &amp; interruptions</summary>
+        <p>
+          Null means unavailable or unknown. Conditions are observed or operator-reported, not
+          controlled automatically.
+        </p>
+        <pre>{{ record.metadata | json }}</pre>
+      </details>
+    </details>
+    <p class="hint">
+      These records describe this experiment. Summaries and export are a later step.
+    </p>
+  }
+</section>

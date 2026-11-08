@@ -3,6 +3,8 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { PwaStatusPanel } from './platform/pwa-status-panel';
+import { WasmHostService } from './platform/wasm-host.service';
+import { ExperimentRunner } from './experiments/experiment-runner.service';
 import { OperationLock } from './platform/operation-lock.service';
 import { TerrainResultsPanel } from './terrain/editor/terrain-results-panel';
 import { vi } from 'vitest';
@@ -71,6 +73,19 @@ describe('App terrain workflow', () => {
       providers: [
         provideHttpClient(),
         { provide: TerrainService, useValue: { local, remote } },
+        {
+          provide: WasmHostService,
+          useValue: {
+            getRuntime: vi.fn(async () => ({})),
+            getInfo: () => ({
+              initCount: 1,
+              initMs: 10,
+              runtimeMs: 8,
+              execution: 'worker',
+              protocol: 'worker-rpc-v1',
+            }),
+          },
+        },
         { provide: OfflineReadinessService, useValue: readiness },
       ],
     })
@@ -111,7 +126,9 @@ describe('App terrain workflow', () => {
 
   it('renders only the rich terrain workflow and 3D preview', () => {
     expect(fixture.nativeElement.querySelector('h1').textContent).toContain('Terrain editor');
-    expect(fixture.nativeElement.querySelectorAll('input[type=number]').length).toBe(18);
+    expect(
+      fixture.nativeElement.querySelectorAll('app-terrain-parameters input[type=number]').length,
+    ).toBe(18);
     expect(fixture.nativeElement.querySelector('#workload')).toBeNull();
     expect(fixture.nativeElement.querySelector('#view-2d')).toBeNull();
     expect(fixture.nativeElement.querySelector('app-heightmap-preview')).toBeNull();
@@ -435,5 +452,196 @@ describe('App terrain workflow', () => {
     finish(result(remote.mock.calls[0][0]));
     await vi.waitFor(() => expect(operations.busy()).toBe(false));
     expect(app['remote']()).toBeNull();
+  });
+
+  function smallExperiment(): void {
+    input('width', '3');
+    input('height', '2');
+    input('iterations', '2');
+    input('race-pairs', '1');
+  }
+
+  it('runs the captured experiment and transfers its verified pair once without extra calls', async () => {
+    smallExperiment();
+    const runner = TestBed.inject(ExperimentRunner);
+    const take = vi.spyOn(runner, 'takePreviewPair');
+    button('race-start').click();
+    await waitForIdle();
+    expect(local).toHaveBeenCalledTimes(2);
+    expect(remote).toHaveBeenCalledTimes(2);
+    expect(take).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance['local']()).toBeTruthy();
+    const verification = runner.result()!.verifications[1];
+    expect(fixture.componentInstance['comparison']()).toBe(
+      verification.status === 'compared' ? verification.comparison : null,
+    );
+    expect(fixture.nativeElement.querySelector('#race-outcome').textContent).toContain('completed');
+    expect(runner.takePreviewPair()).toBeNull();
+  });
+
+  it('blocks conflicting actions and keeps Stop available until the active call settles', async () => {
+    smallExperiment();
+    let finish!: (value: TerrainRun) => void;
+    local.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    button('race-start').click();
+    await vi.waitFor(() => expect(local).toHaveBeenCalledTimes(1));
+    await fixture.whenStable();
+    expect(button('race-start').disabled).toBe(true);
+    expect(button('generate-local').matches(':disabled')).toBe(true);
+    expect(button('reset-parameters').matches(':disabled')).toBe(true);
+    expect(button('random-seed').matches(':disabled')).toBe(true);
+    expect(button('race-stop').disabled).toBe(false);
+    button('race-start').click();
+    button('race-stop').click();
+    await fixture.whenStable();
+    expect(button('race-stop').disabled).toBe(true);
+    expect(fixture.nativeElement.querySelector('#race-status').textContent).toContain(
+      'Stop requested',
+    );
+    expect(TestBed.inject(OperationLock).busy()).toBe(true);
+    expect(fixture.componentInstance['local']()).toBeNull();
+    finish(result(local.mock.calls[0][0]));
+    await waitForIdle();
+    expect(remote).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('#race-outcome').textContent).toContain('stopped');
+  });
+
+  it('preserves prior maps without intermediate updates when a series fails', async () => {
+    smallExperiment();
+    button('generate-local').click();
+    await waitForIdle();
+    const previous = fixture.componentInstance['local']();
+    let fail!: (error: Error) => void;
+    remote.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          fail = reject;
+        }),
+    );
+    button('race-start').click();
+    await vi.waitFor(() => expect(remote).toHaveBeenCalledTimes(1));
+    expect(fixture.componentInstance['local']()).toBe(previous);
+    fail(new TerrainError('availability', 'Remote unavailable'));
+    await waitForIdle();
+    expect(fixture.componentInstance['local']()).toBe(previous);
+    expect(fixture.nativeElement.querySelector('#race-failures').textContent).toContain(
+      'Remote unavailable',
+    );
+  });
+
+  it('maps canonical validation fields back to the editor', async () => {
+    smallExperiment();
+    local.mockRejectedValueOnce(
+      new TerrainError('validation', 'Invalid dimensions', { 'heightMap.width': 'Too small' }),
+    );
+    button('race-start').click();
+    await waitForIdle();
+    expect(fixture.componentInstance['error']()?.fields['heightMap.width']).toBe('Too small');
+    expect(fixture.nativeElement.querySelector('#width-error').textContent).toContain('Too small');
+    expect(remote).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not start with incomplete terrain fields or invalid experiment count', async () => {
+    smallExperiment();
+    input('race-pairs', '1.5');
+    button('race-start').click();
+    await fixture.whenStable();
+    expect(local).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('#race-count-error').textContent).toContain(
+      'whole number',
+    );
+    input('race-pairs', '1');
+    input('seed', '');
+    button('race-start').click();
+    await fixture.whenStable();
+    expect(local).not.toHaveBeenCalled();
+    expect(fixture.componentInstance['error']()?.kind).toBe('validation');
+  });
+
+  it('retains maps and reports a rejected start', async () => {
+    smallExperiment();
+    button('generate-local').click();
+    await waitForIdle();
+    const previous = fixture.componentInstance['local']();
+    vi.spyOn(TestBed.inject(ExperimentRunner), 'start').mockRejectedValueOnce(
+      new Error('Start rejected'),
+    );
+    button('race-start').click();
+    await waitForIdle();
+    expect(fixture.componentInstance['local']()).toBe(previous);
+    expect(fixture.componentInstance['error']()?.message).toBe('Start rejected');
+  });
+
+  it('keeps captured parameters immutable and drops stale visualization after a programmatic draft edit', async () => {
+    smallExperiment();
+    let finish!: (value: TerrainRun) => void;
+    local.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    button('race-start').click();
+    await vi.waitFor(() => expect(local).toHaveBeenCalledTimes(1));
+    fixture.componentInstance['form'].controls.seed.setValue(999);
+    finish(result(local.mock.calls[0][0]));
+    await waitForIdle();
+    expect(
+      [...local.mock.calls, ...remote.mock.calls].every(
+        ([request]) => request.heightMap.seed === 42,
+      ),
+    ).toBe(true);
+    expect(fixture.componentInstance['local']()).toBeNull();
+    expect(TestBed.inject(ExperimentRunner).result()!.configuration.terrain.heightMap.seed).toBe(
+      42,
+    );
+    expect(TestBed.inject(ExperimentRunner).takePreviewPair()).toBeNull();
+  });
+
+  it('stops its own series on destruction, waits for settlement and leaves the root runner reusable', async () => {
+    smallExperiment();
+    let finish!: (value: TerrainRun) => void;
+    local.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    button('race-start').click();
+    await vi.waitFor(() => expect(local).toHaveBeenCalledTimes(1));
+    const runner = TestBed.inject(ExperimentRunner),
+      app = fixture.componentInstance;
+    fixture.destroy();
+    expect(runner.stopRequested()).toBe(true);
+    expect(TestBed.inject(OperationLock).busy()).toBe(true);
+    finish(result(local.mock.calls[0][0]));
+    await vi.waitFor(() => expect(TestBed.inject(OperationLock).busy()).toBe(false));
+    expect(app['local']()).toBeNull();
+    expect(runner.takePreviewPair()).toBeNull();
+    expect(runner.result()!.status).toBe('stopped');
+    expect((await runner.start(runner.result()!.configuration)).status).toBe('completed');
+  });
+
+  it('displays matching dirty-build maps as diagnostics with explicit exclusion', async () => {
+    smallExperiment();
+    const diagnostic = async (terrain: TerrainRequest) => {
+      const value = result(terrain);
+      return { ...value, response: { ...value.response, coreBuildId: 'git:test-dirty' } };
+    };
+    local.mockImplementation(diagnostic);
+    remote.mockImplementation(diagnostic);
+    button('race-start').click();
+    await waitForIdle();
+    expect(fixture.componentInstance['local']()).toBeTruthy();
+    expect(fixture.componentInstance['comparison']()?.identity).toBe('unverifiable');
+    expect(fixture.nativeElement.querySelector('#build-identity').textContent).toContain(
+      'unverifiable',
+    );
+    expect(fixture.nativeElement.querySelector('#race-outcome').textContent).toContain('Excluded');
   });
 });

@@ -142,7 +142,7 @@ Preserve the preferred terrain appearance. Develop diagnostic layers for slope/e
 
 ## Architecture Race and research campaign
 
-Protocol/contracts and the sequential runner are implemented in Steps 1–2 below. Experiment UI, statistics and JSON/CSV export remain next. Use the current `landscape-ecology-hydraulic-v8` and `landscape-worker-json-v8` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
+Protocol/contracts, the sequential runner and editor UI are implemented in Steps 1–3 below. Statistics and JSON/CSV export remain next. Use the current `landscape-ecology-hydraulic-v8` and `landscape-worker-json-v8` as the primary generation workload; evaluate any future capture workload separately. Follow [BENCHMARKING.md](BENCHMARKING.md).
 
 Run a controlled size/iteration/seed matrix under documented network profiles. Keep compute, initialization, request overhead and rendering separate. Report failures and environment limits; browser smoke checks are correctness evidence, not a performance campaign.
 
@@ -217,7 +217,43 @@ recovery and update deferral. The known optional WASM optimization warning remai
 Core/host source was unchanged; native test suites were not rerun. Controlled-promise
 runner tests and browser regression checks are not a performance campaign.
 
-Next, Step 3: experiment UI for configuration, start/progress/stop, final statuses,
-validation/availability errors, explicit exclusions and post-run pair visualization.
-Then implement documented summaries and JSON/CSV export. No experiment App action,
-statistics functions or download feature is implemented in Step 2. README stays empty.
+Step 3 scope: experiment UI for configuration, start/progress/stop, final statuses,
+validation/availability errors, exclusions and post-run pair visualization. Completion
+is recorded below. Step 2 itself introduced no App action, statistics or downloads.
+
+
+## Architecture Race — Step 3 complete
+
+Added a compact Architecture Race panel above the parameter groups. It validates
+integer measured-pair count (default 10, range 1..30), exposes Start and cooperative
+Stop, and presents preparation/warmup/measured progress with actual mode/order and
+separate settled counts. Shared operation locking disables conflicting actions while
+Stop remains available for the owned series. Detailed raw trials, pair verification,
+exclusion reasons, structured failures, captured inputs and startup/environment/build
+metadata are expandable; raw tables scroll within the panel on narrow screens.
+
+App captures forms once and delegates to ExperimentRunner. Completed collection,
+eligibility, correctness and build compatibility stay distinct; dirty/unversioned
+builds remain diagnostic. Missing durations are labelled and zero remains zero.
+Canonical validation fields return to the editor. No intermediate map replaces the
+prior view; one final suitable pair is taken after settlement with its exact stored
+verification. No extra generation/comparison occurs. Obsolete completions and App
+destruction discard the handoff; destroying App stops its owned series without
+disposing the root runner. Runner additions are readonly stopRequested and the
+verification reference in the internal preview handoff, with no protocol policy or
+export schema change. Core, hosts, adapters and mathematical identities are unchanged.
+
+Verification: all 249 Angular tests pass, including 21 new panel/App tests and
+additional runner assertions. Production publication/finalization and documentation
+links pass. Real Chromium editor, lighting, Race and PWA scenarios pass with no page
+errors: actual warmup plus two alternating measured pairs, matching build IDs and
+complete comparisons, paused scene submissions, retained prior map, deterministic
+Stop during a test-proxy-gated POST, narrow layout, offline reload/new tabs and safe
+update behavior. The test-only proxy is needed for SW-owned fetches and its timings
+are not campaign results. Existing optional WASM optimization warning remains.
+Core/host sources did not change; native test suites were not rerun. README is empty.
+
+Next: implement the documented per-mode summaries and versioned JSON/CSV export,
+with warmups excluded from measured summaries, diagnostic versus verified eligibility,
+explicit exclusion counts and retention of failed/incomplete records. No statistics,
+charts, downloads or controlled campaign results are included in Step 3.

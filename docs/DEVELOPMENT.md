@@ -2,7 +2,7 @@
 
 ## Current application
 
-One Angular editor generates **Rich terrain + hydraulic erosion** locally in a C# WASM worker or remotely through ASP.NET Core. Both use the same Core. Seven detail stages are implemented, including structured vegetation, local relief and coastal surfaces. Architecture Race has protocol/contracts and a sequential collection service; its UI, summaries and export remain planned. Evolution capture/playback remains future work. README is intentionally empty.
+One Angular editor generates **Rich terrain + hydraulic erosion** locally in a C# WASM worker or remotely through ASP.NET Core. Both use the same Core. Seven detail stages are implemented, including structured vegetation, local relief and coastal surfaces. Architecture Race has protocol/contracts, a sequential collection service and a compact editor panel; summaries and export remain planned. Evolution capture/playback remains future work. README is intentionally empty.
 
 Start with the [documentation index](INDEX.md), [project brief](PROJECT_BRIEF.md), [architecture](ARCHITECTURE.md) and [benchmark methodology](BENCHMARKING.md). Frozen mathematical/presentation policies live in [specs/](specs/); original milestone observations are in [history/DETAILING_VERIFICATION.md](history/DETAILING_VERIFICATION.md).
 
@@ -100,7 +100,7 @@ PWG_BASE_URL=http://127.0.0.1:8080 \
 node tests/browser/landscape.cjs
 ```
 
-Use the same environment for all seven entry points:
+Use the same environment for all eight entry points:
 
 | Script | Coverage |
 | --- | --- |
@@ -108,6 +108,7 @@ Use the same environment for all seven entry points:
 | materials.cjs | Five textures, instance/draw budgets, ownership, narrow/offline presentation |
 | lighting.cjs | Actual shadow attachments, static reuse, pause and empty/minimum terrain |
 | editor.cjs | Compact guidance/tips, keyboard sliders, drafts, retained results, equivalence and layout |
+| race.cjs | Real sequential pairs, raw records/build identity, paused scenes, cooperative Stop and narrow layout |
 | coasts.cjs | Coastal blending/views, steep shores and protected dry depressions |
 | relief.cjs | Pure/eroded plains and mountain views with actual UI equivalence |
 | pwa.cjs | Offline reload/new tab, Remote recovery and deferred safe updates |
@@ -129,7 +130,7 @@ PWA tests temporarily mutate only generated deployment files and restore them in
 - tests/core/Generation, Ecology, Validation: active Core checks; Historical/ and Fixtures/ retain versioned evidence.
 - tests/api, browser, build, reference: host integration, real browser scenarios, packaging and independent numerical references.
 
-Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race Step 1 protocol/contracts and immutable configuration are implemented; see [the specification](specs/ARCHITECTURE_RACE_V1.md). Sequential collection is implemented as a service; experiment UI, summaries and export remain planned.
+Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race Step 1 protocol/contracts and immutable configuration are implemented; see [the specification](specs/ARCHITECTURE_RACE_V1.md). Sequential collection and its editor panel are implemented; summaries and export remain planned.
 
 
 ## Architecture Race configuration
@@ -140,15 +141,14 @@ The default is 10 measured pairs; invalid pair counts throw RangeError. Mathemat
 terrain validation remains in Core. No Angular form or browser APIs are required.
 Colocated utility tests cover every captured parameter, caller edits, runtime freezing,
 count boundaries and forwarding invalid terrain drafts unchanged. Run `npm --prefix
-src/client test -- --watch=false` for frontend checks. Step 2 adds the collector service described below; statistics, export and experiment
-UI remain planned. No performance campaign has been run.
+src/client test -- --watch=false` for frontend checks. Steps 2–3 add the collector service and editor panel described below; statistics and
+export remain planned. No performance campaign has been run.
 
 
 ## Architecture Race runner
 
 Inject ExperimentRunner and call start(createExperimentConfiguration(terrain, count),
-conditions?) to obtain ExperimentResult. The App intentionally has no runner action
-in this step. progress/result are readonly signals; stop is cooperative. A busy
+conditions?) to obtain ExperimentResult. The Architecture Race panel invokes this service from App using captured editor inputs. progress/result are readonly signals; stop is cooperative. A busy
 operation or overlapping start rejects immediately. Preparation/call/verification
 holds one shared lock, preventing generation and safe PWA reload; an active call
 must settle before release, including on disposal.
@@ -163,3 +163,45 @@ Optional conditions are operator-reported environment strings; unknown data rema
 null. Startup counters/timings and browser user agent are observed separately. Tests
 use controlled promises and real comparisons for ordering, locking, failures, stop,
 identity changes, interruptions and bounded handoff. They do not measure performance.
+
+
+## Architecture Race panel
+
+Architecture Race is above the parameter groups in the sidebar. Choose 1..30 measured
+pairs (default 10), then Start experiment. One warmup per mode precedes sequential
+alternating measured pairs. Preparation, phase, pair, mode, order and settled warmup/
+measured counts are shown separately. Stop after call remains available while the
+experiment owns OperationLock; Stop requested waits for the active call to settle.
+Other operations disable Start, and collection disables draft/reset/random/generation
+controls. No request is cancelled and no automatic Remote-to-Local fallback exists.
+
+After completion, expand raw trials, pair verification, exclusion reasons or captured
+inputs/conditions. Collection completed does not imply eligible results. Failed/stopped
+records remain inspectable, unavailable durations are labelled, and zero remains zero.
+Correctness and build compatibility are separate. Matching dirty builds remain
+excluded diagnostics. Summaries, winner claims, charts and downloads are not provided.
+
+App takes the retained pair once after settlement and reuses its stored verification;
+there is no repeated generation or comparison. No suitable pair leaves prior maps
+intact. Programmatic draft revisions and component destruction discard obsolete map
+handoffs. Destroying App requests Stop for its own series without disposing the shared
+runner; closing diagnostic details has no effect on collection. The panel contains
+presentation only, with the existing Core/host validation paths unchanged.
+
+race.cjs uses a local test-only HTTP proxy to hold an actual API POST through normal
+service-worker operation. This makes pause/Stop assertions deterministic without
+changing production code. Proxy/gated timings are smoke evidence, not campaign data.
+
+
+### Race build mismatch after publishing
+
+A successful publish replaces files on disk; it does not reload an already running
+API process. A browser can therefore load current WASM while the API still returns
+an older coreBuildId. Architecture Race correctly stops that comparison. The primary
+failure now includes the exclusion code and actual Local/Remote build IDs, with
+visible recovery guidance for build mismatch even when collection completed.
+
+Restart the API from the matching publication, then reload/update the application
+and retry. Compare the actual IDs in Captured inputs & conditions; do not bypass
+identity checks or treat matching dirty builds as verified. A generic numerical
+mismatch instead requires inspecting the stored full comparison diagnostics.

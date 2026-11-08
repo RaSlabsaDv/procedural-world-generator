@@ -193,8 +193,7 @@ and build compatibility. Records retain no full map arrays.
 Step 2 implements ExperimentRunner in experiments/: one OperationLock for preparation
 through verification, no scene construction during collection, bounded pair retention
 and honest startup metadata. The preview observes the lock directly, deferring new
-WebGL/asset setup and suppressing resize/draw work until release. UI, summaries and
-export follow separately. The interactive Verify action
+WebGL/asset setup and suppressing resize/draw work until release. Step 3 connects the editor panel; summaries and export follow separately. The interactive Verify action
 remains a single equivalence check, not a repeated measurement campaign.
 
 
@@ -205,3 +204,26 @@ interruptions, failures and disqualifications remain in frozen small records. Th
 latest suitable pair can be transferred once for later display; arrays never enter
 ExperimentResult. Runtime collection uses existing TerrainService calls and complete
 compareTerrains checks. Details and terminal-state precedence are in the v1 spec.
+
+
+## Architecture Race UI
+
+experiments/editor/experiment-panel owns pair-count input and presentation of runner
+progress, completed records and diagnostics. It emits Start/Stop actions and never
+runs adapters or derives experiment eligibility. App captures the current terrain
+forms, creates configuration and invokes ExperimentRunner. Shared OperationLock
+continues to disable editor actions, rendering and PWA reload during collection.
+Stop is outside the disabled parameter fieldset and uses the runner's additive
+readonly stopRequested signal, including navigation-triggered stop requests.
+
+Final preview handoff carries its already-computed PairVerification alongside the
+Local/Remote runs, outside exportable records. App transfers it once after settlement,
+reuses its comparison metrics and preserves captured request labels. This avoids
+re-comparing full arrays and correctly identifies an earlier suitable retained pair
+when a later pair failed. Revision/destruction checks discard obsolete handoffs;
+prior successful maps survive failed starts or unavailable pairs. Only App-owned
+collection is stopped on App destruction; the root service is not disposed by a panel.
+
+Raw durations, failures, exclusion reasons, input snapshots, startup and actual build
+IDs appear in expandable details. Completed, eligible and compatible remain distinct
+labels. No statistics, download pipeline or campaign conclusions are introduced.

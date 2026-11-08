@@ -52,6 +52,7 @@ export type ExperimentProgress =
 export interface ExperimentPreviewPair {
   readonly local: TerrainRun;
   readonly remote: TerrainRun;
+  readonly verification: Extract<PairVerification, { status: 'compared' }>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -68,7 +69,8 @@ export class ExperimentRunner {
   private readonly resultState = signal<ExperimentResult | null>(null);
   readonly result = this.resultState.asReadonly();
   private active = false;
-  private stopped = false;
+  private readonly stopped = signal(false);
+  readonly stopRequested = this.stopped.asReadonly();
   private disposed = false;
   private preview: ExperimentPreviewPair | null = null;
   private removeListeners: (() => void) | null = null;
@@ -78,7 +80,7 @@ export class ExperimentRunner {
   }
 
   stop(): void {
-    if (this.active) this.stopped = true;
+    if (this.active) this.stopped.set(true);
   }
 
   takePreviewPair(): ExperimentPreviewPair | null {
@@ -112,7 +114,7 @@ export class ExperimentRunner {
     const release = this.operations.tryAcquire();
     if (!release) throw new Error('Another operation is active. Retry when it finishes.');
     this.active = true;
-    this.stopped = false;
+    this.stopped.set(false);
     this.preview = null;
     this.resultState.set(null);
     this.setProgress({ stage: 'preparing', completedTrials: 0 });
@@ -214,7 +216,7 @@ export class ExperimentRunner {
         protocol: before.protocol,
         runtimeVersion: null,
       });
-      if (!this.stopped) {
+      if (!this.stopped()) {
         await this.wasm.getRuntime();
         preparedInfo = { ...this.wasm.getInfo() };
         startup = Object.freeze({
@@ -237,7 +239,7 @@ export class ExperimentRunner {
       // Warmup occupies index -1 internally; persisted measured indices remain zero-based.
       for (
         let index = -1;
-        index < configuration.measuredPairs && !this.stopped && !fatal;
+        index < configuration.measuredPairs && !this.stopped() && !fatal;
         index++
       ) {
         const phase =
@@ -251,7 +253,7 @@ export class ExperimentRunner {
         const maps: Partial<Record<ExecutionMode, TerrainRun>> = {};
         const pairReasons: ExclusionReason[] = [];
         for (const position of [0, 1] as const) {
-          if (this.stopped || fatal) break;
+          if (this.stopped() || fatal) break;
           runtimeChanged();
           if (fatal) break;
           const mode = order[position];
@@ -340,7 +342,10 @@ export class ExperimentRunner {
               );
             if (comparison.identity === 'different')
               pairReasons.push(
-                reason('build-mismatch', `${pairId}: Local and Remote build IDs differ.`),
+                reason(
+                  'build-mismatch',
+                  `${pairId}: Local coreBuildId=${maps.local.response.coreBuildId}; Remote coreBuildId=${maps.remote.response.coreBuildId}. Builds must match.`,
+                ),
               );
             if (comparison.identity === 'unverifiable')
               pairReasons.push(
@@ -362,7 +367,11 @@ export class ExperimentRunner {
               !pairReasons.some((r) => r.code === 'identity-changed') &&
               !this.disposed
             )
-              this.preview = Object.freeze({ local: maps.local, remote: maps.remote });
+              this.preview = Object.freeze({
+                local: maps.local,
+                remote: maps.remote,
+                verification,
+              });
           } catch (error) {
             pairReasons.push(reason('comparison-unavailable', failure(error, 'execution').message));
             verification = this.unavailable(phase, pairId, pairTrials, pairReasons);
@@ -385,22 +394,20 @@ export class ExperimentRunner {
           executionFailed = true;
           fatal ??= failure(new Error('Warmup failed.'), 'execution');
         }
+        const invalidation = pairReasons.find((r) =>
+          [
+            'identity-changed',
+            'build-mismatch',
+            'correctness-mismatch',
+            'comparison-unavailable',
+          ].includes(r.code),
+        );
         if (
-          pairReasons.some((r) =>
-            [
-              'identity-changed',
-              'build-mismatch',
-              'correctness-mismatch',
-              'comparison-unavailable',
-            ].includes(r.code),
-          ) &&
+          invalidation &&
           pairTrials.local?.status === 'success' &&
           pairTrials.remote?.status === 'success'
         )
-          fatal ??= failure(
-            new Error('Pair verification invalidated further collection.'),
-            'execution',
-          );
+          fatal ??= failure(new Error(`${invalidation.code}: ${invalidation.detail}`), 'execution');
         // maps and pairTrials go out of scope here; only the single preview pair survives.
       }
     } catch (error) {
@@ -413,7 +420,7 @@ export class ExperimentRunner {
       trials.filter((t) => t.phase === 'measured').length === configuration.measuredPairs * 2;
     const status = executionFailed
       ? 'failed'
-      : this.stopped
+      : this.stopped()
         ? 'stopped'
         : fullyAttempted
           ? 'completed'
