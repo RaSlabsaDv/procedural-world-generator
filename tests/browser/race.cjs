@@ -163,6 +163,28 @@ function parseCsv(text) {
     await page.locator("#generate-local").click();
     await waitForTerrain(page);
     await fillParameters(page, { seed: 2026 });
+    assert.equal(
+      await page.locator(".parameter-sidebar app-experiment-panel").count(),
+      0,
+    );
+    assert.equal(
+      await page.locator(".results-panel app-experiment-panel").count(),
+      1,
+    );
+    assert.equal(
+      await page.locator("#race-panel").evaluate((el) => el.open),
+      false,
+    );
+    assert.equal(
+      await page.locator("app-experiment-panel details[open]").count(),
+      0,
+    );
+    const viewport = await page.locator(".viewport-panel").boundingBox();
+    const experiments = await page
+      .locator("app-experiment-panel")
+      .boundingBox();
+    assert.ok(experiments.x > viewport.x + viewport.width - 1);
+    await page.locator("#race-heading").click();
     await page.locator("#race-pairs").fill("2");
     gateNext = true;
     await page.locator("#race-start").click();
@@ -174,6 +196,11 @@ function parseCsv(text) {
     await waitForHeld();
     assert.equal(await page.locator("#race-start").isDisabled(), true);
     assert.equal(await page.locator("#race-stop").isEnabled(), true);
+    await page.locator("#race-heading").click();
+    await page.waitForFunction(
+      () => document.querySelector("#race-panel").open,
+    );
+    assert.equal(await page.locator("#race-stop").isVisible(), true);
     for (const id of [
       "generate-local",
       "generate-remote",

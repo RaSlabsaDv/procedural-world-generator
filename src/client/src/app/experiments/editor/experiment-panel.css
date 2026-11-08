@@ -1,22 +1,29 @@
 :host {
   display: block;
   min-width: 0;
-  border-bottom: 1px solid #dce5e5;
+  border-bottom: 1px solid var(--atlas-border);
 }
 .experiment-panel {
   padding: 0.8rem;
   font-size: 0.75rem;
   overflow-wrap: anywhere;
 }
-h2 {
-  margin: 0 0 0.35rem;
+#race-panel {
+  margin-top: 0;
+}
+#race-heading {
+  padding: 0.75rem 0.8rem;
+  font-size: 0.9rem;
+}
+.experiment-panel {
+  padding-top: 0;
 }
 p {
   margin: 0.4rem 0;
 }
 .hint,
 small {
-  color: #627c7b;
+  color: var(--atlas-muted);
   font-size: 0.7rem;
 }
 .pair-control {
@@ -31,8 +38,8 @@ label small {
 input {
   width: 4rem;
   padding: 0.35rem;
-  border: 1px solid #b8ccca;
-  border-radius: 0.35rem;
+  border: 1px solid var(--atlas-input-border);
+  border-radius: var(--atlas-radius-sm);
   font: inherit;
 }
 .actions {
@@ -50,19 +57,19 @@ button {
 }
 progress {
   width: 100%;
-  accent-color: #226b5b;
+  accent-color: var(--atlas-primary);
 }
 details {
   margin-top: 0.55rem;
 }
 summary {
-  color: #365a55;
+  color: var(--atlas-primary);
   font-weight: 600;
 }
 pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
 }
 ul {
   padding-left: 1rem;
@@ -77,19 +84,42 @@ li {
 }
 table {
   border-collapse: collapse;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   min-width: 26rem;
 }
 th,
 td {
   padding: 0.3rem;
-  border-bottom: 1px solid #e6eded;
+  border-bottom: 1px solid var(--atlas-rule);
   text-align: left;
   white-space: nowrap;
 }
 th {
-  background: #eff5f2;
+  background: var(--atlas-soft);
 }
 .pair-check {
-  border-bottom: 1px solid #e6eded;
+  border-bottom: 1px solid var(--atlas-rule);
+}
+
+#race-heading {
+  background: var(--atlas-soft);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-sm);
+  margin-bottom: 0.65rem;
+}
+input {
+  color: var(--atlas-text);
+  background: var(--atlas-raised);
+}
+tr[data-mode='local'] td:nth-child(3) {
+  color: var(--atlas-local);
+  font-weight: 600;
+}
+tr[data-mode='remote'] td:nth-child(3) {
+  color: var(--atlas-remote-strong);
+  font-weight: 600;
+}
+.table-scroll:focus-visible {
+  outline: 2px solid var(--atlas-focus);
+  outline-offset: 2px;
 }

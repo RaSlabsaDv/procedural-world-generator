@@ -4,17 +4,17 @@
   max-width: 380px;
 }
 .pwa-details > summary {
-  border: 1px solid #d8e4df;
-  border-radius: 2rem;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-pill);
   padding: 0.35rem 0.7rem;
-  color: #708074;
+  color: var(--atlas-muted);
 }
 .pwa-details > summary.ready {
-  color: #2d7154;
-  background: #eff7f0;
+  color: var(--atlas-primary);
+  background: var(--atlas-local-soft);
 }
 .pwa-details > summary.failed {
-  color: #a23f36;
+  color: var(--atlas-error);
 }
 .offline,
 .update {
@@ -42,4 +42,12 @@ p {
 .pwa-details {
   flex: 1;
   min-width: 0;
+}
+
+.pwa-details[open] {
+  background: var(--atlas-surface);
+  border-radius: var(--atlas-radius);
+}
+.pwa-details > summary {
+  background: var(--atlas-surface);
 }

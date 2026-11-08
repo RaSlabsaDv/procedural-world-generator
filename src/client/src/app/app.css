@@ -3,20 +3,21 @@
 }
 main {
   min-height: 100vh;
-  color: #22353e;
-  background: #eff3f3;
-  font:
-    14px/1.5 system-ui,
-    sans-serif;
+  color: var(--atlas-text);
+  background: var(--atlas-bg);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
 }
 .app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--atlas-space-4);
   padding: 1.1rem 1.5rem;
-  background: #fff;
-  border-bottom: 1px solid #dce5e5;
+  background: var(--atlas-surface) var(--atlas-contours) center / cover no-repeat;
+  border-top: 3px solid var(--atlas-primary);
+  border-bottom: 1px solid var(--atlas-border);
 }
 .brand {
   display: flex;
@@ -24,9 +25,14 @@ main {
   gap: 0.8rem;
 }
 .brand-mark {
-  font-size: 2.8rem;
-  line-height: 1;
-  color: #267768;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-sm);
+  background: var(--atlas-surface);
+  color: var(--atlas-primary);
 }
 h1 {
   margin: 0;
@@ -36,51 +42,52 @@ h1 {
 .eyebrow {
   margin: 0;
   text-transform: uppercase;
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  color: #688080;
+  font-size: 0.68rem;
+  letter-spacing: 0.09em;
+  color: var(--atlas-muted);
   font-weight: 700;
 }
 .status-strip {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: var(--atlas-space-4);
   padding: 0.6rem 1.5rem;
-  color: #50696c;
+  color: var(--atlas-muted);
   font-size: 0.78rem;
-  border-bottom: 1px solid #dce5e5;
+  border-bottom: 1px solid var(--atlas-border);
 }
 .status {
   margin: 0;
 }
 .status-strip > span {
-  color: #7b9090;
+  color: var(--atlas-muted);
 }
 .workspace {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);
-  gap: 1rem;
-  padding: 1rem;
+  gap: var(--atlas-space-4);
+  padding: var(--atlas-space-4);
   align-items: start;
 }
 .parameter-sidebar {
   min-width: 0;
-  background: #fff;
-  border: 1px solid #dce5e5;
-  border-radius: 0.7rem;
+  background: var(--atlas-surface);
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius);
   overflow: hidden;
+  box-shadow: var(--atlas-shadow);
 }
 .sidebar-heading {
   cursor: pointer;
-  padding: 1rem;
+  padding: var(--atlas-space-4);
   font-size: 0.9rem;
   font-weight: 700;
-  border-bottom: 1px solid #e6eded;
+  border-bottom: 1px solid var(--atlas-rule);
 }
 .sidebar-heading span {
   margin-left: 0.5rem;
   font-weight: 400;
-  color: #758b8c;
+  color: var(--atlas-muted);
   font-size: 0.7rem;
 }
 app-terrain-results {
@@ -104,4 +111,31 @@ app-terrain-results {
   .status-strip > span {
     display: none;
   }
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.studio-tag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--atlas-warning);
+  border: 1px solid var(--atlas-border);
+  background: var(--atlas-surface);
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--atlas-radius-sm);
+}
+.brand-mark svg {
+  width: 30px;
+  height: 30px;
+}
+.status-strip {
+  background: var(--atlas-soft);
+}
+.sidebar-heading {
+  background: var(--atlas-surface);
 }

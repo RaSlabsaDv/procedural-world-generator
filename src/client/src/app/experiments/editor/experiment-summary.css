@@ -11,7 +11,7 @@ p {
   margin: 0.4rem 0;
 }
 .metric {
-  border-bottom: 1px solid #dce5e5;
+  border-bottom: 1px solid var(--atlas-border);
   padding-bottom: 0.5rem;
 }
 dl {
@@ -33,5 +33,12 @@ ul {
   padding-left: 1rem;
 }
 .build {
-  color: #50696c;
+  color: var(--atlas-muted);
+}
+
+[data-summary-mode='local'] > h3 {
+  color: var(--atlas-local);
+}
+[data-summary-mode='remote'] > h3 {
+  color: var(--atlas-remote-strong);
 }

@@ -33,6 +33,7 @@ export class ExperimentPanel {
     const record = this.result();
     return !this.active() && record ? summarizeExperiment(record) : null;
   });
+  protected readonly expanded = signal(false);
   protected readonly count = signal(DEFAULT_MEASURED_PAIRS);
   protected readonly countError = signal<string | null>(null);
   protected readonly min = MIN_MEASURED_PAIRS;
@@ -65,6 +66,15 @@ export class ExperimentPanel {
         : `Measured pair ${p.pairIndex! + 1} of ${this.plannedPairs()}`;
     return `${phase} · ${p.mode === 'local' ? 'Local' : 'Remote'} · position ${p.position + 1} of 2`;
   });
+
+  protected togglePanel(event: Event): void {
+    const section = event.target as HTMLDetailsElement;
+    if (this.active() && !section.open) {
+      section.open = true; // Keep progress and cooperative Stop reachable during collection.
+      return;
+    }
+    this.expanded.set(section.open);
+  }
 
   protected changeCount(event: Event): void {
     this.count.set((event.target as HTMLInputElement).valueAsNumber);

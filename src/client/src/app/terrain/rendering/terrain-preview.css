@@ -1,9 +1,10 @@
 .viewport {
   width: 100%;
   height: clamp(400px, 66vh, 780px);
-  border-radius: 0.5rem;
+  border-radius: var(--atlas-radius-sm);
   overflow: hidden;
-  background: #18232d;
+  background: var(--atlas-map-backdrop);
+  border: 1px solid var(--atlas-input-border);
 }
 canvas {
   display: block;
@@ -13,7 +14,7 @@ canvas {
 }
 p {
   font-size: 0.7rem;
-  color: #70867c;
+  color: var(--atlas-muted);
 }
 .preview-actions {
   display: flex;
@@ -21,21 +22,22 @@ p {
   margin-bottom: 0.5rem;
 }
 button {
-  border: 1px solid #d5e0df;
-  background: #fff;
-  color: #526f60;
+  border: 1px solid var(--atlas-input-border);
+  background: var(--atlas-surface);
+  color: var(--atlas-primary);
   padding: 0.3rem 0.6rem;
-  border-radius: 0.35rem;
+  border-radius: var(--atlas-radius-sm);
   cursor: pointer;
   font: inherit;
   font-size: 0.7rem;
 }
 button:focus-visible {
-  outline: 3px solid #59a99b;
+  outline: 3px solid var(--atlas-focus);
   outline-offset: 2px;
 }
 button:disabled {
-  opacity: 0.5;
+  color: var(--atlas-muted);
+  background: var(--atlas-soft);
   cursor: wait;
 }
 @media (max-width: 650px) {

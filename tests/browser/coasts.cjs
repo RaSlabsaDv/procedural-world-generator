@@ -65,7 +65,7 @@ const assert = require("node:assert/strict"),
         0,
       );
       const params = await page
-        .locator("input[type=number]")
+        .locator("app-terrain-parameters input[type=number]")
         .evaluateAll((inputs) =>
           Object.fromEntries(inputs.map((i) => [i.id, Number(i.value)])),
         );

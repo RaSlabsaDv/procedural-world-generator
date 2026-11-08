@@ -68,6 +68,8 @@ The required five-channel float32 surfaceWeights array stays Grass/Soil/Sand/Roc
 
 Lambert shader revision terrain-surface-coverage-v2 blends supplied colors and five local grayscale detail maps with four-unit triplanar sampling, without ecological decisions or displacement. Existing vec4 Grass/Soil/Rock/Snow coverage plus a scalar sandCoverage attribute use 20 bytes per vertex, 5 MiB at 512x512, 1 MiB more than Stage 6. Ocean complement includes all five weights. Geometry, normals, triangle indices and draw-call budgets are unchanged; biome IDs remain ecological labels, not exact visible surface colors.
 
+Current scalar detail assets use atlas-detail-v1, specified in [Atlas materials](specs/ATLAS_MATERIALS_V1.md). The offline Python generator refines grain/contrast without changing RGB tints, texture format, shader equations or mathematical identities.
+
 Each preview owns five textures across replacements. Sand participates in the same complete async asset wait, failure/retry, partial/late completion and disposal rules. Scene setup/submission defers under the operation lock. All five assets were already bundled and prefetched, so no new catalog/download assets are added. Conservative active RGBA8+mip storage is about 1.67 MiB/view; shadow configuration remains unchanged. See DEVELOPMENT.md for budgets and verification.
 
 ## Lighting and atmosphere
@@ -76,7 +78,7 @@ Rendering revision daylight-shadow-v1 adds one fixed-direction sun, hemisphere f
 
 Terrain casts/receives shadows (double-sided shadow depth for the open heightfield); existing tree instances cast without self-receiving. One 2048x2048 PCF map per view updates once on scene replacement/recreation. Both renderer and light auto-update are disabled; camera-only renders reuse it. The initial shadow pass has at most nineteen caster calls and the color pass at most nineteen terrain/tree/rock calls. Fog uses the same request-span ratios in both execution modes.
 
-Each preview owns its light/shadow target. Cleanup disposes that target before the renderer; its attached depth texture is owned/released by the installed render-target implementation. Color RGBA8 plus conservatively aligned DEPTH_COMPONENT24 estimate 32 MiB/view, 64 MiB for comparison views, separately from four surface textures and other resources. Setup and the first shadow/color submission are display CPU work, excluded from computeMs/requestMs; no GPU completion is measured. See [LIGHTING_ATMOSPHERE_V1.md](specs/LIGHTING_ATMOSPHERE_V1.md) for frozen settings, ownership and limitations.
+Each preview owns its light/shadow target. Cleanup disposes that target before the renderer; its attached depth texture is owned/released by the installed render-target implementation. Color RGBA8 plus conservatively aligned DEPTH_COMPONENT24 estimate 32 MiB/view, 64 MiB for comparison views, separately from five surface textures and other resources. Setup and the first shadow/color submission are display CPU work, excluded from computeMs/requestMs; no GPU completion is measured. See [LIGHTING_ATMOSPHERE_V1.md](specs/LIGHTING_ATMOSPHERE_V1.md) for frozen settings, ownership and limitations.
 
 ## Timing, worker and build identity
 
@@ -208,6 +210,11 @@ compareTerrains checks. Details and terminal-state precedence are in the v1 spec
 
 ## Architecture Race UI
 
+App projects the experiment panel into the right results sidebar through a focused
+content slot, preserving its existing coordination and inputs. Its native details
+container and all nested experiment menus start collapsed; the outer container stays
+open during collection to keep progress/Stop accessible.
+
 experiments/editor/experiment-panel owns pair-count input and presentation of runner
 progress, completed records and diagnostics. It emits Start/Stop actions and never
 runs adapters or derives experiment eligibility. App captures the current terrain
@@ -253,3 +260,28 @@ browser-only experiment-download.ts creates UTF-8 Blobs, removes its temporary a
 and revokes object URLs after dispatch (immediately on failure). Serialization/download
 errors retain the result. No dependency, transport, runner-policy or timing change is
 included; statistics and exports do not contain full map history.
+
+
+## Atlas Studio presentation
+
+The editor uses a warm cartographic UI, independent of terrain materials and Core
+workload identities. src/client/src/styles.css owns the small --atlas-* token set:
+background/surface/text colors, mode accents, focus/error colors, spacing, radii,
+shadows and an inline static contour SVG. No font/image service or new dependency
+is used. The SVG compass in App and the contour motif decorate the header and empty
+viewport only; generated Three.js terrain, lighting and scientific timings retain
+their policies.
+
+shared/panel.css owns common button/disclosure/error/focus states; components retain
+compact layout rules. Local and Remote keep explicit labels and aria-pressed states
+with green/blue accents. Darker blue is used for white text and small labels; the
+original muted blue remains an accent/border role. Contextual --button-* variables
+supply variants while common disabled rules remain authoritative. Focus uses an
+independent ochre-brown ring. Numeric fields and measurements use tabular numerals.
+Experiment controls remain projected into the right sidebar with all sections
+initially collapsed and the outer section held open during collection.
+
+All decoration is static. There are no continuous animations, filters, backdrop blur
+or new benchmark-time rendering tasks. Native responsive stacking, disclosures,
+keyboard controls, operation locking, PWA updates and record/export behavior remain
+unchanged. Styles stay within existing component budgets.

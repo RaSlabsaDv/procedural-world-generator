@@ -1,3 +1,53 @@
+:root {
+  color-scheme: light;
+  --atlas-bg: #f2efe7;
+  --atlas-surface: #fffcf5;
+  --atlas-raised: #ffffff;
+  --atlas-soft: #eeece2;
+  --atlas-canvas: #e8e9dd;
+  --atlas-text: #273b35;
+  --atlas-muted: #5c695e;
+  --atlas-primary: #356859;
+  --atlas-primary-hover: #294f45;
+  --atlas-local: #356859;
+  --atlas-local-soft: #e7eee4;
+  --atlas-remote: #547ba0;
+  --atlas-remote-strong: #426584;
+  --atlas-remote-hover: #34526d;
+  --atlas-remote-soft: #e8eef3;
+  --atlas-accent: #b68a48;
+  --atlas-focus: #85622d;
+  --atlas-border: #d4d1c4;
+  --atlas-rule: #e2dfd3;
+  --atlas-input-border: #899282;
+  --atlas-error: #9b4137;
+  --atlas-error-bg: #f8eae4;
+  --atlas-warning: #775a28;
+  --atlas-warning-bg: #f3eacf;
+  --atlas-map-backdrop: #18232d;
+  --atlas-plains: #75916c;
+  --atlas-mountains: #858891;
+  --atlas-hills: #b68a48;
+  --atlas-space-1: 0.25rem;
+  --atlas-space-2: 0.5rem;
+  --atlas-space-3: 0.75rem;
+  --atlas-space-4: 1rem;
+  --atlas-space-5: 1.5rem;
+  --atlas-radius-sm: 0.35rem;
+  --atlas-radius: 0.65rem;
+  --atlas-pill: 999px;
+  --atlas-shadow: 0 2px 8px #273b3508, 0 1px 2px #273b3506;
+  --atlas-contours: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='360' viewBox='0 0 480 360' fill='none' stroke='%23356859' stroke-opacity='.09'%3E%3Cpath d='M-50 260C45 120 100 350 225 205S385 105 530 190M-50 285C45 145 100 375 225 230S385 130 530 215M-50 310C45 170 100 400 225 255S385 155 530 240M-50 335C45 195 100 425 225 280S385 180 530 265M-50 40C80-80 155 140 270 40S420 20 530 65M-50 65C80-55 155 165 270 65S420 45 530 90M-50 90C80-30 155 190 270 90S420 70 530 115'/%3E%3C/svg%3E");
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: var(--atlas-text);
+  background: var(--atlas-bg);
+}
 html,
 body {
   margin: 0;
@@ -5,4 +55,8 @@ body {
 }
 * {
   box-sizing: border-box;
+}
+::selection {
+  color: var(--atlas-text);
+  background: var(--atlas-warning-bg);
 }

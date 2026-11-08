@@ -100,11 +100,12 @@ PWG_BASE_URL=http://127.0.0.1:8080 \
 node tests/browser/landscape.cjs
 ```
 
-Use the same environment for all eight entry points:
+Use the same environment for all nine entry points:
 
 | Script | Coverage |
 | --- | --- |
 | landscape.cjs | Complete WASM/API parity, maximum workload, instances, memory and heartbeat diagnostics |
+| atlas-materials.cjs | Paired before/after texture views with exact camera matrices and complete mathematical result hashes |
 | materials.cjs | Five textures, instance/draw budgets, ownership, narrow/offline presentation |
 | lighting.cjs | Actual shadow attachments, static reuse, pause and empty/minimum terrain |
 | editor.cjs | Compact guidance/tips, keyboard sliders, drafts, retained results, equivalence and layout |
@@ -166,7 +167,10 @@ identity changes, interruptions and bounded handoff. They do not measure perform
 
 ## Architecture Race panel
 
-Architecture Race is above the parameter groups in the sidebar. Choose 1..30 measured
+Architecture Race is in the right Results & measurements sidebar, collapsed by default.
+All nested experiment sections also start collapsed. Open the Architecture Race
+heading to access its controls. During collection the outer section stays open so
+progress and Stop remain reachable. Choose 1..30 measured
 pairs (default 10), then Start experiment. One warmup per mode precedes sequential
 alternating measured pairs. Preparation, phase, pair, mode, order and settled warmup/
 measured counts are shown separately. Stop after call remains available while the
@@ -244,3 +248,69 @@ Exports are available for failed/stopped runs, disabled during collection, and r
 no additional computation or verification calls. Failed downloads keep the experiment
 visible for retry. Filenames sanitize the experiment ID; temporary anchors and Blob
 URLs are released. No controlled performance conclusions follow from these UI checks.
+
+
+## Atlas Studio styling
+
+The shell uses paper #F2EFE7 and panel #FFFCF5 with #273B35 text. Local uses forest
+#356859; Remote uses #547BA0 accents and darker #426584 for readable text/filled
+controls. Ochre #B68A48 marks small selections; keyboard focus uses #85622D.
+Supporting muted text is #5C695E. Role colors, spacing, radii and shadows live in
+src/client/src/styles.css; shared/panel.css provides common control states and
+component CSS handles placement/density. Avoid introducing independent hardcoded
+UI palettes or external font/texture dependencies. Terrain shader colors remain
+owned by the existing rendering modules, separate from these UI variables.
+
+The compass and quiet contour pattern are inline SVG/CSS with no animation or
+additional cache catalog entries. UI chips retain mode names and selected-state
+semantics. Error/disabled states and keyboard focus remain visible. Checked text
+roles meet a 4.5:1 contrast target against their supporting surfaces; input boundaries
+and focus rings are also checked. This is presentation verification, not benchmark
+evidence. No new tests mirror CSS declarations; existing workflow regressions and
+real desktop/mobile screenshots verify behavior and layout.
+
+Representative ignored screenshots are artifacts/atlas-empty-desktop.png,
+atlas-terrain-desktop.png, atlas-remote-desktop.png, atlas-compare-desktop.png,
+atlas-validation-desktop.png, atlas-experiment-desktop.png and atlas-*-mobile.png.
+They cover generation, validation, unavailable Remote, expanded/collapsed experiment
+menus, keyboard focus and PWA details. Run existing Race/editor/lighting/PWA browser
+checks against the published build after visual changes. README remains empty.
+
+Atlas Studio verification: all 297 Angular tests and production publication pass,
+with existing CSS budgets preserved. Chromium Race/editor/lighting/PWA regressions
+pass, including paused scene work, full comparison/export, offline reload/new tab
+and safe updates. Desktop/mobile screenshots were inspected for empty/generated
+terrain, Local/Remote/Compare, validation/availability errors, experiment summaries
+and PWA details; keyboard focus and absence of horizontal page overflow were checked.
+No page errors were observed. Core/host sources were unchanged, so native test suites
+were not rerun. The existing optional WASM optimization notice remains unchanged.
+
+
+## Atlas terrain detail assets
+
+The five bundled surface PNGs now use atlas-detail-v1: restrained fine grass/earth/
+sand grain, softer stone with shallow mineral fractures, and quieter snow detail.
+Reproduce them with `python3 scripts/generate-terrain-textures.py`; Python standard
+library only. Format stays 256x256 linear grayscale 8-bit PNG. These are scalar
+multipliers, so the existing RGB surface tints, color management and shader remain
+unchanged. This step does not independently recolor vegetation, water or surfaces.
+
+Current encoded total is 253693 bytes, compared with 271377 before refinement;
+five active RGBA8+mip textures still estimate about 1.67 MiB/view. This byte count
+is not a performance result or total GPU memory. [Asset notes](../src/client/public/textures/terrain/ASSETS.md)
+record CC0 provenance and exact SHA256 values. No asset paths, catalog count, draw,
+geometry, timing or workload identities changed. Core fixtures remain untouched.
+
+The [material specification](specs/ATLAS_MATERIALS_V1.md) describes the presentation
+boundary and verification. Run atlas-materials.cjs --before against the old assets,
+then atlas-materials.cjs after regeneration/publication using the usual PWG_* setup.
+Both phases use the same current algorithm and six exact requests. Eighteen canvas
+views preserve actual projection/model-view matrices and dimensions; full numerical
+result/summary hashes must match. Screenshots live under ignored artifacts/atlas-
+materials-before/after-*.png; repeated raw swatch sheets and intensity statistics
+are retained there too. Grayscale swatches are not RGB albedo previews.
+
+The materials/coasts diagnostic scripts now collect only terrain parameter controls;
+Architecture Race pair-count inputs must never be included in terrain requests.
+Mathematical correctness, texture ownership/retry, all five uploads, offline loading
+and safe PWA replacement continue to be checked separately from visual judgments.

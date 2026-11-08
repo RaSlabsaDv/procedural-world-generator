@@ -91,10 +91,11 @@ const artifact = artifactPath;
     const checkCoverage = () =>
       page.evaluate(async () => {
         const parameters = Object.fromEntries(
-          [...document.querySelectorAll("input[type=number]")].map((input) => [
-            input.id,
-            Number(input.value),
-          ]),
+          [
+            ...document.querySelectorAll(
+              "app-terrain-parameters input[type=number]",
+            ),
+          ].map((input) => [input.id, Number(input.value)]),
         );
         const heightMap = { algorithmVersion: "value-noise-fbm-v1" };
         for (const field of [
@@ -286,7 +287,7 @@ const artifact = artifactPath;
         path: artifact(`coasts-materials-after-${label}-detail.png`),
       });
       const parameters = await page
-        .locator("input[type=number]")
+        .locator("app-terrain-parameters input[type=number]")
         .evaluateAll((inputs) =>
           Object.fromEntries(
             inputs.map((input) => [input.id, Number(input.value)]),

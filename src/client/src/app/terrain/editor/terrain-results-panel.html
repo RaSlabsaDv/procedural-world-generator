@@ -38,7 +38,7 @@
   }
   <div class="maps" [class.comparing]="comparing() && entries().length === 2">
     @for (entry of visible(); track entry.source) {
-      <section class="map-card" [attr.aria-label]="entry.name">
+      <section class="map-card" [attr.data-mode]="entry.source" [attr.aria-label]="entry.name">
         <div class="map-heading">
           <h3>{{ entry.name }}</h3>
           <span class="result-state">{{
@@ -75,6 +75,7 @@
   }
 </section>
 <aside class="results-panel" aria-label="Results and measurements">
+  <ng-content select="app-experiment-panel" />
   <p class="eyebrow">Execution</p>
   <h2>Results &amp; measurements</h2>
   @if (comparison(); as check) {
@@ -120,7 +121,11 @@
 
   @for (entry of entries(); track entry.source) {
     @let run = entry.run;
-    <section class="measurement" [attr.aria-label]="entry.name + ' measurements'">
+    <section
+      class="measurement"
+      [attr.data-mode]="entry.source"
+      [attr.aria-label]="entry.name + ' measurements'"
+    >
       <h3>{{ entry.name }}</h3>
       <p class="tree-count">Trees: {{ run.response.result.trees.length }}</p>
       <p class="rock-count">Rocks: {{ run.response.result.rocks.length }} / {{ maxRocks }}</p>

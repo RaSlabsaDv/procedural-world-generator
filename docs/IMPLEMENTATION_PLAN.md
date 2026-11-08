@@ -299,3 +299,24 @@ Next: plan a controlled measurement campaign with frozen matching builds, applic
 revision, documented browser/client/server hardware and runtime, verified cache/startup
 state and reproducible network conditions. Retain raw exports and report limitations.
 No campaign automation, charts, Adaptive Mode, AOT or generator change is included here.
+
+
+## Atlas surface microdetail — complete
+
+Refined the five existing grayscale PNG detail maps under atlas-detail-v1, with
+quieter fine grass/soil/sand variation, shallow stone mineral boundaries and subdued
+snow grain. Retained fixed RGB tints, linear sampling, 256x256 grayscale format,
+four-unit repeat, shader/lighting, coverage and all mathematical identities. The
+standard-library offline generator remains deterministic; [asset notes](../src/client/public/textures/terrain/ASSETS.md)
+record current SHA256 values and CC0 provenance. See the
+[material specification](specs/ATLAS_MATERIALS_V1.md) for scope and evidence.
+
+Verification: 297 Angular tests, seven Python checks, production publication and
+materials/coasts/lighting/PWA Chromium scenarios pass. Eighteen paired views retain
+exact camera framing and complete mathematical hashes; real cross-mode comparisons,
+five texture uploads, render/resource caps and offline updates pass. No new runtime
+dependency or map buffers. Encoded total is 253693 bytes; GPU texture estimate stays
+about 1.67 MiB/view. This is appearance verification, not a performance campaign.
+
+Material palette, foliage, decorative rocks and water remain separately scoped future
+presentation work. Controlled research campaigns remain planned. README stays empty.

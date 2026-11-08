@@ -1,44 +1,67 @@
 h2 {
   font-size: 1rem;
   line-height: 1.4;
+  letter-spacing: -0.02em;
 }
 h3 {
   font-size: 0.9rem;
+  line-height: 1.4;
 }
 button {
   padding: 0.55rem 0.75rem;
-  border: 1px solid transparent;
-  border-radius: 0.4rem;
-  background: #226b5b;
-  color: #fff;
+  border: 1px solid var(--button-border, transparent);
+  border-radius: var(--atlas-radius-sm);
+  background: var(--button-bg, var(--atlas-primary));
+  color: var(--button-color, var(--atlas-raised));
   font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
+  line-height: 1.35;
   cursor: pointer;
 }
 button.secondary {
-  background: #fff;
-  border-color: #d5e0df;
-  color: #365a55;
+  background: var(--button-bg, var(--atlas-surface));
+  border-color: var(--button-border, var(--atlas-input-border));
+  color: var(--button-color, var(--atlas-text));
 }
 button:hover:not(:disabled) {
-  filter: brightness(0.95);
+  background: var(--button-hover, var(--atlas-primary-hover));
+  color: var(--button-color, var(--atlas-raised));
+}
+button.secondary:hover:not(:disabled) {
+  background: var(--button-hover, var(--atlas-local-soft));
+  color: var(--button-color, var(--atlas-primary-hover));
 }
 button[aria-pressed='true'] {
-  color: #195747;
-  background: #e2f0e9;
-  border-color: #70a88f;
+  color: var(--atlas-primary-hover);
+  background: var(--atlas-local-soft);
+  border-color: var(--atlas-primary);
+  box-shadow: inset 0 -2px var(--atlas-accent);
 }
 button:disabled,
 fieldset:disabled button {
-  opacity: 0.5;
-  cursor: wait;
+  opacity: 1;
+  background: var(--atlas-soft);
+  border-color: var(--atlas-border);
+  color: var(--atlas-muted);
+  cursor: not-allowed;
+  box-shadow: none;
 }
 button:focus-visible,
 input:focus-visible,
-summary:focus-visible {
-  outline: 3px solid #59a99b;
+summary:focus-visible,
+[tabindex='0']:focus-visible {
+  outline: 2px solid var(--atlas-focus);
   outline-offset: 3px;
+}
+input {
+  accent-color: var(--atlas-primary);
+  font-variant-numeric: tabular-nums;
+}
+input:disabled,
+fieldset:disabled input {
+  color: var(--atlas-muted);
+  cursor: not-allowed;
 }
 fieldset {
   min-width: 0;
@@ -46,14 +69,17 @@ fieldset {
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--atlas-space-2);
 }
 summary {
   cursor: pointer;
 }
+summary::marker {
+  color: var(--atlas-accent);
+}
 .error,
 .field-error {
-  color: #a23f36;
+  color: var(--atlas-error);
 }
 .field-error {
   font-size: 0.72rem;
@@ -61,8 +87,9 @@ summary {
 }
 .error {
   padding: 0.8rem;
-  border-left: 3px solid #b4443b;
-  background: #fff1ed;
+  border-left: 3px solid var(--atlas-error);
+  border-radius: var(--atlas-radius-sm);
+  background: var(--atlas-error-bg);
 }
 .sr-only {
   position: absolute;

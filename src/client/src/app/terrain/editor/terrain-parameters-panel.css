@@ -34,14 +34,14 @@ fieldset {
   display: block;
   margin: 0 0 0.35rem auto;
   padding: 0.15rem 0.35rem;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
 }
 .parameter-group {
-  border-top: 1px solid #e6eded;
+  border-top: 1px solid var(--atlas-rule);
 }
 .parameter-group > summary {
   padding: 0.5rem 0;
-  color: #32574e;
+  color: var(--atlas-text);
   font-weight: 700;
   font-size: 0.78rem;
 }
@@ -64,20 +64,15 @@ input[type='number'] {
   width: 100%;
   min-width: 0;
   padding: 0.3rem 0.35rem;
-  border: 1px solid #d5e0df;
-  border-radius: 0.3rem;
-  color: #294c45;
-  background: #f7faf9;
+  border: 1px solid var(--atlas-input-border);
+  border-radius: var(--atlas-radius-sm);
+  color: var(--atlas-text);
+  background: var(--atlas-raised);
   font: inherit;
   font-size: 0.78rem;
 }
 input[aria-invalid='true'] {
-  border-color: #b4443b;
-}
-input[type='number']:focus-visible,
-.slider:focus-visible {
-  outline: 2px solid #58a494;
-  outline-offset: 2px;
+  border-color: var(--atlas-error);
 }
 .wide-input .parameter-label,
 .wide-input input[type='number'] {
@@ -99,10 +94,10 @@ input[type='number']:focus-visible,
   width: 100%;
   height: 16px;
   margin: 0.1rem 0;
-  accent-color: #267768;
+  accent-color: var(--atlas-primary);
 }
 .parameter-help {
-  color: #718583;
+  color: var(--atlas-muted);
   font-size: 0.68rem;
   line-height: 1.4;
   font-weight: 400;
@@ -120,9 +115,9 @@ input[type='number']:focus-visible,
 .range-hint {
   display: block;
   margin-top: 0.08rem;
-  font-size: 0.64rem;
+  font-size: 0.68rem;
   line-height: 1.25;
-  color: #71877e;
+  color: var(--atlas-muted);
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
@@ -130,14 +125,14 @@ input[type='number']:focus-visible,
   font-weight: 400;
 }
 .range-warning {
-  color: #a24335;
+  color: var(--atlas-error);
 }
 .coverage-group {
   margin-block: 0.15rem 0.5rem;
   padding: 0 0.45rem 0.05rem;
-  border: 1px solid #dce8df;
-  border-radius: 0.45rem;
-  background: #f8fbf8;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--atlas-radius-sm);
+  background: var(--atlas-local-soft);
 }
 .coverage-budget {
   margin-bottom: 0.55rem;
@@ -147,18 +142,18 @@ input[type='number']:focus-visible,
   align-items: center;
   justify-content: space-between;
   font-size: 0.67rem;
-  color: #647d6e;
+  color: var(--atlas-muted);
 }
 .budget-heading strong {
-  color: #325e49;
+  color: var(--atlas-primary);
 }
 .coverage-bar {
   display: flex;
   gap: 2px;
   height: 6px;
-  border-radius: 1rem;
+  border-radius: var(--atlas-pill);
   overflow: hidden;
-  background: #eef2eb;
+  background: var(--atlas-soft);
   margin: 0.35rem 0;
 }
 .coverage-bar > span {
@@ -166,13 +161,13 @@ input[type='number']:focus-visible,
   min-width: 0;
 }
 .plains-segment {
-  background: #79a56d;
+  background: var(--atlas-plains);
 }
 .mountains-segment {
-  background: #8b8d9b;
+  background: var(--atlas-mountains);
 }
 .hills-segment {
-  background: #d9b875;
+  background: var(--atlas-hills);
 }
 label[for='plainsCoverage']::before,
 label[for='mountainCoverage']::before {
@@ -182,37 +177,37 @@ label[for='mountainCoverage']::before {
   height: 6px;
   border-radius: 50%;
   margin-right: 0.3rem;
-  background: #79a56d;
+  background: var(--atlas-plains);
 }
 label[for='mountainCoverage']::before {
-  background: #8b8d9b;
+  background: var(--atlas-mountains);
 }
 .budget-message {
   margin: 0;
   font-size: 0.67rem;
   line-height: 1.4;
-  color: #426c51;
+  color: var(--atlas-primary);
 }
 .budget-note {
   margin: 0.2rem 0 0;
-  font-size: 0.63rem;
+  font-size: 0.68rem;
   line-height: 1.4;
-  color: #7d8c80;
+  color: var(--atlas-muted);
 }
 .over-budget {
   padding: 0.35rem;
-  border-radius: 0.3rem;
-  background: #fff0ea;
+  border-radius: var(--atlas-radius-sm);
+  background: var(--atlas-error-bg);
 }
 .over-budget .budget-message {
-  color: #a24335;
+  color: var(--atlas-error);
 }
 .work-estimate {
   margin: 0.5rem 0;
   padding: 0.45rem;
-  background: #f0f5f2;
-  border-radius: 0.35rem;
-  color: #627a70;
+  background: var(--atlas-soft);
+  border-radius: var(--atlas-radius-sm);
+  color: var(--atlas-muted);
   font-size: 0.68rem;
 }
 .work-estimate > span {
@@ -226,4 +221,16 @@ label[for='mountainCoverage']::before {
   .slider {
     height: 28px;
   }
+}
+
+#generate-remote {
+  --button-bg: var(--atlas-remote-strong);
+  --button-hover: var(--atlas-remote-hover);
+  --button-color: var(--atlas-raised);
+}
+#verify-equivalence {
+  --button-bg: var(--atlas-surface);
+  --button-hover: var(--atlas-soft);
+  --button-color: var(--atlas-text);
+  --button-border: var(--atlas-input-border);
 }
