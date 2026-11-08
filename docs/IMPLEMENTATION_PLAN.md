@@ -452,8 +452,8 @@ configuration and workload identities are frozen. README remains empty.
 
 ## Next roadmap: visual realism and execution feedback
 
-Status: shared environment foundation, Visual Stages 1–2, Sun controls and Stage 3B shadow assessment complete; remaining stages are planned.
-Sun controls and shadow-quality assessment are complete; terrain material microdetail is next.
+Status: shared environment foundation, Visual Stages 1–4 complete; remaining stages are planned.
+Sun controls, shadow-quality assessment and terrain microdetail are complete; vegetation variation/LOD is next.
 Implement incremental, independently reviewable stages, freezing each stage's
 policy, resource budget, acceptance scenes and verification before changing code.
 
@@ -628,7 +628,7 @@ locking. Freeze lighting state for comparisons; test repeated slider changes and
 shadow resource cleanup. AO derived in Core would be a new versioned computation,
 not a free renderer tweak; specify its ownership before implementation.
 
-### Visual Stage 4 — terrain material microdetail
+### Visual Stage 4 — terrain material microdetail (complete)
 
 Preserve existing Core coverage, five-channel normalization, shoreline/snow policy
 and fixed-scale triplanar texture blending. Improve the existing material rather
@@ -688,7 +688,7 @@ collection. CPU first submission is not GPU completion or an FPS measurement.
 
 ### Execution track 1 — detailed timing diagnostics
 
-The shared foundation, water, atmosphere, sun controls and shadow assessment are complete; material microdetail is next. Timing diagnostics precede WASM
+The shared foundation, water, atmosphere, sun controls, shadow assessment and microdetail are complete; vegetation variation/LOD is next. Timing diagnostics precede WASM
 optimization decisions and the next controlled performance campaign.
 
 Break down height composition, erosion, final conversion/ocean/environment/biome
@@ -783,7 +783,7 @@ Implementation sequence:
 1. Shared sun/fog/visual-time foundation — complete.
 2. Water and sun-dependent sky/fog integration — complete.
 3. Sun controls and shadow assessment — complete; CSM/AO require a separate policy if justified.
-4. Material normals, vegetation variation/LOD, then postprocessing.
+4. Material normals — complete; vegetation variation/LOD next, then postprocessing.
 5. Shared Core river/lake hydrology, after the water system is established.
 
 Timing, worker progress/cancellation and optimization diagnostics form an independent
@@ -948,7 +948,7 @@ minimum/elongated/maximum dimensions, height 0/1/1000 and near-horizontal sun.
 paired views require exact Core/camera/GPU shadow/PNG identities because production
 rendering was retained. This is correctness evidence, not a performance campaign.
 
-Next planned visual step: Stage 4 terrain material microdetail. CSM for close-view
+At that milestone, Stage 4 terrain microdetail was next; its completion follows. CSM for close-view
 resolution or contact AO would be separate follow-ups with their own policy and
 resource budget; this assessment does not authorize either. Detailed timing,
 progress/cancellation and measured WASM variants remain independent execution tasks.
@@ -967,3 +967,41 @@ summary are under ignored artifacts/shadow-quality-*/shadow-contact-*.
 Shadow assessment PWA regression passes: cached reload/new tabs and new seeds,
 Remote recovery, deferred update while busy and updated-version offline 3D terrain.
 Generated deployment assets were restored after the update simulation.
+
+
+### Visual Stage 4 — terrain microdetail completion
+
+Implemented [Terrain microdetail v1](specs/TERRAIN_MICRODETAIL_V1.md): one original
+five-layer normal PNG, uploaded as a seam-safe WebGL2 array texture with independent
+layer mipmaps. Signed right-handed triplanar gradients blend existing Core coverage,
+perturb fragment lighting only and fade over 24..72 world units. Existing scalar
+textures, biome colors, geometry/normals, shadow policy and water shader stay intact.
+No extra UI, animation, draw/pass/target, full-map attribute or dependency is added.
+
+A per-preview cached owner validates decode, closes bitmaps, releases late results,
+retries failures and isolates comparison views. Scene setup defers under OperationLock;
+textureWaitMs includes load/decode, and allocation/upload remain display work outside
+computeMs/requestMs. Normal asset 201699 bytes, raw retained CPU 320 KiB and mipmapped
+GPU 436900 bytes/view; 7 terrain samplers including shadows, unchanged 5 attributes.
+Existing color/caster ceilings 21/19 and five scalar textures are retained. Complete
+PWA catalog now 41 assets; Three remains lazy. No mathematical identity changes.
+
+347 Angular tests, 12 packaging/asset checks, worker RPC and production publication
+pass. Actual Chromium material/microdetail/Sun/night scenarios pass: array dimensions
+128x128x5,8 mip levels, sampler limits, independent cleanup/replacement, paused work,
+narrow/offline new seeds and shared sky/lighting are verified. 28 actual-GPU normal
+fixtures cover signed axes, neutral/zero strength and a non-axis blended reference.
+All 24 paired camera/full Core hashes remain exact; all 8 overview PNGs remain byte-
+exact because detail fully fades. Close images intentionally gain restrained relief.
+The focused close-view RGB mean difference is about .454/255, a correctness/artistic
+regression metric rather than a performance result. Native sources are unchanged,
+so native suites were not rerun. No controlled performance campaign was run.
+
+Limits remain finite low-poly silhouettes and the global directional-shadow map;
+normal detail does not add displacement or repair those issues. Next visual stage:
+Stage 5 vegetation variation and LOD. Timing diagnostics/cancellation remain separate.
+README stays empty.
+
+Microdetail PWA regression passes: cached reload/new tabs and new seeds, Remote
+recovery, deferred update while busy and updated-version offline 3D terrain with
+the new normal atlas. Deployment assets were restored after the update simulation.

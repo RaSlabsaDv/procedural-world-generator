@@ -1,3 +1,4 @@
+import type { DataArrayTexture } from 'three';
 import { AtmosphereSettings, DEFAULT_ATMOSPHERE_SETTINGS } from './atmosphere-settings.service';
 import { bindAtmosphere, terrainAtmosphere } from './terrain-atmosphere';
 import { Texture } from 'three';
@@ -23,6 +24,7 @@ export function terrainScene(
   environment: SceneEnvironmentSnapshot = DEFAULT_SCENE_ENVIRONMENT,
   water?: { seaLevel: number; normal: Texture; settings: OceanSettings },
   atmosphereSettings: AtmosphereSettings = DEFAULT_ATMOSPHERE_SETTINGS,
+  microNormals?: DataArrayTexture,
 ) {
   let terrain:
     Mesh<ReturnType<typeof terrainGeometry>, ReturnType<typeof terrainSurfaceMaterial>> | undefined;
@@ -53,7 +55,7 @@ export function terrainScene(
   try {
     terrain = new Mesh(
       terrainGeometry(result),
-      terrainSurfaceMaterial(textures, result.width, result.height),
+      terrainSurfaceMaterial(textures, result.width, result.height, microNormals),
     );
     scene.add(terrain);
     forest = terrainForest(result);

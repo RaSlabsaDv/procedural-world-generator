@@ -686,3 +686,54 @@ summary are under ignored artifacts/shadow-quality-*/shadow-contact-*.
 Shadow assessment PWA regression passes: cached reload/new tabs and new seeds,
 Remote recovery, deferred update while busy and updated-version offline 3D terrain.
 Generated deployment assets were restored after the update simulation.
+
+
+## Terrain material microdetail
+
+Close terrain views now use coverage-blended detail normals. No new UI is required;
+internal defaults are strength .24, period 2.4 world units and fade 24..72 units. Five
+existing scalar/color textures retain their behavior. Ocean/water, geometry and
+Core ecological fields stay unchanged. Fine detail disappears at overview distances.
+
+Reproduce the original CC0 normal atlas with
+python3 scripts/generate-terrain-normals.py. Provenance/profiles/encoding/checksum
+live beside textures/microdetail/normals.png. The128x640 RGB8 PNG stores five vertical
+layers; runtime decode yields RGBA and uploads 128x128x5 with independent layer mipmaps.
+No imaging dependency is required. Atlas byte size 201699; GPU 436900 bytes/view plus
+327680 retained decoded CPU bytes. Temporary bitmap/canvas decode adds bounded
+fixed-size storage, not a terrain-sized copy. Budget up to2MiB decode preparation
+per preview, excluding browser-internal allocation details. Images are closed after
+decode; owner resources release on destruction. Failed normal loads show a numeric-
+results-preserving preview error and retry on generation. Scene changes reuse data.
+
+Using documented PWG_* production-browser setup:
+
+- node tests/browser/atlas-materials.cjs --micro --before (previous publication)
+- node tests/browser/atlas-materials.cjs --micro (new publication)
+- node tests/browser/microdetail.cjs
+- node tests/browser/materials.cjs
+
+The atlas covers eight scenes at overview/close/grazing scales, including 512-square
+terrain. Complete Core hashes and actual camera matrices must match. The focused
+harness verifies real array dimensions/mip count/sampler limits, close appearance,
+exact far-fade reference, independent views, cached replacement resources, operation
+pause, Sun/atmosphere composition, narrow/offline generation and actual signed-axis/
+neutral projection functions on the GPU. Test-only strength overrides are restored
+after each draw and introduce no app debug interface. PNGs/JSON are under ignored
+artifacts/terrain-microdetail-* and microdetail-*; PWA update checks run last.
+
+[Terrain microdetail v1](specs/TERRAIN_MICRODETAIL_V1.md) records frame orientation,
+normal conventions and sampling bounds. Normal lighting does not fix low-poly
+silhouettes, global shadow-map resolution or add true displacement. Keep rendering
+outside Core timings; first submission is not GPU completion. README stays empty.
+
+Microdetail verification: 347 Angular tests, 12 packaging/asset checks, worker RPC and
+production publish pass. All 24 paired camera/full Core hashes match, with all 8
+previous overview PNGs byte-exact. Real GPU normal fixtures, material array/sampler/
+resource checks, Sun/night, operation pause, narrow and offline scenarios pass.
+Native sources are unchanged. No controlled performance finding is claimed; the
+optional WASM optimization notice persists.
+
+Microdetail PWA regression passes: cached reload/new tabs and new seeds, Remote
+recovery, deferred update while busy and updated-version offline 3D terrain with
+the new normal atlas. Deployment assets were restored after the update simulation.

@@ -1,3 +1,5 @@
+import { bindTerrainMicrodetail } from './terrain-microdetail';
+import type { DataArrayTexture } from 'three';
 import {
   Color,
   MeshLambertMaterial,
@@ -59,7 +61,12 @@ export function loadTerrainSurfaces(
 }
 
 /** Frozen Lambert extension: no displacement, extra lights, ecological fields or extra draw calls. */
-export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number, height: number) {
+export function terrainSurfaceMaterial(
+  textures: SurfaceTextures,
+  width: number,
+  height: number,
+  microNormals?: DataArrayTexture,
+) {
   const material = new MeshLambertMaterial();
   material.customProgramCacheKey = () => BIOME_GROUND_REVISION;
   material.onBeforeCompile = (shader) => {
@@ -152,5 +159,6 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
     `,
       );
   };
+  bindTerrainMicrodetail(material, microNormals);
   return material;
 }

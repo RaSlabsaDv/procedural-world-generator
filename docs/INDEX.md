@@ -25,6 +25,7 @@ Current behavior composes the policies below; a historical version label does no
 - [Coastal surfaces v2](specs/COASTAL_SURFACES_V2.md): current wider, context-sensitive post-placement coverage.
 - [Coastal surfaces v1](specs/COASTAL_SURFACES_V1.md): historical coastal equations and reference fixtures.
 - [Night sky and foam v1](specs/NIGHT_SKY_V1.md): illuminated foam and a shared illustrative full moon.
+- [Terrain microdetail v1](specs/TERRAIN_MICRODETAIL_V1.md): array normal atlas, signed triplanar lighting, fade and resource bounds.
 - [Shadow quality v1](specs/SHADOW_QUALITY_V1.md): paired assessment, rejected bias probe and conservative fit regression coverage.
 - [Sun controls v1](specs/SUN_CONTROLS_V1.md): interactive shared time/direction, reset, deferred loading and shadow invalidation.
 - [Atmosphere v1](specs/ATMOSPHERE_V1.md): shared sky, exponential/height fog, water composition and reference mode.

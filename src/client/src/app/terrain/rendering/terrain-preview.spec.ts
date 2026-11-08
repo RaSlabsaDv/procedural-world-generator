@@ -6,6 +6,7 @@ import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 import {
+  DataArrayTexture,
   BufferGeometry,
   MeshLambertMaterial,
   ShaderMaterial,
@@ -21,6 +22,7 @@ import {
   TerrainPreview,
   OCEAN_NORMAL_FACTORY,
   TERRAIN_RENDERER_FACTORY,
+  TERRAIN_MICRO_NORMALS_FACTORY,
   TERRAIN_SURFACES_FACTORY,
 } from './terrain-preview';
 import { testTerrain, testWire } from '../testing/terrain-test-fixture';
@@ -100,6 +102,10 @@ describe('terrain preview lifecycle', () => {
     TestBed.configureTestingModule({
       imports: [TerrainPreview],
       providers: [
+        {
+          provide: TERRAIN_MICRO_NORMALS_FACTORY,
+          useValue: () => ({ ready: Promise.resolve(new DataArrayTexture()), dispose: vi.fn() }),
+        },
         {
           provide: OCEAN_NORMAL_FACTORY,
           useValue: () => ({ ready: Promise.resolve(new Texture()), dispose: vi.fn() }),
@@ -626,5 +632,35 @@ describe('terrain preview lifecycle', () => {
     expect(sun.shadow.needsUpdate).toBe(false);
     expect(geometry).not.toHaveBeenCalled();
     fixture.destroy();
+  });
+  it('retries microdetail loading and reuses it across sun edits and scene replacements', async () => {
+    const failed = { ready: Promise.reject(Error('microdetail unavailable')), dispose: vi.fn() };
+    void failed.ready.catch(() => {});
+    const normal = new DataArrayTexture(),
+      ready = { ready: Promise.resolve(normal), dispose: vi.fn() },
+      create = vi.fn().mockReturnValueOnce(failed).mockReturnValue(ready);
+    TestBed.overrideProvider(TERRAIN_MICRO_NORMALS_FACTORY, { useValue: create });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.textContent).toContain('microdetail unavailable');
+    expect(failed.dispose).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.querySelector('[role=alert]')).toBeNull();
+    const scene = state.render.mock.calls.at(-1)![0] as Scene;
+    TestBed.inject(SceneEnvironmentService).set({
+      ...DEFAULT_ENVIRONMENT_SETTINGS,
+      timeOfDayHours: 9,
+    });
+    await settlePreview(fixture);
+    expect(state.render.mock.calls.at(-1)![0]).toBe(scene);
+    expect(create).toHaveBeenCalledTimes(2);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(ready.dispose).not.toHaveBeenCalled();
+    fixture.destroy();
+    expect(ready.dispose).toHaveBeenCalledTimes(1);
   });
 });

@@ -121,7 +121,7 @@ it('looks up linear grass/soil colors at vertices and leaves protected material 
     shader as Parameters<typeof material.onBeforeCompile>[0],
     {} as WebGLRenderer,
   );
-  expect(material.customProgramCacheKey()).toBe('terrain-biome-ground-v1');
+  expect(material.customProgramCacheKey()).toBe('terrain-biome-ground-v1:terrain-microdetail-v1');
   expect(shader.vertexShader).toContain('attribute float biomeId;');
   expect(shader.vertexShader).toContain('vBiomeGrass = biomeGrass[int(biomeId)]');
   expect(shader.vertexShader).toContain('vBiomeSoil = biomeSoil[int(biomeId)]');

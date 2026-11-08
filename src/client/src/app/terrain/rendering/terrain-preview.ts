@@ -1,3 +1,4 @@
+import { loadTerrainMicroNormals } from './terrain-micro-normals';
 import { AtmosphereSettings, AtmosphereSettingsService } from './atmosphere-settings.service';
 import { OceanSettings, OceanSettingsService } from './ocean-settings.service';
 import { OceanAnimationService } from './ocean-animation.service';
@@ -36,6 +37,11 @@ export const OCEAN_NORMAL_FACTORY = new InjectionToken<typeof loadOceanNormal>(
   { providedIn: 'root', factory: () => loadOceanNormal },
 );
 
+export const TERRAIN_MICRO_NORMALS_FACTORY = new InjectionToken<typeof loadTerrainMicroNormals>(
+  'Terrain microdetail normals',
+  { providedIn: 'root', factory: () => loadTerrainMicroNormals },
+);
+
 export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
   (canvas: HTMLCanvasElement) => WebGLRenderer
 >('Terrain WebGL renderer', {
@@ -58,6 +64,8 @@ export class TerrainPreview {
   private readonly water = inject(OceanSettingsService);
   private readonly animation = inject(OceanAnimationService);
   private readonly createNormal = inject(OCEAN_NORMAL_FACTORY);
+  private readonly createMicroNormals = inject(TERRAIN_MICRO_NORMALS_FACTORY);
+  private microOwner: ReturnType<typeof loadTerrainMicroNormals> | undefined;
   private normalOwner: ReturnType<typeof loadOceanNormal> | undefined;
   private applyWater: ((settings: OceanSettings) => void) | undefined;
   private applyEnvironment: ((snapshot: SceneEnvironmentSnapshot) => boolean) | undefined;
@@ -89,6 +97,7 @@ export class TerrainPreview {
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.normalOwner?.dispose();
+      this.microOwner?.dispose();
       this.surfaces?.dispose();
       this.releaseContext?.();
     });
@@ -168,6 +177,14 @@ export class TerrainPreview {
               }
               throw error;
             });
+            const microOwner = (this.microOwner ??= this.createMicroNormals());
+            const microNormals = await microOwner.ready.catch((error: unknown) => {
+              if (!disposed && this.microOwner === microOwner) {
+                microOwner.dispose();
+                this.microOwner = undefined;
+              }
+              throw error;
+            });
             const hasOcean = run.response.result.biomes.includes(0);
             let normal: Awaited<ReturnType<typeof loadOceanNormal>['ready']> | undefined;
             if (hasOcean) {
@@ -203,6 +220,7 @@ export class TerrainPreview {
                       }
                     : undefined,
                   untracked(this.atmosphere.settings),
+                  microNormals,
                 );
                 this.applyEnvironment = content.updateEnvironment;
                 this.applyWater = content.updateWater;

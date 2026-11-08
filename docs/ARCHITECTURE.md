@@ -460,7 +460,7 @@ matrices, comparison bias, radius, cameras and complete Core hashes. A test-only
 world-bounded bias probe reduced contact separation slightly but introduced broad
 self-shadow striping on512-square terrain, so it was rejected before production
 changes. Fit padding, near/far policy, bias -.0005, world normalBias .08, PCF/radius 1
-and2048 map size remain. No new target, pass, light, texture or runtime control.
+and 2048 map size remain. No new target, pass, light, texture or runtime control.
 
 The installed Three 187 PCF path uses radius-scaled Vogel offsets with hardware
 linear shadow sampling; PCFSoftShadowMap is removed/redirected in this version.
@@ -474,3 +474,35 @@ can remain subtexel and close-up shadows lose detail. A single global map has th
 spatial-resolution limit. CSM/AO need separate evidence and budgets, not an automatic
 change in this assessment. Camera, light cycle, moon/foam and workload identities
 stay unchanged; next planned visual work is material microdetail.
+
+
+## Terrain microdetail
+
+[Terrain microdetail v1](specs/TERRAIN_MICRODETAIL_V1.md) adds fragment lighting normals
+to the existing coverage/biome Lambert material, before lighting and atmosphere.
+Core fields/instances, vertex positions/normals, shadow queries and water are unchanged.
+One additional world-position varying replaces no map buffer and adds no attribute.
+Signed right-handed triplanar frames convert tangent slopes into world gradients;
+coverage-weighted gradients are projected onto the base normal's tangent plane.
+Neutral normals preserve the base, and perturbations fade to zero at distance.
+
+An original periodic 128x640 RGB8 PNG is decoded once to 320 KiB RGBA and uploaded as
+one five-layer 128-square DataArrayTexture. Array repeat/mip filtering is per layer,
+so atlas materials cannot leak across mip boundaries. Normal data uses NoColorSpace,
+linear/trilinear filtering and 8 mip levels. One sampler and 201699 encoded bytes add
+436900 GPU bytes/view (873800 for two), plus fixed decode/CPU storage. The terrain
+program now has 7 samplers including shadow, below WebGL2's minimum 16; attributes
+stay 5. Worst-case additional lookups 15 (three axes x five active channels), skipped
+when fully faded or on Ocean. Existing scalar detail/color equations stay unchanged.
+
+Normal period 2.4 world units complements scalar period 4; multiscale structure is
+baked offline rather than another runtime sample octave. Strength .24 fades over
+24..72 world units. Explicit derivatives/textureGrad keep mip choice stable through
+coverage branches. This improves surface lighting, not silhouettes or shadow-map
+resolution. No new UI, animation, draw/pass/target/dependency or workload identity.
+
+A per-preview cached owner supports validated decode, late release, failure/retry
+and reuse across scenes/light edits. Setup defers under OperationLock, load/decode
+wait enters textureWaitMs, and upload/setup remain display work outside computeMs/
+requestMs. PWA catalog now includes 41 required assets. Existing five scalar maps,
+water normal and 2048 shadow attachments remain; color/caster ceilings 21/19 remain.

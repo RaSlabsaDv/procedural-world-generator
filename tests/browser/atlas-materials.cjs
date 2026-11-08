@@ -14,6 +14,7 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
+const microStudy = process.argv.includes("--micro");
 const sunStudy = process.argv.includes("--sun");
 const reference = process.argv.includes("--reference");
 const atmosphereStudy = process.argv.includes("--atmosphere");
@@ -22,94 +23,180 @@ const environmentStudy = process.argv.includes("--environment");
 const rockStudy = process.argv.includes("--rocks");
 const climateStudy = process.argv.includes("--climate");
 const biomeStudy = process.argv.includes("--biomes") || climateStudy;
-const study = sunStudy
-  ? "sun-controls"
-  : atmosphereStudy
-    ? reference
-      ? "atmosphere-reference"
-      : "atmosphere"
-    : waterStudy
-      ? "ocean-presentation"
-      : environmentStudy
-        ? "scene-environment"
-        : rockStudy
-          ? "rocks-v2"
-          : climateStudy
-            ? "regional-climate"
-            : biomeStudy
-              ? "biome-readability"
-              : "atlas-materials";
-const cases = rockStudy
+const study = microStudy
+  ? "terrain-microdetail"
+  : sunStudy
+    ? "sun-controls"
+    : atmosphereStudy
+      ? reference
+        ? "atmosphere-reference"
+        : "atmosphere"
+      : waterStudy
+        ? "ocean-presentation"
+        : environmentStudy
+          ? "scene-environment"
+          : rockStudy
+            ? "rocks-v2"
+            : climateStudy
+              ? "regional-climate"
+              : biomeStudy
+                ? "biome-readability"
+                : "atlas-materials";
+const cases = microStudy
   ? [
-      ["mixed", { seed: 42 }],
-      ["plains", { seed: 42, plainsCoverage: 1, mountainCoverage: 0 }],
-      ["hills", { seed: 2026, globalWarmth: 0.6 }],
       [
-        "mountains",
-        { seed: 42, plainsCoverage: 0, mountainCoverage: 1, seaLevel: 0.3 },
+        "grass",
+        {
+          seed: 42,
+          plainsCoverage: 1,
+          mountainCoverage: 0,
+          seaLevel: 0,
+          globalMoisture: 0.4,
+        },
       ],
       ["forest", { seed: 42, globalMoisture: 1 }],
-      ["cold", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
       [
-        "warm-coast",
-        { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
+        "soil",
+        {
+          seed: -7,
+          globalMoisture: 0,
+          globalWarmth: 0.9,
+          plainsCoverage: 1,
+          mountainCoverage: 0,
+          seaLevel: 0,
+        },
       ],
-      ["all-species", { seed: 42, globalWarmth: 0.7 }],
+      ["coast", { seed: -7, globalWarmth: 0.9, seaLevel: 0.23 }],
+      [
+        "rock",
+        {
+          seed: 42,
+          plainsCoverage: 0,
+          mountainCoverage: 1,
+          heightMultiplier: 80,
+        },
+      ],
+      [
+        "snow",
+        {
+          seed: 2026,
+          globalWarmth: 0.12,
+          globalMoisture: 0.8,
+          heightMultiplier: 60,
+          seaLevel: 0.3,
+        },
+      ],
+      ["mixed", { seed: 42, globalWarmth: 0.35, heightMultiplier: 60 }],
+      [
+        "maximum",
+        {
+          width: 512,
+          height: 512,
+          iterations: 0,
+          heightMultiplier: 60,
+          plainsCoverage: 1,
+          mountainCoverage: 0,
+          globalMoisture: 1,
+          seaLevel: 0,
+        },
+      ],
     ]
-  : biomeStudy
+  : rockStudy
     ? [
         ["mixed", { seed: 42 }],
-        ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
-        [
-          "savanna-dry",
-          { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
-        ],
-        ["tundra", { seed: 2026, globalWarmth: 0.18, globalMoisture: 0.65 }],
-        [
-          "snow",
-          {
-            seed: 2026,
-            globalWarmth: 0.12,
-            globalMoisture: 0.8,
-            heightMultiplier: 60,
-            seaLevel: 0.3,
-          },
-        ],
-        [
-          "gentle-coast",
-          { seed: 42, plainsCoverage: 1, mountainCoverage: 0, seaLevel: 0.16 },
-        ],
-        [
-          "steep-coast",
-          { seed: -7, globalWarmth: 0.6, globalMoisture: 0.65, seaLevel: 0.23 },
-        ],
-      ]
-    : [
-        ["mixed", { seed: 42 }],
         ["plains", { seed: 42, plainsCoverage: 1, mountainCoverage: 0 }],
+        ["hills", { seed: 2026, globalWarmth: 0.6 }],
         [
           "mountains",
           { seed: 42, plainsCoverage: 0, mountainCoverage: 1, seaLevel: 0.3 },
         ],
+        ["forest", { seed: 42, globalMoisture: 1 }],
+        ["cold", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
         [
           "warm-coast",
           { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
         ],
-        [
-          "cold-snow",
-          {
-            seed: 2026,
-            globalWarmth: 0.12,
-            globalMoisture: 0.8,
-            heightMultiplier: 60,
-            seaLevel: 0.3,
-          },
-        ],
-        [
-          "gentle-coast",
-          { seed: 42, plainsCoverage: 1, mountainCoverage: 0, seaLevel: 0.16 },
-        ],
-      ];
+        ["all-species", { seed: 42, globalWarmth: 0.7 }],
+      ]
+    : biomeStudy
+      ? [
+          ["mixed", { seed: 42 }],
+          ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
+          [
+            "savanna-dry",
+            {
+              seed: -7,
+              globalWarmth: 0.9,
+              globalMoisture: 0.45,
+              seaLevel: 0.23,
+            },
+          ],
+          ["tundra", { seed: 2026, globalWarmth: 0.18, globalMoisture: 0.65 }],
+          [
+            "snow",
+            {
+              seed: 2026,
+              globalWarmth: 0.12,
+              globalMoisture: 0.8,
+              heightMultiplier: 60,
+              seaLevel: 0.3,
+            },
+          ],
+          [
+            "gentle-coast",
+            {
+              seed: 42,
+              plainsCoverage: 1,
+              mountainCoverage: 0,
+              seaLevel: 0.16,
+            },
+          ],
+          [
+            "steep-coast",
+            {
+              seed: -7,
+              globalWarmth: 0.6,
+              globalMoisture: 0.65,
+              seaLevel: 0.23,
+            },
+          ],
+        ]
+      : [
+          ["mixed", { seed: 42 }],
+          ["plains", { seed: 42, plainsCoverage: 1, mountainCoverage: 0 }],
+          [
+            "mountains",
+            { seed: 42, plainsCoverage: 0, mountainCoverage: 1, seaLevel: 0.3 },
+          ],
+          [
+            "warm-coast",
+            {
+              seed: -7,
+              globalWarmth: 0.9,
+              globalMoisture: 0.45,
+              seaLevel: 0.23,
+            },
+          ],
+          [
+            "cold-snow",
+            {
+              seed: 2026,
+              globalWarmth: 0.12,
+              globalMoisture: 0.8,
+              heightMultiplier: 60,
+              seaLevel: 0.3,
+            },
+          ],
+          [
+            "gentle-coast",
+            {
+              seed: 42,
+              plainsCoverage: 1,
+              mountainCoverage: 0,
+              seaLevel: 0.16,
+            },
+          ],
+        ];
 (async () => {
   const browser = await launchBrowser();
   try {
@@ -117,7 +204,9 @@ const cases = rockStudy
       viewport: { width: 1600, height: 1050 },
       deviceScaleFactor: 1,
       reducedMotion:
-        waterStudy || atmosphereStudy || sunStudy ? "reduce" : "no-preference",
+        waterStudy || atmosphereStudy || sunStudy || microStudy
+          ? "reduce"
+          : "no-preference",
     });
     const page = await context.newPage(),
       errors = [];
@@ -196,13 +285,33 @@ const cases = rockStudy
       const views = [];
       for (const [view, wheel] of [
         ["overview", 0],
-        ["close", -650],
-        ["detail", -700],
+        [
+          "close",
+          microStudy
+            ? label === "maximum"
+              ? -6000
+              : label === "rock"
+                ? -3200
+                : -4400
+            : -650,
+        ],
+        ["detail", microStudy ? 0 : -700],
       ]) {
         if (wheel) {
           const box = await canvas.boundingBox();
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.mouse.wheel(0, wheel);
+        }
+        if (microStudy && view === "detail") {
+          const box = await canvas.boundingBox();
+          await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+          await page.mouse.down();
+          await page.mouse.move(
+            box.x + box.width / 2,
+            box.y + box.height / 2 - box.height * 0.035,
+            { steps: 8 },
+          );
+          await page.mouse.up();
         }
         await page.waitForTimeout(120);
         const camera = await canvas.evaluate((canvas) => {
@@ -235,6 +344,15 @@ const cases = rockStudy
               artifactPath(`${study}-before-${label}-${view}.png`),
             ),
             "Frozen reference must retain the preceding presentation pixels",
+          );
+        }
+        if (microStudy && !before && view === "overview") {
+          assert.deepEqual(
+            screenshot,
+            await fs.readFile(
+              artifactPath(`${study}-before-${label}-${view}.png`),
+            ),
+            "Fully faded microdetail must preserve overview pixels",
           );
         }
         views.push({

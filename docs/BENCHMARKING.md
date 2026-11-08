@@ -383,3 +383,19 @@ hashes describe rendering state, not GPU elapsed time. Software WebGL smoke runs
 are not controlled performance measurements. Fit/update work remains presentation
 CPU work outside computeMs/requestMs; operation-lock and first-submission rules
 are unchanged. Freeze camera, sun and wave phase for paired views.
+
+
+## Terrain normal microdetail
+
+Terrain-microdetail-v1 is presentation only. Atlas fetch/bitmap/canvas decode are
+included in textureWaitMs; texture allocation/upload, shader compilation and scene
+setup belong to display work. None enters computeMs/requestMs, and first submission
+is not GPU completion. No timer, animation or mathematical input/workload changes
+are introduced. Existing OperationLock deferral and Ocean pause still gate rendering.
+
+Freeze presentation revision, camera, lighting, atmosphere, water and wave phase
+for images/campaigns. Detail has a documented world-distance fade, so camera matters.
+Actual texture-array dimensions/mips, sampler limits and draw/resource checks are
+correctness evidence; software WebGL smoke timings do not establish GPU performance
+or optimization gains. The new asset changes application/offline packaging identity,
+not the shared C# computation. No native suites rerun for unchanged native sources.

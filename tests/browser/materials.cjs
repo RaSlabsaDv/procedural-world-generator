@@ -37,6 +37,7 @@ const artifact = artifactPath;
           gl,
           textures: new Set(),
           waterTextures: new Set(),
+          microArrays: new Map(),
           waterCalls: 0,
           skyCalls: 0,
           sources: new Set(),
@@ -66,10 +67,32 @@ const artifact = artifactPath;
             return original.apply(this, args);
           };
         }
+        const storage3D = gl.texStorage3D;
+        gl.texStorage3D = function (
+          target,
+          levels,
+          format,
+          width,
+          height,
+          depth,
+        ) {
+          if (
+            target === gl.TEXTURE_2D_ARRAY &&
+            width === 128 &&
+            height === 128 &&
+            depth === 5
+          )
+            record.microArrays.set(
+              gl.getParameter(gl.TEXTURE_BINDING_2D_ARRAY),
+              { levels, format, width, height, depth },
+            );
+          return storage3D.apply(this, arguments);
+        };
         const remove = gl.deleteTexture;
         gl.deleteTexture = function (texture) {
           record.textures.delete(texture);
           record.waterTextures.delete(texture);
+          record.microArrays.delete(texture);
           return remove.call(this, texture);
         };
         const clear = gl.clear;
@@ -243,6 +266,7 @@ const artifact = artifactPath;
             gl,
             textures,
             waterTextures,
+            microArrays,
             waterCalls,
             skyCalls,
             sources,
@@ -259,6 +283,9 @@ const artifact = artifactPath;
             ).length,
             textures: textures.size,
             waterTextures: waterTextures.size,
+            microArrays: [...microArrays]
+              .filter(([texture]) => gl.isTexture(texture))
+              .map(([, info]) => info),
             waterCalls,
             skyCalls,
             sources: [...sources].sort(),
@@ -274,6 +301,14 @@ const artifact = artifactPath;
       assert.equal(live.length, views);
       for (const row of live) {
         assert.equal(row.textures, 5);
+        assert.equal(row.microArrays.length, 1);
+        assert.deepEqual(row.microArrays[0], {
+          levels: 8,
+          format: 32856,
+          width: 128,
+          height: 128,
+          depth: 5,
+        });
         assert.equal(
           row.liveBiomeBuffers,
           1,
@@ -306,6 +341,7 @@ const artifact = artifactPath;
       for (const row of rows.filter((row) => row.lost)) {
         assert.equal(row.textures, 0);
         assert.equal(row.waterTextures, 0);
+        assert.equal(row.microArrays.length, 0);
         assert.equal(row.liveBiomeBuffers, 0);
       }
       const lighting = await lightingResources(page);
