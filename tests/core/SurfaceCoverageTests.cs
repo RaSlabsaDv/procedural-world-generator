@@ -58,11 +58,12 @@ public sealed class SurfaceCoverageTests
         var a = TerrainGenerator.Generate(request).HeightMap; var b = TerrainGenerator.Generate(request).HeightMap;
         Assert.Equal(width * height * 5, a.SurfaceWeights.Length); Assert.NotSame(a.SurfaceWeights, b.SurfaceWeights);
         Assert.Equal(a.SurfaceWeights, b.SurfaceWeights);
+        var baseline = SurfaceCoverage.Derive(a.Values, a.Biomes, a.Moisture, a.Temperature, a.Slope, (float)bound);
         for (var i = 0; i < a.Values.Length; i++)
         {
             double sum = 0;
             for (var j = 0; j < 5; j++) { var weight = a.SurfaceWeights[i * 5 + j]; Assert.True(float.IsFinite(weight)); Assert.InRange(weight, 0, 1); sum += weight; }
-            Assert.Equal(0, a.SurfaceWeights[i * 5 + 2]);
+            Assert.Equal(0, baseline[i * 5 + 2]); // The frozen base policy still reserves sand.
             Assert.InRange(Math.Abs(sum - (a.Biomes[i] == LandscapeBiome.Ocean ? 0 : 1)), 0, SurfaceCoverage.SumTolerance);
         }
     }

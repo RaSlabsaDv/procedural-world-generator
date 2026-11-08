@@ -7,7 +7,7 @@ import {
   TextureLoader,
 } from 'three';
 export const SURFACE_REPEAT_UNITS = 4;
-export const SURFACE_TEXTURE_NAMES = ['grass', 'soil', 'rock', 'snow'] as const;
+export const SURFACE_TEXTURE_NAMES = ['grass', 'soil', 'sand', 'rock', 'snow'] as const;
 type SurfaceName = (typeof SURFACE_TEXTURE_NAMES)[number];
 type SurfaceTextures = Record<SurfaceName, Texture>;
 
@@ -15,6 +15,7 @@ type SurfaceTextures = Record<SurfaceName, Texture>;
 export const SURFACE_COLORS = {
   grass: 0xa7b976,
   soil: 0xb5a17a,
+  sand: 0xd6c28e,
   rock: 0xa6a397,
   snow: 0xe9eff1,
   ocean: 0x37768b,
@@ -64,7 +65,7 @@ export function loadTerrainSurfaces(
 /** Frozen Lambert extension: no displacement, extra lights, ecological fields or extra draw calls. */
 export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number, height: number) {
   const material = new MeshLambertMaterial();
-  material.customProgramCacheKey = () => 'terrain-surface-coverage-v1';
+  material.customProgramCacheKey = () => 'terrain-surface-coverage-v2';
   material.onBeforeCompile = (shader) => {
     for (const name of SURFACE_TEXTURE_NAMES)
       shader.uniforms[`detail_${name}`] = { value: textures[name] };
@@ -78,8 +79,10 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
         `
       #include <common>
       attribute vec4 surfaceCoverage;
+      attribute float sandCoverage;
       uniform vec2 detailOffset;
       varying vec4 vSurfaceCoverage;
+      varying float vSandCoverage;
       varying vec3 vDetailPosition;
       varying vec3 vDetailNormal;
     `,
@@ -89,6 +92,7 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
         `
       #include <begin_vertex>
       vSurfaceCoverage = surfaceCoverage;
+      vSandCoverage = sandCoverage;
       vDetailPosition = position + vec3(detailOffset.x, 0.0, detailOffset.y);
       vDetailNormal = normal;
     `,
@@ -100,15 +104,18 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
       #include <common>
       uniform sampler2D detail_grass;
       uniform sampler2D detail_soil;
+      uniform sampler2D detail_sand;
       uniform sampler2D detail_rock;
       uniform sampler2D detail_snow;
       uniform float detailRepeat;
       uniform vec3 surface_grass;
       uniform vec3 surface_soil;
+      uniform vec3 surface_sand;
       uniform vec3 surface_rock;
       uniform vec3 surface_snow;
       uniform vec3 surface_ocean;
       varying vec4 vSurfaceCoverage;
+      varying float vSandCoverage;
       varying vec3 vDetailPosition;
       varying vec3 vDetailNormal;
       float projectedDetail(sampler2D detail, vec3 p, vec3 axis) {
@@ -124,12 +131,13 @@ export function terrainSurfaceMaterial(textures: SurfaceTextures, width: number,
       vec3 detailAxis = pow(abs(normalize(vDetailNormal)), vec3(4.0));
       detailAxis /= max(dot(detailAxis, vec3(1.0)), 0.0001);
       vec3 detailPoint = vDetailPosition / detailRepeat;
-      float land = dot(vSurfaceCoverage, vec4(1.0));
+      float land = dot(vSurfaceCoverage, vec4(1.0)) + vSandCoverage;
       vec3 ground = max(0.0, 1.0-land) * surface_ocean;
       if (vSurfaceCoverage.x > 0.0) ground += vSurfaceCoverage.x * surface_grass * (0.7 + 0.6 * projectedDetail(detail_grass, detailPoint, detailAxis));
       if (vSurfaceCoverage.y > 0.0) ground += vSurfaceCoverage.y * surface_soil * (0.7 + 0.6 * projectedDetail(detail_soil, detailPoint, detailAxis));
       if (vSurfaceCoverage.z > 0.0) ground += vSurfaceCoverage.z * surface_rock * (0.7 + 0.6 * projectedDetail(detail_rock, detailPoint, detailAxis));
       if (vSurfaceCoverage.w > 0.0) ground += vSurfaceCoverage.w * surface_snow * (0.7 + 0.6 * projectedDetail(detail_snow, detailPoint, detailAxis));
+      if (vSandCoverage > 0.0) ground += vSandCoverage * surface_sand * (0.7 + 0.6 * projectedDetail(detail_sand, detailPoint, detailAxis));
       diffuseColor.rgb *= ground;
     `,
       );

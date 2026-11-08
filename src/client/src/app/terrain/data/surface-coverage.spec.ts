@@ -33,7 +33,7 @@ it.each([
 it.each([
   [5, -1e-50],
   [5, 1.000000001],
-  [7, 1e-50],
+  [7, 1],
   [0, 1e-50],
   [5, 0.2],
   [5, Infinity],
@@ -90,3 +90,20 @@ it.each(['resultVersion', 'executionProfile', 'workload'])(
     expect(() => decodeTerrain(value, terrain.heightMap, terrain)).toThrow();
   },
 );
+
+it('accepts nonzero land sand and compares its last sample independently', () => {
+  const { terrain, wire } = fixture();
+  wire.result.surfaceWeights.splice(25, 5, 0.1, 0.2, 0.4, 0.3, 0);
+  const response = decodeTerrain(wire, terrain.heightMap, terrain);
+  expect(response.result.surfaceWeights[27]).toBe(Math.fround(0.4));
+  const a = { terrain, request: terrain.heightMap, response, requestMs: 1, initMs: null };
+  const other = {
+    ...response,
+    result: { ...response.result, surfaceWeights: response.result.surfaceWeights.slice() },
+  };
+  other.result.surfaceWeights[27] = 0.3;
+  expect(compareTerrains(a, { ...a, response: other })).toMatchObject({
+    numericMatch: false,
+    coverageMismatchCount: 1,
+  });
+});

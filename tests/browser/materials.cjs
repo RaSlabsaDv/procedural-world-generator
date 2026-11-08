@@ -109,7 +109,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           body: JSON.stringify({
             ...parameters,
             heightMap,
-            algorithmVersion: "diverse-landscape-v6",
+            algorithmVersion: "diverse-landscape-v7",
           }),
         });
         if (!response.ok)
@@ -129,8 +129,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
               !Number.isFinite(value) ||
               value < 0 ||
               value > 1 ||
-              (j === 2 && value !== 0) ||
-              (result.biomes[i] === 0 && value !== 0)
+                            (result.biomes[i] === 0 && value !== 0)
             )
               throw Error("Coverage field");
             sum += Math.fround(value);
@@ -162,7 +161,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
           instanceMatrixBytes: result.trees.length * 2 * 16 * 4,
           samples: result.width * result.height,
           rawBytes: weights.length * 4,
-          gpuAttributeBytes: result.width * result.height * 16,
+          gpuAttributeBytes: result.width * result.height * 20,
         };
       });
     page.on("pageerror", (error) => errors.push(error.message));
@@ -199,10 +198,11 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
         live = rows.filter((row) => !row.lost && row.textures > 0);
       assert.equal(live.length, views);
       for (const row of live) {
-        assert.equal(row.textures, 4);
+        assert.equal(row.textures, 5);
         assert.deepEqual(row.sources, [
           "grass.png",
           "rock.png",
+          "sand.png",
           "snow.png",
           "soil.png",
         ]);
@@ -272,17 +272,17 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       await complete();
       const canvas = page.locator("app-terrain-preview canvas");
       await canvas.screenshot({
-        path: artifact(`relief-after-${label}-overview.png`),
+        path: artifact(`coasts-materials-after-${label}-overview.png`),
       });
       await canvas.hover();
       await page.mouse.wheel(0, -650);
       await page.waitForTimeout(350);
       await canvas.screenshot({
-        path: artifact(`relief-after-${label}-close.png`),
+        path: artifact(`coasts-materials-after-${label}-close.png`),
       });
       await page.mouse.wheel(0, -700);
       await page.waitForTimeout(200);
-      await canvas.screenshot({ path: artifact(`relief-after-${label}-detail.png`) });
+      await canvas.screenshot({ path: artifact(`coasts-materials-after-${label}-detail.png`) });
       const parameters = await page
         .locator("input[type=number]")
         .evaluateAll((inputs) =>
@@ -299,7 +299,7 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       captures.push({
         label,
         parameters,
-        algorithmVersion: "diverse-landscape-v6",
+        algorithmVersion: "diverse-landscape-v7",
         wheelDelta: -650,
         resources: await assertResources(1),
         lighting: await lightingResources(page),
@@ -346,13 +346,13 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
     const maximumLighting = await lightingResources(page);
     const maxCanvas = page.locator("app-terrain-preview canvas");
     await maxCanvas.screenshot({
-      path: artifact("relief-maximum-overview.png"),
+      path: artifact("coasts-maximum-overview.png"),
     });
     await maxCanvas.hover();
     await page.mouse.wheel(0, -900);
     await page.waitForTimeout(200);
     await maxCanvas.screenshot({
-      path: artifact("relief-maximum-close.png"),
+      path: artifact("coasts-maximum-close.png"),
     });
     await page
       .getByRole("button", { name: "Reset camera", exact: true })
@@ -402,11 +402,11 @@ const artifact = (name) => path.resolve(__dirname, "../../artifacts/" + name);
       maximum,
       offline,
       encodedBytes,
-      estimatedRgbaMipBytesPerViewport: 4 * ((256 * 256 * 4 * 4) / 3),
+      estimatedRgbaMipBytesPerViewport: 5 * ((256 * 256 * 4 * 4) / 3),
       pageErrors: errors,
     };
     await fs.writeFile(
-      artifact("relief-materials-verification.json"),
+      artifact("coasts-materials-verification.json"),
       JSON.stringify(evidence, null, 2),
     );
     console.log(JSON.stringify(evidence));

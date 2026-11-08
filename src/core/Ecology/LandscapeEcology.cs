@@ -32,6 +32,8 @@ internal static class LandscapeEcology
         var surfaceWeights = SurfaceCoverage.Derive(values, biomes, moisture, temperature, slope, bound);
         var trees = VegetationGenerator.PlaceTrees(values, biomes, slope, density, map.Width, map.Height, seed);
         var rocks = RockPlacement.Place(values, biomes, slope, surfaceWeights, trees, map.Width, map.Height, seed, map.NoiseScale);
+        // Placement consumes frozen base coverage; coastal appearance must not change rocks.
+        CoastalSurfaces.Apply(surfaceWeights, values, ocean, moisture, temperature, slope, map.Width, map.Height, bound, request.SeaLevel);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,
             moisture, temperature, slope, density, trees, surfaceWeights, rocks);
     }

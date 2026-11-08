@@ -7,12 +7,14 @@ export function terrainGeometry(
   const { width, height, values, surfaceWeights } = result;
   const positions = new Float32Array(values.length * 3);
   const coverage = new Float32Array(values.length * 4);
+  const sand = new Float32Array(values.length);
   const indices = new Uint32Array((width - 1) * (height - 1) * 6);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = y * width + x;
       positions.set([x - (width - 1) / 2, values[i], y - (height - 1) / 2], i * 3);
       const offset = i * SURFACE_CHANNELS;
+      sand[i] = surfaceWeights[offset + SURFACE_CHANNEL.Sand];
       coverage.set(
         [
           surfaceWeights[offset + SURFACE_CHANNEL.Grass],
@@ -32,6 +34,7 @@ export function terrainGeometry(
   const geometry = new BufferGeometry();
   geometry.setAttribute('position', new BufferAttribute(positions, 3));
   geometry.setAttribute('surfaceCoverage', new BufferAttribute(coverage, 4));
+  geometry.setAttribute('sandCoverage', new BufferAttribute(sand, 1));
   geometry.setIndex(new BufferAttribute(indices, 1));
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();

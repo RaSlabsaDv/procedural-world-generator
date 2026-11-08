@@ -17,6 +17,7 @@ import {
   TERRAIN_SURFACES_FACTORY,
 } from './terrain-preview';
 import { testTerrain, testWire } from '../testing/terrain-test-fixture';
+import { loadTerrainSurfaces } from './terrain-surfaces';
 import { TerrainRun } from '../data/terrain.models';
 
 const state = {
@@ -54,7 +55,7 @@ function run(): TerrainRun {
         values: new Float32Array([0, 10, 20, 30]),
         biomes: new Uint8Array([0, 1, 2, 3]),
         surfaceWeights: Float32Array.from(testSurfaceWeights([0, 1, 2, 3])),
-        resultVersion: 'landscape-ecology-v7',
+        resultVersion: 'landscape-ecology-v8',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },
@@ -91,6 +92,7 @@ describe('terrain preview lifecycle', () => {
             ready: Promise.resolve({
               grass: new Texture(),
               soil: new Texture(),
+              sand: new Texture(),
               rock: new Texture(),
               snow: new Texture(),
             }),
@@ -218,9 +220,9 @@ describe('terrain preview lifecycle', () => {
     expect(fixture.nativeElement.textContent).toContain('Numerical results remain available');
   });
   it('discards obsolete setups and shares one texture owner across result replacements', async () => {
-    let resolve!: (value: Record<'grass' | 'soil' | 'rock' | 'snow', Texture>) => void;
+    let resolve!: (value: Record<'grass' | 'soil' | 'sand' | 'rock' | 'snow', Texture>) => void;
     const owner = {
-      ready: new Promise<Record<'grass' | 'soil' | 'rock' | 'snow', Texture>>((yes) => {
+      ready: new Promise<Record<'grass' | 'soil' | 'sand' | 'rock' | 'snow', Texture>>((yes) => {
         resolve = yes;
       }),
       dispose: vi.fn(),
@@ -236,6 +238,7 @@ describe('terrain preview lifecycle', () => {
     resolve({
       grass: new Texture(),
       soil: new Texture(),
+      sand: new Texture(),
       rock: new Texture(),
       snow: new Texture(),
     });
@@ -250,10 +253,10 @@ describe('terrain preview lifecycle', () => {
   it('defers scene preparation while paused and excludes texture/pause wait from CPU timing', async () => {
     let clock = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => clock);
-    let resolve!: (value: Record<'grass' | 'soil' | 'rock' | 'snow', Texture>) => void;
+    let resolve!: (value: Record<'grass' | 'soil' | 'sand' | 'rock' | 'snow', Texture>) => void;
     TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, {
       useValue: () => ({
-        ready: new Promise<Record<'grass' | 'soil' | 'rock' | 'snow', Texture>>((yes) => {
+        ready: new Promise<Record<'grass' | 'soil' | 'sand' | 'rock' | 'snow', Texture>>((yes) => {
           resolve = yes;
         }),
         dispose: vi.fn(),
@@ -267,6 +270,7 @@ describe('terrain preview lifecycle', () => {
     resolve({
       grass: new Texture(),
       soil: new Texture(),
+      sand: new Texture(),
       rock: new Texture(),
       snow: new Texture(),
     });
@@ -285,9 +289,9 @@ describe('terrain preview lifecycle', () => {
   });
 
   it('does not build a scene when assets finish after the preview is destroyed', async () => {
-    let resolve!: (value: Record<'grass' | 'soil' | 'rock' | 'snow', Texture>) => void;
+    let resolve!: (value: Record<'grass' | 'soil' | 'sand' | 'rock' | 'snow', Texture>) => void;
     const owner = {
-      ready: new Promise<Record<'grass' | 'soil' | 'rock' | 'snow', Texture>>((yes) => {
+      ready: new Promise<Record<'grass' | 'soil' | 'sand' | 'rock' | 'snow', Texture>>((yes) => {
         resolve = yes;
       }),
       dispose: vi.fn(),
@@ -300,6 +304,7 @@ describe('terrain preview lifecycle', () => {
     resolve({
       grass: new Texture(),
       soil: new Texture(),
+      sand: new Texture(),
       rock: new Texture(),
       snow: new Texture(),
     });
@@ -345,6 +350,7 @@ describe('terrain preview lifecycle', () => {
       ready: Promise.resolve({
         grass: new Texture(),
         soil: new Texture(),
+        sand: new Texture(),
         rock: new Texture(),
         snow: new Texture(),
       }),
@@ -364,6 +370,39 @@ describe('terrain preview lifecycle', () => {
     expect(failed.dispose).toHaveBeenCalledTimes(1);
     expect(fixture.nativeElement.querySelector('[role=alert]')).toBeNull();
     expect(fixture.nativeElement.querySelector('.display-time')).not.toBeNull();
+  });
+
+  it('retries a failed sand download with a complete five-texture owner', async () => {
+    let attempts = 0;
+    const loaded: Texture[] = [];
+    const load = vi.fn(async (url: string) => {
+      if (attempts === 1 && url.endsWith('/sand.png')) throw new Error('Sand download failed');
+      const texture = new Texture();
+      loaded.push(texture);
+      vi.spyOn(texture, 'dispose');
+      return texture;
+    });
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, {
+      useValue: () => {
+        attempts++;
+        return loadTerrainSurfaces(load);
+      },
+    });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Unable to load sand surface texture');
+    expect(state.render).not.toHaveBeenCalled();
+    expect(loaded).toHaveLength(4);
+    for (const texture of loaded) expect(texture.dispose).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.querySelector('[role=alert]')).toBeNull();
+    expect(state.render).toHaveBeenCalled();
+    expect(load).toHaveBeenCalledTimes(10);
+    expect(loaded).toHaveLength(9);
+    fixture.destroy();
+    for (const texture of loaded) expect(texture.dispose).toHaveBeenCalledTimes(1);
   });
 
   it('reports shader failure and releases the renderer without emitting display success', async () => {

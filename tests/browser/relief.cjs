@@ -26,7 +26,7 @@ const assert = require("node:assert/strict"),
     const captures = [];
     const algorithmVersion = baseline
       ? "diverse-landscape-v5"
-      : "diverse-landscape-v6";
+      : "diverse-landscape-v7";
     for (const [label, seed, plainsCoverage, mountainCoverage, iterations] of [
       ["plains", 42, 1, 0, 0],
       ["eroded-plains", -7, 1, 0, 32],

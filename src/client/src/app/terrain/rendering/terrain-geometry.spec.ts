@@ -40,6 +40,9 @@ describe('terrain geometry', () => {
     expect(geometry.index!.count).toBe(511 * 511 * 6);
     expect(geometry.index!.array[geometry.index!.count - 1]).toBe(262143);
     expect(geometry.getAttribute('normal').getY(262143)).toBeCloseTo(1);
+    expect(geometry.getAttribute('surfaceCoverage').array.byteLength).toBe(4 * 1024 * 1024);
+    expect(geometry.getAttribute('sandCoverage').itemSize).toBe(1);
+    expect(geometry.getAttribute('sandCoverage').array.byteLength).toBe(1024 * 1024);
     expect(geometry.boundingSphere!.radius).toBeGreaterThan(0);
     geometry.dispose();
   });

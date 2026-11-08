@@ -43,7 +43,7 @@ const assert = require("node:assert/strict"),
         live = rows.filter((row) => !row.lost && row.attachments.length);
       assert.equal(live.length, 1);
       assert.equal(live[0].activeShadowUpdates, 1);
-      assert.equal(live[0].detailTextures, 4);
+      assert.equal(live[0].detailTextures, 5);
       assert.equal(live[0].attachments.length, 2);
       for (const attachment of live[0].attachments) {
         assert.equal(attachment.width, 2048);

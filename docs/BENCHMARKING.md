@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v7`, algorithm `diverse-landscape-v6`, result `landscape-ecology-v7`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v7`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v8`, algorithm `diverse-landscape-v7`, result `landscape-ecology-v8`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v8`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7 timings.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7/v8 timings.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -189,3 +189,15 @@ receive different heights, so counts and JSON bytes may change. Never infer a
 performance advantage from unpaired historical/new smoke timings. Freeze version,
 request and build identity per campaign; transport, normalization/comparison and
 rendering boundaries remain unchanged. See LOCAL_RELIEF_V1.md.
+
+Stage 7 freezes workload/profile v8 separately. Core time now includes the byte
+distance buffer, integer queue, shoreline seeding/bounded propagation and in-place
+coastal blending after unchanged placement. No distance field or extra output array
+is serialized. Exact non-coverage hashes preserve the prior mathematical workload
+outputs, while added computation still requires a new workload identity. Record
+actual coverage JSON bytes; populated sand and changing other channel decimals can
+change payload size without changing its five-channel schema. Fifth-texture loading
+and the extra scalar GPU attribute are display/asset costs outside Core/request
+timing. Active coverage attributes total 5 MiB/view, 1 MiB extra at 512x512; texture
+storage estimates become 1.67 MiB/view for five active assets already in the offline
+catalog. Scratch raw storage is 1.25 MiB, not total runtime memory. See COASTAL_SURFACES_V1.md.

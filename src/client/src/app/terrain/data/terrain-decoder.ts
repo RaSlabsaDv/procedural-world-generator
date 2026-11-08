@@ -3,7 +3,6 @@ import { decodeRocks } from './rock-decoder';
 import {
   RESULT_VERSION,
   SURFACE_CHANNELS,
-  SURFACE_CHANNEL,
   SURFACE_SUM_TOLERANCE,
   TREE_KIND_IDS,
   TREE_VARIANT_IDS,
@@ -125,7 +124,6 @@ export function decodeTerrain(
         item: unknown = rawWeights[index];
       if (typeof item !== 'number' || !Number.isFinite(item) || item < 0 || item > 1) return fail();
       surfaceWeights[index] = item;
-      if (channel === SURFACE_CHANNEL.Sand && item !== 0) return fail();
       if (biomeIds[i] === LANDSCAPE_BIOME.Ocean && item !== 0) return fail();
       sum += surfaceWeights[index];
     }

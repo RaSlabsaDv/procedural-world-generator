@@ -1,4 +1,4 @@
-// Full v6 WASM/API fields, trees and rocks, maximum work, visible landscapes, instancing and offline 3D.
+// Full v8 WASM/API fields, trees and rocks, maximum work, visible landscapes, instancing and offline 3D.
 const {
   base,
   launchBrowser,
@@ -76,7 +76,7 @@ const assert = require("node:assert/strict"),
           globalWarmth: warmth,
           vegetationDensity: 1,
           landformRegionScale: regionScale,
-          algorithmVersion: "diverse-landscape-v6",
+          algorithmVersion: "diverse-landscape-v7",
         };
         let ticks = 0,
           last = performance.now(),
@@ -112,9 +112,9 @@ const assert = require("node:assert/strict"),
         const remote = await response.json();
         for (const result of [local, remote]) {
           if (
-            result.workload !== "landscape-ecology-hydraulic-v7" ||
-            result.executionProfile !== "landscape-worker-json-v7" ||
-            result.result.resultVersion !== "landscape-ecology-v7" ||
+            result.workload !== "landscape-ecology-hydraulic-v8" ||
+            result.executionProfile !== "landscape-worker-json-v8" ||
+            result.result.resultVersion !== "landscape-ecology-v8" ||
             result.simulationVersion !== "hydraulic-grid-v1" ||
             result.result.algorithmVersion !== request.algorithmVersion
           )
@@ -148,8 +148,7 @@ const assert = require("node:assert/strict"),
                 !Number.isFinite(value) ||
                 value < 0 ||
                 value > 1 ||
-                (j === 2 && value !== 0) ||
-                (result.result.biomes[i] === 0 && value !== 0)
+                                (result.result.biomes[i] === 0 && value !== 0)
               )
                 throw Error("Coverage range/category");
               sum += Math.fround(value);
@@ -281,7 +280,7 @@ const assert = require("node:assert/strict"),
           ).length,
           coverageRawBytes: w * h * 5 * 4,
           coverageClientFloatBytes: w * h * 5 * 4,
-          coverageGpuAttributeBytes: w * h * 4 * 4,
+          coverageGpuAttributeBytes: w * h * 5 * 4,
           parseMs,
           coverageCopyMs,
           localComputeMs: local.computeMs,
