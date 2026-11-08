@@ -121,10 +121,23 @@ PWA tests temporarily mutate only generated deployment files and restore them in
 - src/api and src/wasm: thin execution hosts and worker/loader assets.
 - src/client/src/app/platform: runtime, PWA and operation locking.
 - terrain/data: contracts, decoding, comparisons, defaults and adapters.
+- experiments/data: Architecture Race readonly records and pure frozen configuration capture; no runner yet.
 - terrain/editor: parameter definitions, form/snapshot handling, pure presentation guidance and panels.
 - terrain/rendering: terrain/instance/material/light modules, scene-content ownership and preview lifecycle.
 - terrain/testing and colocated frontend *.spec.ts: reusable fixtures and corresponding tests.
 - tests/core/Generation, Ecology, Validation: active Core checks; Historical/ and Fixtures/ retain versioned evidence.
 - tests/api, browser, build, reference: host integration, real browser scenarios, packaging and independent numerical references.
 
-Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race protocol/contracts are the next feature task; cleanup adds no experiment runner or placeholder UI.
+Do not delete historical generators or nested HeightMapTransport preparation because standalone endpoints were removed: these retain active verification/transport roles. Scene ownership does not change renderer policies or timing boundaries. Architecture Race Step 1 protocol/contracts and immutable configuration are implemented; see [the specification](specs/ARCHITECTURE_RACE_V1.md). Sequential collection is next; there is no experiment runner or placeholder UI.
+
+
+## Architecture Race configuration
+
+`createExperimentConfiguration(terrain, measuredPairs?)` in experiments/data captures
+an independent request, freezing its nested heightMap, terrain and configuration.
+The default is 10 measured pairs; invalid pair counts throw RangeError. Mathematical
+terrain validation remains in Core. No Angular form or browser APIs are required.
+Colocated utility tests cover every captured parameter, caller edits, runtime freezing,
+count boundaries and forwarding invalid terrain drafts unchanged. Run `npm --prefix
+src/client test -- --watch=false` for frontend checks. This step adds no collector,
+statistics, export or experiment UI; no performance campaign has been run.

@@ -12,6 +12,7 @@
 
 Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v7, landscape-ecology-v8, landscape-ecology-hydraulic-v8 and landscape-worker-json-v8.
 
+- [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md): experiment protocol, readonly records and immutable configuration; runner remains planned.
 - [Landscape/climate v3](specs/LANDSCAPE_V3.md): base environment and ecological rules; original height composition is historical.
 - [Surface coverage v1](specs/SURFACE_TRANSITIONS_V1.md): base weights used before placement.
 - [Vegetation structure v1](specs/VEGETATION_STRUCTURE_V1.md): groves, edges and variants.

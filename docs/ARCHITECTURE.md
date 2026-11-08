@@ -177,3 +177,20 @@ rock records for 23 pre-refactor requests, independently of timing/build identit
 Browser support/editor.cjs shares small field/wait/artifact actions while scenarios
 retain their own numeric, rendering and offline assertions. No general runner or
 Architecture Race implementation is introduced.
+
+
+## Architecture Race contracts
+
+[Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes sequential alternating
+pairs, one warmup per mode and 10 measured pairs by default (1..30). Step 1 adds
+pure readonly contracts and independent, runtime-frozen configuration capture under
+`experiments/data`; it does not change adapters, Core, timings or the editor.
+Discriminated records distinguish trial success/error, compared/unavailable pairs,
+and completed/stopped/failed collection. Existing complete TerrainComparison metrics
+are reused, with eligibility and explicit exclusion reasons separate from agreement
+and build compatibility. Records retain no full map arrays.
+
+The next step is the runner: one OperationLock for preparation through verification,
+no scene construction during collection, bounded pair retention and honest startup
+metadata. UI, summaries and export follow separately. The interactive Verify action
+remains a single equivalence check, not a repeated measurement campaign.

@@ -1,6 +1,6 @@
 # Benchmarking Protocol
 
-The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check is implemented; repeated-trial running and campaign results remain planned. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
+The primary workload is Rich terrain + hydraulic erosion. The sequential UI equivalence check is implemented; repeated-trial running and campaign results remain planned. [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md) freezes the implementable protocol and record schema; Step 1 supplies only contracts and immutable configuration. This protocol defines the future controlled experiment. See [architecture](ARCHITECTURE.md) and [roadmap](IMPLEMENTATION_PLAN.md).
 
 ## 1. What we compare
 
@@ -26,7 +26,7 @@ Freeze the code version (`coreBuildId`, preferably a commit, plus a separate app
 | Field            | Start → finish                                                                                              | Meaning                                                                                                            |
 | ---------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `computeMs`      | After host parsing and Core preparation, immediately before `GenerateValidated` → completed Core result     | Result allocation and mathematical generation, including runtime pauses within this boundary                       |
-| `requestMs`      | Before calling the adapter with prepared parameters → decoded result in typed arrays and validated contract | Complete Local or Remote operation after the WASM runtime is ready                                                 |
+| `requestMs`      | Inside the adapter, before serialization/dispatch (after Local runtime readiness) → normalized and validated result | Complete Local or Remote operation after the WASM runtime is ready                                                 |
 | `initMs`         | Worker creation → WASM exports ready                                                                        | Worker/runtime startup under recorded cache state; excludes loader-module import and warm `requestMs`              |
 | `actionToDataMs` | User action → usable map data                                                                               | UI waiting, preparation, any required initialization, and the request; excludes equivalence checking and rendering |
 | `renderCpuMs`    | Before visualization preparation → completion of synchronous CPU work                                       | Geometry, colors, scene updates, and command submission, if included in the defined boundary                       |
@@ -58,7 +58,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
-A pair with a correctness failure remains in the raw data with an error status; do not use it as evidence of a performance advantage. Preserve a small reproducible example and diagnostics.
+A pair with a correctness failure retains its comparison metrics and an explicit correctness-mismatch exclusion; do not use it as evidence of a performance advantage. Preserve a small reproducible example and diagnostics.
 
 ## 5. Test matrix and execution order
 
@@ -71,10 +71,10 @@ Initial proposal for the pilot:
 | Iterations         | `0`, `32`, `128` (respect the cell-iteration cap)                                                                                                                                                                                                  |
 | Other parameters   | `octaves = 4`, `noiseScale = 0.03`, `heightMultiplier = 30`, `mountainStrength = 0.55`, `warpStrength = 2`, `rainfall = 0.05`, `evaporation = 0.1`, `plainsCoverage = 0.45`, `mountainCoverage = 0.30`, `globalMoisture = 0.65`, `seaLevel = 0.16`, `globalWarmth = 0.6`, `vegetationDensity = 1`, `landformRegionScale = 1` |
 | Network conditions | Two fixed profiles                                                                                                                                                                                                                                 |
-| Warm-up            | 3 runs per mode for each combination of size, seed, and profile                                                                                                                                                                                    |
-| Main sample        | 30 runs per mode for each such combination                                                                                                                                                                                                         |
+| Warm-up            | 1 run per mode for each immutable configuration (Architecture Race v1)                                                                                                                                                                                    |
+| Main sample        | 10 measured pairs by default; configure up to 30 pairs per experiment                                                                                                                                                                                                         |
 
-Use the pilot to verify safe sizes and sufficient warm-up. If parameters need to change, do so before the main campaign and record the reason. These numbers are a starting plan, not a guarantee of statistical adequacy.
+Use the pilot to verify safe sizes and sufficient warm-up. Freeze campaign inputs before collection. Architecture Race v1 fixes one warmup per mode; changing that policy requires a documented protocol revision, not an unrecorded runner adjustment. The default sample count is not a guarantee of statistical adequacy.
 
 For each combination, execute 30 sequential pairs. Alternate `Local → Remote` and `Remote → Local`, with 15 pairs in each order. Start the next run only after the previous one has completed. Preserve warm-up records with `warmup = true`, but exclude them from the main aggregates.
 
@@ -201,3 +201,27 @@ and the extra scalar GPU attribute are display/asset costs outside Core/request
 timing. Active coverage attributes total 5 MiB/view, 1 MiB extra at 512x512; texture
 storage estimates become 1.67 MiB/view for five active assets already in the offline
 catalog. Scratch raw storage is 1.25 MiB, not total runtime memory. See COASTAL_SURFACES_V1.md.
+
+
+## Architecture Race v1 collection policy
+
+The [v1 specification](specs/ARCHITECTURE_RACE_V1.md) fixes one Local/Remote warmup
+pair, default 10 measured pairs (integer 1..30), and alternating sequential order
+starting Local. Retain actual order, failed attempts, unavailable measurements as
+null and explicit exclusion reasons. Runtime startup/preparation is separate; current
+failed adapters expose no durations. A negative requestMs-minus-computeMs residual
+remains raw and excludes that pair from verified timing summaries.
+
+Use the existing full-result comparison after each successful pair, outside timers.
+Build changes, workload changes and cross-mode build mismatch invalidate comparison;
+matching dirty/unversioned builds permit diagnostics only. Numeric/category mismatch
+stops further pairs. Warmup failure prevents measured trials. A measured failure
+still permits attempting the other mode; stop finishes an active call without
+claiming to cancel Core. Incomplete results remain exportable and excluded from
+verified claims. Record observed interruptions; external CPU load is not controlled.
+
+Future summaries exclude warmups and separate diagnostic/verified samples. Quartiles
+use sorted index (n-1)*p with linear interpolation; preserve outliers and give counts
+and reasons for exclusions. JSON retains complete small records and configuration;
+CSV includes each attempted trial, warmups/errors included. Neither retains full maps.
+Runner, statistics functions and export are not implemented in Step 1.

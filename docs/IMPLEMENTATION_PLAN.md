@@ -157,8 +157,8 @@ preserve historical sources/fixtures and add complete current-result fingerprint
 Keep seven distinct browser scenarios with focused shared editor helpers. No
 mathematical, transport, resource-limit or timing-boundary change is included.
 
-Architecture Race protocol/result contracts remain the next feature task. Its
-runner, statistics/export UI and evolution capture/playback remain unimplemented.
+Architecture Race protocol/result contracts were the next feature task after this
+cleanup; Step 1 completion is recorded below. Evolution capture/playback remains later work.
 
 Verification: 182 Core and 39 API tests, 170 Angular tests, five Python packaging/link/
 asset checks and worker RPC pass. Release build has zero warnings/errors;
@@ -168,3 +168,24 @@ final coastal coverage and full instances. Compact parameter HTML/CSS was preser
 byte-for-byte from the existing uncommitted UI baseline. Scene timing/resource
 boundaries, five textures, static shadows, instance/draw budgets and PWA behavior
 remain unchanged. See [refactor verification](history/REFACTOR_VERIFICATION.md).
+
+
+## Architecture Race — Step 1 complete
+
+Frozen [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md): one immutable request,
+one warmup per mode, default 10 measured pairs (1..30), alternating sequential order,
+actual order retention, separate startup and existing adapter timing boundaries.
+Readonly discriminated contracts cover metadata, trials, pair verification and final
+status/eligibility with explicit reasons, without full terrain arrays. Pure capture
+copies/freezes both request levels and validates only the pair-count configuration.
+Current workload identities, Core mathematics, host contracts and UI remain unchanged.
+
+Next, Step 2: implement sequential runner, OperationLock lifecycle, preparation,
+warmup, paired calls, full verification, cooperative stop, bounded retention and
+failure/interruption recording. Then add experiment UI, summaries and JSON/CSV export.
+Statistics/export policy is specified only; no runner or controlled campaign exists yet.
+
+Verification: all 185 Angular tests pass, including 15 new configuration tests;
+Angular production compilation and the documentation-link check pass. No Core,
+host, adapter or rendering source changed, so this step does not establish new
+browser parity or controlled performance results. README.md remains empty.
