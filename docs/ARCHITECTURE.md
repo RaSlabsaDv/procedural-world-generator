@@ -760,3 +760,31 @@ instances, drainage, river vectors and simulation summaries remain unchanged. Th
 static model makes no dynamic filling, discharge or lake water-balance claim. No
 lake UI setting or GPU water surface is introduced; ocean, LOD and Bloom remain
 unchanged. Next: 3D water surfaces and submerged-channel handling.
+
+## Hydrology Stage 4 — inland water presentation
+
+[Inland water v1](specs/INLAND_WATER_V1.md) renders the existing canonical datasets
+without changing Core, contracts or identities. One indexed lake batch clips selected
+basin-owned terrain triangles at the exact Core water level. The finite one-ring
+footprint ends on the real bed intersection; mixed/unsupported triangles are excluded
+instead of capping a sheet above submerged terrain or flooding neighboring basins.
+
+One river batch rasterizes a union of existing edge widths onto the terrain grid.
+Clipped terrain triangles ground the visible surface; max-union joins bends and
+confluences without stacked transparent quads. Only supported downhill/dry segments
+and admissible lake/ocean shore connections are shown. Unselected depression routes,
+submerged channels and cliff/lake drops remain in computation data but are not drawn.
+Widths below a grid cell and directions at confluences are visual approximations;
+no channel carving or new river-water-level solver exists.
+
+Both use existing water appearance, normal owner, lighting, atmosphere and HDR/Bloom.
+The default ocean material stays unchanged; inland modes reduce foam, river normals
+follow receiver directions/slopes, and unlit foam coverage vanishes even in Reference
+output. A hasWater gate enables the existing shared scheduler/normal loader without
+Ocean. Busy, visibility, reduced-motion and frozen-phase behavior remain intact.
+
+The setup-only water surface predicate filters submerged decoration in a presentation
+view. The same tree list feeds color LOD and shadow sources; fully submerged rocks
+are removed, emergent rocks remain. Core arrays and source records stay untouched.
+Scene owns all added materials/geometry, including failed construction and disposal;
+preview retains texture ownership. No extra water shadows, dependencies or controls.

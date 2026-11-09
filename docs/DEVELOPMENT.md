@@ -1148,3 +1148,54 @@ Local/Remote 3D and offline new seeds. Evidence is under ignored artifacts/lakes
 Final Stage 3 PWA regression passes offline reload/new tabs/new seeds, Remote
 failure/recovery, busy-update deferral and updated offline 3D with Bloom. Temporary
 deployment mutations are restored after the simulation.
+
+## Hydrology Stage 4 — visible inland water
+
+Selected lakes and supported exposed river routes now appear in the standard 3D
+view, including no-Ocean maps. Existing water color/turbidity/foam controls affect
+all water. Terrain, hydrology, river/lake data and workload identities are unchanged.
+See [INLAND_WATER_V1.md](specs/INLAND_WATER_V1.md) before changing geometry or eligibility.
+
+`inland-water-geometry.ts` builds at most two exact-sized indexed batches using the
+same terrain diagonal. `lake-footprint.ts` shares real shoreline ownership with
+vegetation filtering; ambiguous basin contacts and below-level outsiders are not
+filled. River geometry follows supported Core edges through a bounded union field,
+not a rerun of drainage. Rivers do not float across analysis spill surfaces. V1 has
+no carving, waterfalls, sub-grid smoothing or dynamic water simulation; unsupported
+routes may leave intentional gaps in the visible network.
+
+Tree/rock lists are filtered only for presentation; the same filtered list drives
+LOD and shadow casters. Grass anchors use the exact lake/river surface predicate.
+Large emergent boulders remain. Material/texture ownership is unchanged except for
+the two scene-owned batches. Partial-build failures, replacement and independent
+views dispose resources; animation/settings reach every water material through the
+shared scheduler, including inland-only scenes.
+
+Run the real production-factory visual scenario against a matching published API:
+
+```bash
+PWG_BASE_URL=http://127.0.0.1:8080 node tests/browser/inland-water.cjs
+```
+
+Use the standard Playwright/Chromium overrides. The in-memory test bundle stays under
+tests/browser/inland/ and ships no application hooks. Four actual generated cases
+cover mixed/no-Ocean/coastal/512x512 scenes; fixed cameras and phase capture lakes,
+rivers, confluences, day/night, Reference/HDR/Bloom and a narrow view. Pixel differences
+with each water batch disabled prove visible contribution. Complete Local/Remote
+results match and normalized source hashes survive rendering. The scenario checks
+finite attributes, valid indices, two extra color calls and no water shadow casters.
+Screenshots/evidence live under ignored artifacts/inland-*.
+
+No native source changed, so preservation checks across all 18 historical cases replace
+rerunning unchanged native suites for this presentation step. Display setup includes
+geometry/filtering; computeMs still measures only the shared C# workload. First scene
+submission does not establish completed GPU rendering or device FPS.
+
+Stage 4 verification: 430 Angular tests, 13 packaging checks and worker RPC pass;
+production publication succeeds. All 18 native-output preservation fixtures remain
+exact. Four real WASM/API visual cases match source hashes and show visible lake/
+river pixels, bounded geometry, two extra water draws, no water shadows, independent
+views and narrow layouts. Night/moon regression passes; zero-light positive color
+delta is 997 versus 541886 in daylight, below the existing 1% criterion. PWA update/
+offline regression with `--bloom --inland` passes, including a new no-Ocean offline
+seed whose renderer executes the river shader. Temporary deployment files restore.

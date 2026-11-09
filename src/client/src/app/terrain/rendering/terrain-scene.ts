@@ -1,3 +1,5 @@
+import { inlandWaterGeometry } from './inland-water-geometry';
+import { visibleDecorations } from './lake-footprint';
 import { terrainGrass } from './terrain-grass';
 import type { DataArrayTexture } from 'three';
 import { AtmosphereSettings, DEFAULT_ATMOSPHERE_SETTINGS } from './atmosphere-settings.service';
@@ -36,6 +38,13 @@ export function terrainScene(
   let ocean:
     | Mesh<NonNullable<ReturnType<typeof oceanGeometry>>, ReturnType<typeof oceanMaterial>>
     | undefined;
+  let inland: ReturnType<typeof inlandWaterGeometry> | undefined;
+  const waters: Mesh<
+    NonNullable<ReturnType<typeof oceanGeometry>>,
+    ReturnType<typeof oceanMaterial>
+  >[] = [];
+  const inlandMeshes: typeof waters = [],
+    inlandMaterials: ReturnType<typeof oceanMaterial>[] = [];
   let atmosphere: ReturnType<typeof terrainAtmosphere> | undefined;
   let pendingGeometry: ReturnType<typeof oceanGeometry>;
   let disposed = false;
@@ -46,6 +55,9 @@ export function terrainScene(
       scene.remove(ocean);
       ocean.material.dispose();
     }
+    for (const mesh of inlandMeshes) mesh.removeFromParent();
+    for (const material of inlandMaterials) material.dispose();
+    inland?.dispose();
     atmosphere?.dispose();
     pendingGeometry?.dispose();
     lighting?.dispose();
@@ -61,10 +73,13 @@ export function terrainScene(
       terrainSurfaceMaterial(textures, result.width, result.height, microNormals),
     );
     scene.add(terrain);
-    forest = terrainForestLod(result, request.seed);
+    const sea = water ? water.seaLevel * Math.fround(request.heightMultiplier) : 0;
+    if (water) inland = inlandWaterGeometry(result, sea);
+    const decorations = water ? visibleDecorations(result, inland?.riverSurfaceAt) : result;
+    forest = terrainForestLod(decorations, request.seed);
     for (const mesh of forest.casters) scene.add(mesh);
     for (const mesh of forest.meshes) scene.add(mesh);
-    rocks = terrainRocks(result);
+    rocks = terrainRocks(decorations);
     for (const rock of rocks.meshes) scene.add(rock);
     lighting = terrainLighting(
       scene,
@@ -74,7 +89,6 @@ export function terrainScene(
       [...forest.casters, ...rocks.meshes],
       environment,
     );
-    const sea = water ? water.seaLevel * Math.fround(request.heightMultiplier) : 0;
     atmosphere = terrainAtmosphere(
       scene,
       lighting.uniforms,
@@ -89,7 +103,7 @@ export function terrainScene(
       bindAtmosphere(group.crowns.material, atmosphere.uniforms);
     }
     for (const rock of rocks.meshes) bindAtmosphere(rock.material, atmosphere.uniforms);
-    grass = terrainGrass(request.seed, result);
+    grass = terrainGrass(request.seed, decorations, !!water, inland?.riverSurfaceAt);
     if (grass.mesh) {
       scene.add(grass.mesh);
       bindAtmosphere(grass.mesh.material, atmosphere.uniforms);
@@ -104,11 +118,31 @@ export function terrainScene(
           pendingGeometry,
           oceanMaterial(water.normal, lighting.uniforms, water.settings, atmosphere.uniforms),
         );
+        waters.push(ocean);
         ocean.name = 'ocean-presentation-v1';
         ocean.renderOrder = 1;
         scene.add(ocean);
         atmosphere.uniforms.atmosphereWater.value = 1;
       }
+
+      for (const geometry of [inland!.lake, inland!.river]) {
+        if (!geometry) continue;
+        const material = oceanMaterial(
+          water.normal,
+          lighting.uniforms,
+          water.settings,
+          atmosphere.uniforms,
+          geometry === inland!.river ? 'river' : 'lake',
+        );
+        inlandMaterials.push(material);
+        const mesh = new Mesh(geometry, material);
+        mesh.name = geometry.name;
+        mesh.renderOrder = 1;
+        inlandMeshes.push(mesh);
+        waters.push(mesh);
+        scene.add(mesh);
+      }
+      atmosphere.uniforms.atmosphereWater.value = waters.length ? 1 : 0;
     }
     return {
       dispose,
@@ -117,16 +151,21 @@ export function terrainScene(
       updateEnvironment: lighting.update,
       environmentUniforms: lighting.uniforms,
       hasOcean: !!ocean,
+      hasWater: waters.length > 0,
+      inlandStats: inland?.stats,
       updateWater: (settings: OceanSettings) => {
-        if (disposed || !ocean) return;
-        ocean.material.uniforms['waterColor'].value.set(settings.color);
-        ocean.material.uniforms['turbidity'].value = settings.turbidity;
-        ocean.material.uniforms['foamIntensity'].value = settings.foam;
+        if (disposed) return;
+        for (const mesh of waters) {
+          mesh.material.uniforms['waterColor'].value.set(settings.color);
+          mesh.material.uniforms['turbidity'].value = settings.turbidity;
+          mesh.material.uniforms['foamIntensity'].value = settings.foam;
+        }
       },
       waterTime: (seconds: number) => {
-        if (!disposed && ocean)
-          ocean.material.uniforms['waterTime'].value =
-            (seconds + lighting!.uniforms.environmentVisualTimeSeconds.value) % 1000;
+        if (!disposed)
+          for (const mesh of waters)
+            mesh.material.uniforms['waterTime'].value =
+              (seconds + lighting!.uniforms.environmentVisualTimeSeconds.value) % 1000;
       },
     };
   } catch (error) {

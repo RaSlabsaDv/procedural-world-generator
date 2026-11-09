@@ -101,7 +101,11 @@ const {
     });
     for (const foam of ["0", "1"]) {
       await page.locator("#water-foam").fill(foam);
-      captures["zero" + foam] = (await canvas.screenshot()).toString("base64");
+      captures["zero" + foam] = (
+        await canvas.screenshot({
+          path: artifactPath(`night-foam-zero-${foam}.png`),
+        })
+      ).toString("base64");
     }
     assert.ok(await page.evaluate(() => window.__zeroFoamDraws > 0));
     await page.evaluate(() => {
@@ -130,6 +134,10 @@ const {
       }
       return result;
     }, captures);
+    await fs.writeFile(
+      artifactPath("night-foam-probe.json"),
+      JSON.stringify(differences, null, 2),
+    );
     assert.ok(differences.day > 1000, "Noon foam is visibly present");
     assert.ok(
       differences.night < differences.day * 0.35,

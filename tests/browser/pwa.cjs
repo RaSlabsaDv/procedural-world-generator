@@ -32,6 +32,25 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
   const errors = [];
   const observe = (page) =>
     page.on("pageerror", (error) => errors.push(error.message));
+  const inlandSmoke = process.argv.includes("--inland");
+  if (inlandSmoke)
+    await context.addInitScript(() => {
+      window.__inlandDraws = 0;
+      const get = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (...args) {
+        const gl = get.apply(this, args);
+        if (!gl || args[0] !== "webgl2" || gl.__inlandProbe) return gl;
+        gl.__inlandProbe = true;
+        const draw = gl.drawElements;
+        gl.drawElements = function (...values) {
+          const program = gl.getParameter(gl.CURRENT_PROGRAM);
+          if (program && gl.getAttribLocation(program, "waterFlow") >= 0)
+            window.__inlandDraws++;
+          return draw.apply(this, values);
+        };
+        return gl;
+      };
+    });
   const page = await context.newPage();
   observe(page);
   const bloomSmoke = process.argv.includes("--bloom");
@@ -182,6 +201,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await ready(page);
+    if (inlandSmoke) await page.locator("#seaLevel").fill("0");
     await generate(page, 1001);
     assert.equal(
       await page
@@ -204,6 +224,11 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
           }),
         "Updated offline renderer executes the bloom final shader",
       );
+    if (inlandSmoke)
+      assert.ok(
+        await page.evaluate(() => window.__inlandDraws > 0),
+        "Updated offline no-Ocean renderer draws inland river material",
+      );
     assert.deepEqual(errors, []);
     const result = {
       pass: true,
@@ -219,6 +244,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
       updatedVersionOffline: true,
       updatedVersionTerrain3d: true,
       ...(bloomSmoke ? { updatedVersionBloom: true } : {}),
+      ...(inlandSmoke ? { updatedVersionInlandWater: true } : {}),
       firstCatalog,
       secondCatalog,
       pageErrors: errors,

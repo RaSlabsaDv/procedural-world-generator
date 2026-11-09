@@ -1,3 +1,4 @@
+import { OceanAnimationService } from './ocean-animation.service';
 import { testEmptyLakes } from '../testing/terrain-test-fixture';
 import { testEmptyRivers } from '../testing/terrain-test-fixture';
 import { testHydrology } from '../testing/terrain-test-fixture';
@@ -753,6 +754,45 @@ describe('terrain preview lifecycle', () => {
     environment.set(DEFAULT_ENVIRONMENT_SETTINGS);
     await TestBed.tick();
     expect(state.render).not.toHaveBeenCalled();
+  });
+  it('loads normals and animates supported inland water without Ocean', async () => {
+    const ready = { ready: Promise.resolve(new Texture()), dispose: vi.fn() },
+      factory = vi.fn(() => ready);
+    TestBed.overrideProvider(OCEAN_NORMAL_FACTORY, { useValue: factory });
+    const value = run();
+    value.response.result.biomes.fill(1);
+    value.response.result.hydrology.receiverIndex[3] = 1;
+    const input = {
+      ...value,
+      response: {
+        ...value.response,
+        result: {
+          ...value.response.result,
+          rivers: {
+            ...value.response.result.rivers,
+            cellIndices: new Int32Array([3]),
+            widths: new Float32Array([1]),
+          },
+        },
+      },
+    };
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', input);
+    await settlePreview(fixture);
+    const scene = state.render.mock.calls.at(-1)![0] as Scene;
+    expect(scene.getObjectByName('ocean-presentation-v1')).toBeUndefined();
+    const river = scene.getObjectByName('inland-river-v1') as Mesh<BufferGeometry, ShaderMaterial>;
+    expect(river).toBeDefined();
+    expect(factory).toHaveBeenCalledTimes(1);
+    TestBed.inject(OceanAnimationService).freeze(11);
+    expect(river.material.uniforms['waterTime'].value).toBe(11);
+    const lock = TestBed.inject(OperationLock).tryAcquire()!;
+    TestBed.inject(OceanAnimationService).freeze(12);
+    expect(river.material.uniforms['waterTime'].value).toBe(11);
+    lock();
+    await fixture.whenStable();
+    fixture.destroy();
+    expect(ready.dispose).toHaveBeenCalledTimes(1);
   });
   it('retries a failed normal owner and retains mesh/camera when only water controls change', async () => {
     const failed = {

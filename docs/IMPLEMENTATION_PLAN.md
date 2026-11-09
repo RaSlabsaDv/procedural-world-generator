@@ -1316,3 +1316,38 @@ No physical-device performance improvement is claimed.
 Final PWA update/offline regression also passes with Bloom enabled, including busy
 update deferral and updated-version offline terrain. Temporary deployment files are
 restored. README remains empty.
+
+### Hydrology Stage 4 — visible lakes and supported rivers
+
+Implemented [Inland water v1](specs/INLAND_WATER_V1.md) in the existing Three.js view.
+Lakes use exact Core levels and clip selected finite terrain neighborhoods to actual
+shorelines. Rivers use a grounded union coverage mesh for supported canonical edges;
+submerged, unselected-depression and unsafe cliff/uphill routes are suppressed only
+in presentation. No channel carving, dynamic water balance or waterfall is implied.
+
+Two batched meshes reuse water textures/settings, shared clock, lighting, atmosphere
+and HDR/Bloom. Inland-only scenes load normals and animate through hasWater. Source
+vegetation is unchanged; presentation filtering suppresses submerged anchors/rocks
+and keeps LOD/casters consistent. Scene ownership covers successful and failed builds.
+No new controls, dependencies, Core fields, algorithm or workload versions are added.
+
+The original half-membership shoreline prototype was replaced before acceptance:
+real bed intersections avoid hanging lake-sheet edges. Inland foam coverage follows
+light as well as color, avoiding a small Reference/sRGB alpha-blending brightening
+at zero illumination. The default Ocean shader/path remains unchanged.
+
+Limitations: terrain-grid width/shore approximation, incomplete visible networks
+where analysis routes cross unsupported depressions/cliffs, no carved channel beds
+and no physical flow speed. These do not change complete canonical results. Further
+channel/shore detailing is separate from the execution diagnostics/progress track.
+Stock SSAO remains deferred; README stays empty.
+
+Stage 4 verification passes: 430 Angular tests, 13 packaging checks, worker RPC and
+production publication. All 18 Core preservation cases remain exact with unchanged
+identities. Real WASM/API rendering covers four generated cases, including 512x512;
+fixed screenshots and disabled-batch pixel comparisons prove visible lakes/rivers.
+Geometry is finite and indexed correctly; water adds at most 2 color draws and no
+shadow caster. Independent views, narrow layout, night/moon and HDR/Bloom pass.
+The final PWA update/offline regression passes with Bloom and inland shader checks,
+including a new no-Ocean seed; deployment simulation files are restored. No native
+source changed or native-suite rerun was needed beyond the preservation checks.

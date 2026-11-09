@@ -10,6 +10,7 @@ export function oceanMaterial(
   environment: ReturnType<typeof terrainLighting>['uniforms'],
   settings: OceanSettings,
   atmosphere?: ReturnType<typeof terrainAtmosphere>['uniforms'],
+  mode: 'ocean' | 'lake' | 'river' = 'ocean',
 ) {
   const material = new ShaderMaterial({
     name: 'ocean-presentation-v1',
@@ -81,5 +82,45 @@ export function oceanMaterial(
       }
     `,
   });
+  if (mode === 'lake') {
+    material.name = 'inland-lake-v1';
+    material.fragmentShader = material.fragmentShader
+      .replace('float foam=(1.0-', 'float foam=.25*(1.0-')
+      .replace('float strength=.18*', 'float strength=.08*');
+  }
+  if (mode === 'river') {
+    material.name = 'inland-river-v1';
+    material.vertexShader = material.vertexShader
+      .replace(
+        'attribute float waterDepth;',
+        'attribute vec2 waterFlow; varying vec2 vFlow; varying vec3 vSurfaceNormal; attribute float waterDepth;',
+      )
+      .replace(
+        'void main(){',
+        'void main(){ vFlow=waterFlow; vSurfaceNormal=mat3(modelMatrix)*normal;',
+      );
+    material.fragmentShader = material.fragmentShader
+      .replace(
+        'uniform sampler2D normalMap;',
+        'uniform sampler2D normalMap; varying vec2 vFlow; varying vec3 vSurfaceNormal;',
+      )
+      .replace('vWorld.xz/9.0', '(vWorld.xz-vFlow*waterTime*.3)/9.0')
+      .replace('vWorld.xz/4.0', '(vWorld.xz-vFlow*waterTime*.3)/4.0')
+      .replace(
+        'vec3 N=normalize(vec3((a.x+b.x)*strength,a.z*b.z,(a.y+b.y)*strength));',
+        'vec3 base=normalize(vSurfaceNormal); vec3 tangent=normalize(vec3(1.0,-base.x/max(base.y,.05),0.0)); vec3 binormal=normalize(cross(tangent,base)); vec3 N=normalize(base*a.z*b.z+tangent*(a.x+b.x)*strength+binormal*(a.y+b.y)*strength);',
+      )
+      .replace('float foam=(1.0-', 'float foam=.18*(1.0-');
+  }
+  if (mode !== 'ocean') {
+    // Reference output blends after sRGB encoding. Unlit foam must not add coverage
+    // there: changing alpha alone can brighten a dark translucent thin surface.
+    material.fragmentShader = material.fragmentShader
+      .replace('float alpha=foam+(1.0-foam)*(A+F);', '')
+      .replace(
+        'vec3 energy=',
+        'foam*=clamp(max(max(foamLight.r,foamLight.g),foamLight.b),0.0,1.0); float alpha=foam+(1.0-foam)*(A+F); vec3 energy=',
+      );
+  }
   return material;
 }

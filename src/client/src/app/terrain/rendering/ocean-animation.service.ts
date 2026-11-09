@@ -13,7 +13,7 @@ export const OCEAN_FRAMES = new InjectionToken<{
   }),
 });
 
-/** One RAF and phase for all visible Ocean views; no Angular signal updates per frame. */
+/** One RAF and phase for all visible water views; no Angular signal updates per frame. */
 @Injectable({ providedIn: 'root' })
 export class OceanAnimationService {
   private readonly frames = inject(OCEAN_FRAMES);

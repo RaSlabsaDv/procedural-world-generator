@@ -477,7 +477,7 @@ exposure applies once to the composed scene plus halo.
 
 Extraction and two blur passes add GPU work; two no-depth/no-MSAA RGBA16F targets
 add at most1 MiB/view,2 MiB for comparison. Rendering may reach38 color calls/view;
-shadow ceiling19 and Core work remain unchanged. Disabled bloom executes no extra
+shadow ceiling 19 and Core work remain unchanged. Disabled bloom executes no extra
 passes and releases its targets/materials. This is resource accounting, not measured
 GPU memory, completion time or FPS. Preparation/resize/submission remain outside
 computeMs/requestMs and pause under OperationLock. No controlled campaign was run.
@@ -582,3 +582,27 @@ height 80. Six selected lakes cover 20971 cells (within the integer 8% budget), 
 UTF-8 JSON bytes for the nested lake object. Complete Local response: 22824147 bytes.
 The 129x97 seed 42 fixture with 8 erosion iterations selects 3 lakes over 141 cells.
 These are payload/correctness observations, not memory-peak or performance claims.
+
+## Inland-water display cost (unchanged v14 workload)
+
+This presentation adds no Core computation, wire field or workload identity. Keep
+generation v13 / result, workload and profile v14. Source result/simulation preservation
+checks pass all 18 fixtures, including hydrology/rivers/lakes. Generation computeMs
+excludes geometry, masking, material setup and submission; those remain in display
+CPU setup. No FPS, GPU-duration or performance-improvement claim follows from smoke
+checks on SwiftShader.
+
+At most two added color draws/view, no water shadow draws: existing maximum color
+ceiling 38 becomes 40; shadow ceiling 19 remains. Lake geometry has conservative 104*6B
+numeric buffer bytes (B selected cells); river geometry has conservative 340*2N bytes.
+Each is a bound per CPU/GPU copy, excluding object/driver overhead, not an observed
+allocation or a combined peak. Field scratch/query storage is 17N (4.25 MiB at 512x512).
+Empty inland data takes no field buffer. Full-size indexed geometry is counted then
+allocated exactly; it is not silently truncated to meet a byte cap.
+
+Observed seed -7, 512x512, height 80, zero erosion, no Ocean: 133895 lake vertices,
+29862 river vertices, 4564768 numeric geometry bytes, 1564 supported and 5383 suppressed
+nonterminal river edges. Both batches render in two color draws with zero shadow
+casters. These are fixture-specific resource/correctness observations, not general
+performance bounds. Canonical river/lake data remains complete despite visual
+suppression. Floating-point tolerance and benchmark comparison semantics are unchanged.

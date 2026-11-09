@@ -196,9 +196,12 @@ export class TerrainPreview {
               }
               throw error;
             });
-            const hasOcean = run.response.result.biomes.includes(0);
+            const hasWater =
+              run.response.result.biomes.includes(0) ||
+              run.response.result.lakes.basins.length > 0 ||
+              run.response.result.rivers.cellIndices.length > 0;
             let normal: Awaited<ReturnType<typeof loadOceanNormal>['ready']> | undefined;
-            if (hasOcean) {
+            if (hasWater) {
               const owner = (this.normalOwner ??= this.createNormal());
               normal = await owner.ready.catch((error: unknown) => {
                 if (!disposed && this.normalOwner === owner) {
@@ -313,7 +316,7 @@ export class TerrainPreview {
                 setupCpuMs = beforeWaitCpu + performance.now() - resumed;
                 sceneReady = true;
                 render();
-                if (content.hasOcean) {
+                if (content.hasWater) {
                   if (typeof IntersectionObserver !== 'undefined') {
                     visibility = new IntersectionObserver((entries) => {
                       visible = entries[0]?.isIntersecting ?? false;

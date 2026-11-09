@@ -1,3 +1,4 @@
+import { lakeSurfaceAt } from './lake-footprint';
 import {
   BufferGeometry,
   Float32BufferAttribute,
@@ -94,8 +95,25 @@ export function grassMaterial() {
   };
   return material;
 }
-export function terrainGrass(seed: number, result: TerrainResponse['result']) {
+export function terrainGrass(
+  seed: number,
+  result: TerrainResponse['result'],
+  hideSubmerged = true,
+  riverSurfaceAt: (x: number, z: number) => number = () => -1,
+) {
   const selection = placeGrass(seed, result);
+  if (hideSubmerged && (result.lakes.basins.length || result.rivers.cellIndices.length)) {
+    const point = { x: 0, z: 0 },
+      sample = newGrassSample();
+    selection.ids = selection.ids.filter((id) => {
+      grassPoint(seed, id, selection.grid, point);
+      sampleGrass(result, point.x, point.z, sample);
+      return (
+        Math.max(lakeSurfaceAt(result, point.x, point.z), riverSurfaceAt(point.x, point.z)) <=
+        sample.y
+      );
+    });
+  }
   let mesh: InstancedMesh<BufferGeometry, MeshLambertMaterial> | undefined;
   let geometry: BufferGeometry | undefined,
     material: MeshLambertMaterial | undefined,
