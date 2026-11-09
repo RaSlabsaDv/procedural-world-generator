@@ -188,28 +188,19 @@ export async function createView(
       );
       distance = Math.max(9, Math.sqrt(count) * 2.8);
     } else if (kind === "river" || kind === "confluence") {
-      const incoming = new Uint8Array(data.result.values.length);
-      for (const i of data.result.rivers.cellIndices) {
-        const next = data.result.hydrology.receiverIndex[i];
-        if (
-          next >= 0 &&
-          data.result.hydrology.depressionDepth[i] === 0 &&
-          data.result.hydrology.depressionDepth[next] === 0
-        )
-          incoming[next]++;
-      }
+      const incoming = new Uint8Array(data.result.values.length),
+        supported = new Uint8Array(data.result.values.length);
+      data.result.rivers.cellIndices.forEach((i, k) => {
+        if (data.result.channels.segmentState[k] === 1) {
+          supported[i] = 1;
+          const next = data.result.hydrology.receiverIndex[i];
+          if (next >= 0) incoming[next]++;
+        }
+      });
       let best = Infinity;
       for (const i of data.result.rivers.cellIndices) {
-        const next = data.result.hydrology.receiverIndex[i];
-        if (
-          next < 0 ||
-          data.result.hydrology.depressionDepth[i] > 0 ||
-          data.result.hydrology.depressionDepth[next] > 0 ||
-          data.result.biomes[i] === 0 ||
-          data.result.values[next] > data.result.values[i]
-        )
+        if (!supported[i] || (kind === "confluence" && incoming[i] < 2))
           continue;
-        if (kind === "confluence" && incoming[i] < 2) continue;
         const d =
           ((i % map.width) - map.width / 2) ** 2 +
           (Math.floor(i / map.width) - map.height / 2) ** 2;
@@ -311,6 +302,12 @@ export async function createView(
   return {
     draw,
     focus,
+    pose: (position: number[], look: number[]) => {
+      camera.position.fromArray(position);
+      target.fromArray(look);
+      camera.lookAt(target);
+      camera.updateMatrixWorld();
+    },
     measure,
     resize: (w: number, h: number) => {
       renderer.setSize(w, h, false);

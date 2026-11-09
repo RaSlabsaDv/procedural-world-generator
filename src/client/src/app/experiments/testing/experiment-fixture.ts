@@ -58,6 +58,7 @@ export function experimentFixture(): ExperimentResult {
         hydrologyMismatchCount: 0,
         riverMismatchCount: 0,
         lakeMismatchCount: 0,
+        channelMismatchCount: 0,
         identity: 'compatible',
       },
     });

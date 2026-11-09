@@ -1,6 +1,6 @@
 import { lakeTriangleOwner } from './lake-footprint';
 import { BufferAttribute, BufferGeometry } from 'three';
-import { TerrainResponse } from '../data/terrain.models';
+import { CHANNEL_STATE, TerrainResponse } from '../data/terrain.models';
 
 type Result = TerrainResponse['result'];
 const OFFSET = 0.012,
@@ -29,47 +29,27 @@ export function inlandWaterGeometry(result: Result, sea: number) {
     };
   const coverage = new Float32Array(n).fill(-4),
     flowX = new Float32Array(n),
-    flowZ = new Float32Array(n);
+    flowZ = new Float32Array(n),
+    profile = new Float32Array(n),
+    node = bed.slice();
   const incoming = new Uint8Array(n),
     widthByCell = new Float32Array(n);
-  for (let i = 0; i < rivers.cellIndices.length; i++)
+  for (let i = 0; i < n; i++) if (biomes[i] === 0) node[i] = sea;
+  for (let i = 0; i < rivers.cellIndices.length; i++) {
     widthByCell[rivers.cellIndices[i]] = rivers.widths[i];
+    node[rivers.cellIndices[i]] = result.channels.waterSurfaceHeight[i];
+  }
   for (let k = 0; k < rivers.cellIndices.length; k++) {
     const a = rivers.cellIndices[k],
       b = hydrology.receiverIndex[a];
     if (b < 0) continue;
-    const la = lakes.lakeIdByCell[a],
-      lb = lakes.lakeIdByCell[b];
-    let level = -1,
-      valid = true;
-    const close = (x: number, y: number) =>
-      Math.abs(x - y) <= 1e-6 + 1e-5 * Math.max(Math.abs(x), Math.abs(y));
-    if (la >= 0 || lb >= 0) {
-      if (la === lb || (la >= 0 && lb >= 0)) valid = false;
-      else {
-        const id = la >= 0 ? la : lb,
-          dry = la >= 0 ? b : a;
-        level = lakes.basins[id].waterLevel;
-        valid =
-          biomes[dry] !== 0 &&
-          hydrology.depressionDepth[dry] === 0 &&
-          (bed[dry] >= level || close(bed[dry], level)) &&
-          (la < 0 || bed[dry] <= level || close(bed[dry], level));
-      }
-    } else if (biomes[b] === 0 && biomes[a] !== 0 && hydrology.depressionDepth[a] === 0) {
-      level = sea;
-      valid = bed[a] >= sea || close(bed[a], sea);
-    } else
-      valid =
-        biomes[a] !== 0 &&
-        biomes[b] !== 0 &&
-        hydrology.depressionDepth[a] === 0 &&
-        hydrology.depressionDepth[b] === 0 &&
-        (bed[b] <= bed[a] || close(bed[a], bed[b]));
-    if (!valid) {
+    if (result.channels.segmentState[k] !== CHANNEL_STATE.Exposed) {
       stats.suppressed++;
       continue;
     }
+    const la = lakes.lakeIdByCell[a],
+      lb = lakes.lakeIdByCell[b];
+    const level = la >= 0 || lb >= 0 || biomes[b] === 0 ? 0 : -1;
     stats.supported++;
     if (level >= 0) stats.connectors++;
     if (++incoming[b] === 2) stats.confluences++;
@@ -101,9 +81,28 @@ export function inlandWaterGeometry(result: Result, sea: number) {
           coverage[i] = value;
           flowX[i] = dx / len;
           flowZ[i] = dz / len;
+          profile[i] = node[a] + (node[b] - node[a]) * t;
         }
       }
   }
+  // Shared grid normals avoid faceted reflection seams between independently clipped polygons.
+  const surfaceNormals = new Float32Array(stats.supported ? n * 3 : 0);
+  if (stats.supported)
+    for (let i = 0; i < n; i++) {
+      const x = i % w,
+        z = Math.floor(i / w),
+        center = profile[i];
+      const left = x > 0 && coverage[i - 1] > 0 ? profile[i - 1] : center,
+        right = x < w - 1 && coverage[i + 1] > 0 ? profile[i + 1] : center;
+      const top = z > 0 && coverage[i - w] > 0 ? profile[i - w] : center,
+        bottom = z < h - 1 && coverage[i + w] > 0 ? profile[i + w] : center;
+      const dx = (right - left) * 0.5,
+        dz = (bottom - top) * 0.5,
+        len = Math.hypot(dx, 1, dz);
+      surfaceNormals[i * 3] = -dx / len;
+      surfaceNormals[i * 3 + 1] = 1 / len;
+      surfaceNormals[i * 3 + 2] = -dz / len;
+    }
   let lake: BufferGeometry | undefined, river: BufferGeometry | undefined;
   try {
     lake = build(false);
@@ -149,14 +148,20 @@ export function inlandWaterGeometry(result: Result, sea: number) {
       wb = first ? fz : 1 - fx,
       wc = first ? fx : fx + fz - 1;
     if (wa * coverage[a] + wb * coverage[b] + wc * coverage[c] <= 0) return -1;
-    const allowed = (j: number) =>
-      hydrology.depressionDepth[j] === 0 || lakes.lakeIdByCell[j] >= 0 ? 1 : 0;
-    if (wa * allowed(a) + wb * allowed(b) + wc * allowed(c) < 0.5) return -1;
     const ground = wa * bed[a] + wb * bed[b] + wc * bed[c],
+      water = wa * profile[a] + wb * profile[b] + wc * profile[c],
       owner = lakeTriangleOwner(result, a, b, c);
-    if (owner === -2 || (owner >= 0 && ground < lakes.basins[owner].waterLevel)) return -1;
-    if ((biomes[a] === 0 || biomes[b] === 0 || biomes[c] === 0) && ground < sea) return -1;
-    return ground + OFFSET;
+    if (water < ground || owner === -2 || (owner >= 0 && ground < lakes.basins[owner].waterLevel))
+      return -1;
+    const mouth = biomes[a] === 0 || biomes[b] === 0 || biomes[c] === 0;
+    if (mouth && ground < sea) return -1;
+    const cover = wa * coverage[a] + wb * coverage[b] + wc * coverage[c],
+      fade = Math.min(1, Math.max(0, cover / 0.25));
+    return (
+      ground +
+      (owner >= 0 || mouth ? 0 : Math.max(0, water - ground) * fade * fade * (3 - 2 * fade)) +
+      OFFSET
+    );
   }
 
   function build(isRiver: boolean): BufferGeometry | undefined {
@@ -176,6 +181,7 @@ export function inlandWaterGeometry(result: Result, sea: number) {
       depth: Float32Array,
       shore: Float32Array,
       flow: Float32Array,
+      normal: Float32Array,
       indices: Uint32Array;
     const sample = (va: number, vb: number, vc: number, u: number, v: number) =>
       va * (1 - u - v) + vb * u + vc * v;
@@ -243,17 +249,39 @@ export function inlandWaterGeometry(result: Result, sea: number) {
           x = sample(a % w, b % w, c % w, u, v),
           z = sample(Math.floor(a / w), Math.floor(b / w), Math.floor(c / w), u, v),
           ground = sample(bed[a], bed[b], bed[c], u, v);
-        const y = isRiver ? ground + OFFSET : level;
+        const cover = isRiver
+          ? Math.max(0, sample(coverage[a], coverage[b], coverage[c], u, v))
+          : 0;
+        const rawWater = isRiver ? sample(profile[a], profile[b], profile[c], u, v) : level;
+        const fade = Math.min(1, cover / 0.25),
+          shoreTriangle =
+            lakeTriangleOwner(result, a, b, c) >= 0 ||
+            biomes[a] === 0 ||
+            biomes[b] === 0 ||
+            biomes[c] === 0;
+        const shown = isRiver
+          ? ground +
+            (shoreTriangle ? 0 : Math.max(0, rawWater - ground) * fade * fade * (3 - 2 * fade))
+          : level;
+        const y = isRiver ? shown + OFFSET : level;
         position[vCursor * 3] = x - (w - 1) / 2;
         position[vCursor * 3 + 1] = y;
         position[vCursor * 3 + 2] = z - (h - 1) / 2;
-        depth[vCursor] = isRiver ? 0.9 : Math.max(0, level - ground);
+        depth[vCursor] = Math.max(0, shown - ground);
         shore[vCursor] = isRiver
           ? Math.max(0, sample(coverage[a], coverage[b], coverage[c], u, v))
           : Math.min(3, Math.max(0, level - ground) * 2);
         if (isRiver) {
           flow[vCursor * 2] = sample(flowX[a], flowX[b], flowX[c], u, v);
           flow[vCursor * 2 + 1] = sample(flowZ[a], flowZ[b], flowZ[c], u, v);
+          for (let axis = 0; axis < 3; axis++)
+            normal[vCursor * 3 + axis] = sample(
+              surfaceNormals[a * 3 + axis],
+              surfaceNormals[b * 3 + axis],
+              surfaceNormals[c * 3 + axis],
+              u,
+              v,
+            );
         }
         vCursor++;
       }
@@ -293,9 +321,7 @@ export function inlandWaterGeometry(result: Result, sea: number) {
         if (coverage[a] <= 0 && coverage[b] <= 0 && coverage[c] <= 0) return;
         reset();
         clip(coverage[a], coverage[b], coverage[c]);
-        const allowed = (i: number) =>
-          hydrology.depressionDepth[i] === 0 || lakes.lakeIdByCell[i] >= 0 ? 1 : 0;
-        clip(allowed(a) - 0.5, allowed(b) - 0.5, allowed(c) - 0.5);
+        clip(profile[a] - bed[a], profile[b] - bed[b], profile[c] - bed[c]);
         if (owner >= 0) {
           const surface = lakes.basins[owner].waterLevel;
           clip(bed[a] - surface, bed[b] - surface, bed[c] - surface);
@@ -319,6 +345,7 @@ export function inlandWaterGeometry(result: Result, sea: number) {
     depth = new Float32Array(vertices);
     shore = new Float32Array(vertices);
     flow = new Float32Array(isRiver ? vertices * 2 : 0);
+    normal = new Float32Array(isRiver ? vertices * 3 : 0);
     indices = new Uint32Array(indexCount);
     pass = 1;
     traverse();
@@ -331,7 +358,7 @@ export function inlandWaterGeometry(result: Result, sea: number) {
       geometry.setIndex(new BufferAttribute(indices, 1));
       if (isRiver) {
         geometry.setAttribute('waterFlow', new BufferAttribute(flow, 2));
-        geometry.computeVertexNormals();
+        geometry.setAttribute('normal', new BufferAttribute(normal, 3));
       }
       geometry.computeBoundingSphere();
       return geometry;

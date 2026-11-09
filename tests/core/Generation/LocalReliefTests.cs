@@ -65,13 +65,13 @@ public sealed class LocalReliefTests
 
     [Theory]
     [InlineData(42)] [InlineData(-7)] [InlineData(int.MinValue)] [InlineData(int.MaxValue)]
-    public void PlainsKeepBroadLowSlopeAreasWithAndWithoutErosion(int seed)
+    public void PreChannelPlainsKeepBroadLowSlopeAreasWithAndWithoutErosion(int seed)
     {
         foreach(var steps in new[]{0,32})
         {
             var request=Request(seed) with{PlainsCoverage=1,MountainCoverage=0,Iterations=steps};
             var old=Historical.V5.TerrainGenerator.Generate(request).HeightMap;
-            var current=TerrainGenerator.Generate(request).HeightMap;
+            var current=Historical.V13.TerrainGenerator.Generate(request).HeightMap;
             var flat=current.Slope.Select(s=>s<=.1).ToArray();
             var flatFraction=flat.Count(v=>v)/(double)flat.Length;
             var largest=LargestArea(flat,current.Width,current.Height)/(double)flat.Length;
@@ -137,11 +137,11 @@ public sealed class LocalReliefTests
     }
 
     [Fact]
-    public void MixedAndMountainMapsChangeWithoutInventingNewClampPlateaus()
+    public void PreChannelMixedAndMountainMapsChangeWithoutInventingNewClampPlateaus()
     {
         foreach(var r in new[]{Request(42),Request(-7) with{PlainsCoverage=0,MountainCoverage=1}})
         {
-            var old=Historical.V5.TerrainGenerator.Generate(r).HeightMap.Values;var map=TerrainGenerator.Generate(r).HeightMap.Values;
+            var old=Historical.V5.TerrainGenerator.Generate(r).HeightMap.Values;var map=Historical.V13.TerrainGenerator.Generate(r).HeightMap.Values;
             Assert.True(old.Zip(map,(a,b)=>a!=b).Count(x=>x)>map.Length/4);
             Assert.True(map.Count(v=>v==0||v==30)<=old.Count(v=>v==0||v==30));
             Assert.True(old.Zip(map,(a,b)=>Math.Abs(a-b)).Max()<=30*LocalRelief.MaxAmplitude+1e-5);

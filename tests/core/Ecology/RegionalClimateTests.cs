@@ -137,7 +137,8 @@ public sealed class RegionalClimateTests
     [Fact]
     public void ClimateSamplingAddsNoMapSizedAllocation()
     {
-        RegionalClimate.Sample(0, 0, 42, .5, .65, .6);
+        // Warm varying coordinates/cold runtime paths before measuring steady-state allocations.
+        for (var i = 0; i < 16384; i++) RegionalClimate.Sample(i % 512, i / 512, 42, .5, .65, .6);
         var before = GC.GetAllocatedBytesForCurrentThread();
         double checksum = 0;
         for (var y = 0; y < 512; y++) for (var x = 0; x < 512; x++)
@@ -150,14 +151,14 @@ public sealed class RegionalClimateTests
     }
 
     [Fact]
-    public void HeightsSlopesOceanAndSimulationMatchAllPreClimateFingerprints()
+    public void PreChannelHeightsSlopesOceanAndSimulationMatchAllPreClimateFingerprints()
     {
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         using var fixture = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "landscape-v7-fingerprints.json")));
         foreach (var item in fixture.RootElement.GetProperty("cases").EnumerateArray())
         {
             var request = item.GetProperty("request").Deserialize<TerrainRequest>(options)! with { AlgorithmVersion = TerrainLimits.AlgorithmVersion };
-            var result = TerrainGenerator.Generate(request); var m = result.HeightMap;
+            var result = Historical.V13.TerrainGenerator.Generate(request); var m = result.HeightMap;
             foreach (var (name, value) in new Dictionary<string, object> { ["values"] = m.Values, ["slope"] = m.Slope, ["simulation"] = result.Simulation })
                 Assert.Equal(item.GetProperty("hashes").GetProperty(name).GetString(), Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value, options))).ToLowerInvariant());
             Assert.Equal(OceanClassifier.Ocean(m.Values, m.Width, m.Height, request.SeaLevel * (float)request.HeightMap.HeightMultiplier), m.Biomes.Select(b => b == LandscapeBiome.Ocean));

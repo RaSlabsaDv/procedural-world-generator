@@ -84,7 +84,7 @@
       <p id="numeric-match">
         {{
           check.numericMatch
-            ? 'All heights match within tolerance, including environment, vegetation, surface coverage and rocks.'
+            ? 'All heights match within tolerance, including environment, vegetation, surface coverage, rocks, drainage and channel profiles.'
             : 'Numeric data differences exceed tolerance.'
         }}
       </p>
@@ -94,7 +94,8 @@
         {{ check.coverageMismatchCount }} · Rock mismatches: {{ check.rockMismatchCount }} ·
         Hydrology mismatches: {{ check.hydrologyMismatchCount }} ·
         River mismatches: {{ check.riverMismatchCount }} ·
-        Lake mismatches: {{ check.lakeMismatchCount }}
+        Lake mismatches: {{ check.lakeMismatchCount }} ·
+        Channel mismatches: {{ check.channelMismatchCount }}
       </p>
       <p id="biome-match">
         {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:

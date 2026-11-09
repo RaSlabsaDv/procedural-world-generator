@@ -7,6 +7,8 @@ import {
   HYDROLOGY_VERSION,
   RIVER_NETWORK_VERSION,
   LAKE_BASINS_VERSION,
+  RIVER_CHANNELS_VERSION,
+  RiverChannelResult,
   LakeMapResult,
   RiverNetworkResult,
   HydrologyResult,
@@ -67,6 +69,7 @@ export function testWire(terrain = testTerrain()) {
         spillFromCells: [],
         riverCrossingFromCells: [],
       },
+      channels: testWireChannels(Array(map.width * map.height).fill(0)),
       hydrology: testWireHydrology({
         width: map.width,
         height: map.height,
@@ -79,7 +82,7 @@ export function testWire(terrain = testTerrain()) {
     parameters: terrain,
     workload: TERRAIN_WORKLOAD as typeof TERRAIN_WORKLOAD,
     simulationVersion: SIMULATION_VERSION as typeof SIMULATION_VERSION,
-    executionProfile: 'landscape-worker-json-v14' as const,
+    executionProfile: 'landscape-worker-json-v15' as const,
     computeMs: 1,
     coreBuildId: 'git:123456789abc',
     simulation: {
@@ -153,4 +156,50 @@ export function testEmptyLakes(count: number): LakeMapResult {
     spillFromCells: new Int32Array(),
     riverCrossingFromCells: new Int32Array(),
   };
+}
+
+export function testWireChannels(values: ArrayLike<number>) {
+  const mass = Array.from(values).reduce((a, b) => a + Math.fround(b), 0);
+  return {
+    algorithmVersion: RIVER_CHANNELS_VERSION as typeof RIVER_CHANNELS_VERSION,
+    carveDepth: Array(values.length).fill(0) as number[],
+    waterSurfaceHeight: [] as number[],
+    segmentState: [] as number[],
+    summary: { beforeTerrainMass: mass, afterTerrainMass: mass, removedTerrainMass: 0 },
+  };
+}
+export function testEmptyChannels(values: ArrayLike<number>): RiverChannelResult {
+  const wire = testWireChannels(values);
+  return {
+    ...wire,
+    carveDepth: new Float32Array(values.length),
+    waterSurfaceHeight: new Float32Array(),
+    segmentState: new Uint8Array(),
+  };
+}
+export function finalizeTestWire<
+  T extends {
+    result: Pick<
+      ReturnType<typeof testWire>['result'],
+      'values' | 'channels' | 'rivers' | 'lakes' | 'hydrology'
+    >;
+    simulation: ReturnType<typeof testWire>['simulation'];
+  },
+>(wire: T): T {
+  wire.result.channels = testWireChannels(wire.result.values);
+  wire.result.channels.waterSurfaceHeight = wire.result.rivers.cellIndices.map((cell) => {
+    const id = wire.result.lakes.lakeIdByCell[cell];
+    return id >= 0
+      ? (wire.result.lakes.basins as readonly { waterLevel: number }[])[id].waterLevel
+      : Math.fround(wire.result.values[cell]);
+  });
+  wire.result.channels.segmentState = wire.result.rivers.cellIndices.map((cell) => {
+    const next = wire.result.hydrology.receiverIndex[cell],
+      id = wire.result.lakes.lakeIdByCell[cell];
+    return next < 0 ? 3 : id >= 0 && wire.result.lakes.lakeIdByCell[next] === id ? 2 : 0;
+  });
+  wire.simulation.finalTerrainMass = wire.result.channels.summary.beforeTerrainMass;
+  wire.simulation.initialTerrainMass =
+    wire.simulation.finalTerrainMass + wire.simulation.suspendedSediment;
+  return wire;
 }

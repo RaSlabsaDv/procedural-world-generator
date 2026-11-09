@@ -13,6 +13,10 @@ internal static class HydrologyAnalyzer
     // Retain the authoritative surface for downstream analysis without recomputation.
     internal static HydrologyResult Analyze(ReadOnlySpan<float> heights,
         ReadOnlySpan<LandscapeBiome> biomes, int width, int height, out float[] spillSurface)
+        => Analyze(heights, biomes, width, height, out spillSurface, out _);
+
+    internal static HydrologyResult Analyze(ReadOnlySpan<float> heights,
+        ReadOnlySpan<LandscapeBiome> biomes, int width, int height, out float[] spillSurface, out int[] processingOrder)
     {
         if (width < HeightMapLimits.MinWidth || width > HeightMapLimits.MaxWidth ||
             height < HeightMapLimits.MinHeight || height > HeightMapLimits.MaxHeight)
@@ -31,6 +35,7 @@ internal static class HydrologyAnalyzer
         var filled = new float[count];
         spillSurface = filled;
         var order = new int[count];
+        processingOrder = order;
         var heap = new CellHeap(count, filled);
         for (var i = 0; i < count; i++)
         {

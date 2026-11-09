@@ -90,6 +90,7 @@ export function oceanMaterial(
   }
   if (mode === 'river') {
     material.name = 'inland-river-v1';
+    material.fragmentShader=material.fragmentShader.replace('float T=exp(-max(0.0,vDepth)*turbidity);','float T=exp(-max(.9,vDepth)*turbidity*smoothstep(0.0,.15,vShore));');
     material.vertexShader = material.vertexShader
       .replace(
         'attribute float waterDepth;',

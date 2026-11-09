@@ -1,5 +1,5 @@
 import { BufferGeometry, Scene, Texture, WebGLRenderer } from 'three';
-import { inlandWaterGeometry } from './inland-water-geometry';
+import { inlandWaterGeometry as createWater } from './inland-water-geometry';
 import { lakeSurfaceAt, visibleDecorations } from './lake-footprint';
 import { decodeTerrain } from '../data/terrain-decoder';
 import { testMap, testTerrain, testWire } from '../testing/terrain-test-fixture';
@@ -10,6 +10,38 @@ import { oceanMaterial } from './ocean-material';
 import { terrainLighting } from './terrain-lighting';
 import { Mesh, BoxGeometry, MeshLambertMaterial } from 'three';
 
+// Explicit visual fixtures provide profile metadata; no renderer-side solver is exercised.
+function inlandWaterGeometry(r: TerrainResponse['result'], sea: number) {
+  if (r.channels.waterSurfaceHeight.length === r.rivers.cellIndices.length)
+    return createWater(r, sea);
+  const water = Array.from(r.rivers.cellIndices, (cell) =>
+    r.lakes.lakeIdByCell[cell] >= 0
+      ? r.lakes.basins[r.lakes.lakeIdByCell[cell]].waterLevel
+      : r.values[cell],
+  );
+  const states = Array.from(r.rivers.cellIndices, (cell) => {
+    const next = r.hydrology.receiverIndex[cell],
+      id = r.lakes.lakeIdByCell[cell];
+    if (next < 0) return 3;
+    if (id >= 0 && r.lakes.lakeIdByCell[next] === id) return 2;
+    return (r.hydrology.depressionDepth[cell] > 0 && id < 0) ||
+      (r.hydrology.depressionDepth[next] > 0 && r.lakes.lakeIdByCell[next] < 0) ||
+      r.values[cell] < r.values[next]
+      ? 0
+      : 1;
+  });
+  return createWater(
+    {
+      ...r,
+      channels: {
+        ...r.channels,
+        waterSurfaceHeight: new Float32Array(water),
+        segmentState: new Uint8Array(states),
+      },
+    },
+    sea,
+  );
+}
 function fixture(w = 7, h = 7): TerrainResponse['result'] {
   const request = { ...testMap, width: w, height: h },
     terrain = testTerrain(request);

@@ -10,8 +10,9 @@
 
 ## Frozen policies and specifications
 
-Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v13, landscape-ecology-v14, landscape-ecology-hydraulic-v14 and landscape-worker-json-v14.
+Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v14, landscape-ecology-v15, landscape-ecology-hydraulic-v15 and landscape-worker-json-v15.
 
+- [River channels v1](specs/RIVER_CHANNELS_V1.md): bounded Core carving, final-graph profiles, protected shores and separate shaping mass; v15 workload.
 - [Inland water v1](specs/INLAND_WATER_V1.md): visible lake/river meshes, real shoreline clipping, supported routes, decoration filtering and graphics budgets.
 - [Lake basins v1](specs/LAKE_BASINS_V1.md): bounded static inland lakes, authoritative levels, complete spill/crossing connections and v14 workload isolation.
 - [River network v1](specs/RIVER_NETWORK_V1.md): threshold-selected river cells, grid-unit widths, reused drainage connectivity and v13 workload isolation.

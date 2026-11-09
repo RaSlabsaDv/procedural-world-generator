@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v14`, algorithm `diverse-landscape-v13`, result `landscape-ecology-v14`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v14`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v15`, algorithm `diverse-landscape-v14`, result `landscape-ecology-v15`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v15`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Compare every hydrology receiver and accumulation exactly, depression depths with the same tolerance, river indices exactly and river widths with the same tolerance; sparse network lengths must match. Compare every lake membership ID, descriptor integer, spill/crossing source and array length exactly; compare every lake water level with the established tolerance. Preserve the execution profile and never pool timings from different workload/profile versions, including v13 and v14.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Compare every hydrology receiver and accumulation exactly, depression depths with the same tolerance, river indices exactly and river widths with the same tolerance; sparse network lengths must match. Compare every lake membership ID, descriptor integer, spill/crossing source and array length exactly; compare every lake water level with the established tolerance. Channel carve depths, profile heights and shaping-summary values use the same float tolerance; segment states compare exactly. Preserve the execution profile and never pool timings from different workload/profile versions, including v14 and v15.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -606,3 +606,41 @@ nonterminal river edges. Both batches render in two color draws with zero shadow
 casters. These are fixture-specific resource/correctness observations, not general
 performance bounds. Canonical river/lake data remains complete despite visual
 suppression. Floating-point tolerance and benchmark comparison semantics are unchanged.
+
+## Channel workload v15
+
+Generation diverse-landscape-v14 changes heights and adds river-channels-v1. Result,
+workload and execution profile advance to v15. Whole-call computeMs includes preliminary
+Ocean/drainage/river/lake analysis, one shaping pass, final analysis/profiles and final
+ecology/instances. Both execution modes use that same shared pipeline. CellIterations
+still counts hydraulic cell-iterations, not every operation in the expanded workload.
+Do not pool v14 and v15 measurements or report the extra work as a speed regression
+without matching the workload and experiment conditions.
+
+Shaping/profiles and allocations remain in Core timing; parsing, transport, normalization,
+comparison and scene setup are excluded. Final mesh mass differs from post-hydraulic
+mass. Record both channel before/after/removal and hydraulic conservation separately;
+never label channel removal as hydraulic suspended sediment. Float conversion between
+the hydraulic double array and pre-shaping float array is expected and independently
+bounded. Do not assert old full-result hashes for intentionally modified heights.
+
+Channels retain 4N+8K numeric bytes in .NET (enum int32); client retains4N+5K (Uint8 states),
+plus fixed summary/array headers. Shaping scratch 17N excludes its 4N output and preliminary
+water analysis; profile scratch 8N excludes output/final drainage order 4N. Native allocation
+tests bound shaping by 21N+64KiB and profiles by 8N+8K+64KiB. Both priority floods remain
+O(N log N); all extra traversals/local bounded neighborhoods are linear. These are not
+whole-process memory peaks and exclude JSON, parsed buffers and rendering storage.
+
+Current comparison diagnostics add channelMismatchCount; all channel vectors, state codes
+and summary values participate in numeric equivalence. Older record identities remain
+unchanged. Display geometry additionally projects Core water heights into a bounded
+field and clips actual banks; it does not solve profiles. Field storage rises from 17N
+to 25N while owned; two added color meshes/no water shadows remain the graphics policy.
+
+Observed seed -7, 512x512, height 80, zero erosion, no Ocean: channel output has 7051
+profile entries and 1083831 normalized client bytes, 769381 reserialized JSON bytes;
+complete Local response 23452379 bytes. Channel removal is 6510.895576477051 height-sum
+units; this is not physical sediment mass. States: 1486 unsupported, 4025 exposed, 1510
+submerged, 30 boundary. Display geometry uses 6731116 numeric bytes in this fixture,
+with two water color draws and zero water shadow casters. These are actual fixture
+observations rather than global memory bounds or performance claims.

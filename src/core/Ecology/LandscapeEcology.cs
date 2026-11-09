@@ -4,11 +4,17 @@ internal static class LandscapeEcology
 {
     internal static TerrainMap Derive(float[] values, TerrainRequest request)
     {
+        var drainage = TerrainDrainage.Derive(values, request);
+        return Derive(values, request, drainage, ChannelProfiler.Derive(values, request, drainage, ChannelCarver.Identity(values)));
+    }
+
+    internal static TerrainMap Derive(float[] values, TerrainRequest request, DrainageAnalysis drainage, RiverChannelResult channels)
+    {
         var map = request.HeightMap;
         var count = values.Length;
         var bound = (float)map.HeightMultiplier;
         var seed = unchecked((uint)map.Seed);
-        var ocean = OceanClassifier.Ocean(values, map.Width, map.Height, request.SeaLevel * bound);
+        var ocean = drainage.Ocean;
         var moisture = new float[count]; var temperature = new float[count]; var slope = new float[count];
         var density = new float[count]; var biomes = new LandscapeBiome[count];
         for (var y = 0; y < map.Height; y++)
@@ -33,11 +39,8 @@ internal static class LandscapeEcology
         var rocks = RockPlacement.Place(values, biomes, slope, surfaceWeights, trees, map.Width, map.Height, seed);
         // Placement consumes frozen base coverage; coastal appearance must not change rocks.
         CoastalSurfaces.Apply(surfaceWeights, values, ocean, moisture, temperature, slope, map.Width, map.Height, bound, request.SeaLevel);
-        var hydrology = HydrologyAnalyzer.Analyze(values, biomes, map.Width, map.Height, out var spillSurface);
-        var rivers = RiverNetworkExtractor.Extract(hydrology, biomes);
-        var lakes = LakeBasinAnalyzer.Analyze(values, spillSurface, biomes, hydrology, rivers, map.Width, map.Height, map.HeightMultiplier);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,
             moisture, temperature, slope, density, trees, surfaceWeights, rocks,
-            hydrology, rivers, lakes);
+            drainage.Hydrology, drainage.Rivers, drainage.Lakes, channels);
     }
 }

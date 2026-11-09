@@ -1,3 +1,18 @@
+export const RIVER_CHANNELS_VERSION = 'river-channels-v1';
+export const CHANNEL_STATE = { Unsupported: 0, Exposed: 1, Submerged: 2, Boundary: 3 } as const;
+export interface ChannelShapingSummary {
+  readonly beforeTerrainMass: number;
+  readonly afterTerrainMass: number;
+  readonly removedTerrainMass: number;
+}
+export interface RiverChannelResult {
+  readonly algorithmVersion: typeof RIVER_CHANNELS_VERSION;
+  readonly carveDepth: Float32Array;
+  readonly waterSurfaceHeight: Float32Array;
+  readonly segmentState: Uint8Array;
+  readonly summary: ChannelShapingSummary;
+}
+
 export const LAKE_BASINS_VERSION = 'lake-basins-v1';
 export interface LakeBasin {
   readonly id: number;
@@ -29,7 +44,7 @@ export interface HydrologyResult {
   readonly depressionDepth: Float32Array;
 }
 
-export const RESULT_VERSION = 'landscape-ecology-v14';
+export const RESULT_VERSION = 'landscape-ecology-v15';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -59,6 +74,7 @@ export interface TerrainResponse {
     readonly hydrology: HydrologyResult;
     readonly rivers: RiverNetworkResult;
     readonly lakes: LakeMapResult;
+    readonly channels: RiverChannelResult;
     readonly resultVersion: string;
     readonly algorithmVersion: string;
   };
@@ -66,7 +82,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v14';
+  readonly executionProfile: 'landscape-worker-json-v15';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -88,8 +104,8 @@ export class TerrainError extends Error {
   }
 }
 
-export const TERRAIN_ALGORITHM = 'diverse-landscape-v13';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v14';
+export const TERRAIN_ALGORITHM = 'diverse-landscape-v14';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v15';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -131,9 +147,9 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v14';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v15';
 
-/** Wire IDs for landscape-ecology-v14; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v15; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,

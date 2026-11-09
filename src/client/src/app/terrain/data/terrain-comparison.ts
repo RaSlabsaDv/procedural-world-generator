@@ -6,6 +6,7 @@ import {
   HYDROLOGY_VERSION,
   RIVER_NETWORK_VERSION,
   LAKE_BASINS_VERSION,
+  RIVER_CHANNELS_VERSION,
 } from './terrain.models';
 import { sameObject } from './contract-utils';
 
@@ -23,6 +24,7 @@ export interface TerrainComparison {
   readonly hydrologyMismatchCount: number;
   readonly riverMismatchCount: number;
   readonly lakeMismatchCount: number;
+  readonly channelMismatchCount: number;
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
@@ -197,6 +199,26 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
     )
       lakeMismatchCount++;
   }
+  const ca = a.result.channels,
+    cb = b.result.channels;
+  if (
+    ca.algorithmVersion !== RIVER_CHANNELS_VERSION ||
+    cb.algorithmVersion !== RIVER_CHANNELS_VERSION
+  )
+    throw new TerrainError('protocol', 'Incompatible channel contract.');
+  let channelMismatchCount = 0;
+  for (const field of ['carveDepth', 'waterSurfaceHeight', 'segmentState'] as const) {
+    channelMismatchCount += Math.abs(ca[field].length - cb[field].length);
+    for (let i = 0; i < Math.min(ca[field].length, cb[field].length); i++)
+      if (
+        field === 'segmentState'
+          ? ca[field][i] !== cb[field][i]
+          : !close(ca[field][i], cb[field][i])
+      )
+        channelMismatchCount++;
+  }
+  for (const field of ['beforeTerrainMass', 'afterTerrainMass', 'removedTerrainMass'] as const)
+    if (!close(ca.summary[field], cb.summary[field])) channelMismatchCount++;
   const verifiable = (id: string) =>
     id.trim().length > 0 && id.trim() !== 'unversioned' && !id.trim().endsWith('-dirty');
   const identity =
@@ -217,7 +239,8 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
       rockMismatchCount === 0 &&
       hydrologyMismatchCount === 0 &&
       riverMismatchCount === 0 &&
-      lakeMismatchCount === 0,
+      lakeMismatchCount === 0 &&
+      channelMismatchCount === 0,
     environmentMismatchCount,
     vegetationMismatchCount,
     coverageMismatchCount,
@@ -225,6 +248,7 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
     hydrologyMismatchCount,
     riverMismatchCount,
     lakeMismatchCount,
+    channelMismatchCount,
     biomeMismatchCount,
     biomesMatch: biomeMismatchCount === 0,
     identity,

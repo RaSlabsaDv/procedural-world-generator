@@ -25,6 +25,9 @@ public static class TerrainGenerator
         var simulation = HydraulicSimulation.Run(terrain, map.Width, map.Height, bound,
             input.Iterations, input.Rainfall, input.Evaporation);
         var values = Array.ConvertAll(terrain, value => (float)value);
-        return new(LandscapeEcology.Derive(values, input), simulation);
+        var carving = ChannelCarver.Apply(values, input);
+        var final = TerrainDrainage.Derive(values, input);
+        var channels = ChannelProfiler.Derive(values, input, final, carving);
+        return new(LandscapeEcology.Derive(values, input, final, channels), simulation);
     }
 }

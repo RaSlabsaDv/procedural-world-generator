@@ -1351,3 +1351,39 @@ shadow caster. Independent views, narrow layout, night/moon and HDR/Bloom pass.
 The final PWA update/offline regression passes with Bloom and inland shader checks,
 including a new no-Ocean seed; deployment simulation files are restored. No native
 source changed or native-suite rerun was needed beyond the preservation checks.
+
+### Hydrology Stage 5 — bounded channels and authoritative water profiles
+
+Implemented [River channels v1](specs/RIVER_CHANNELS_V1.md): one capped post-erosion
+shaping pass uses preliminary routing, protects Ocean/lake shore rings, smooths banks
+and combines cuts by maximum. Final water analysis, ecology and instances describe the
+carved terrain. Profiles use final receiver order, bed bounds, lake/Ocean pins and
+explicit unsupported/submerged/boundary states. No unbounded trench or waterfall repair.
+
+Required channel vectors/summary are shared by both hosts, strictly decoded and included
+in complete equivalence. Hydraulic conservation remains separate from channel mass
+removal. Generation advances to v14 and result/workload/profile to v15; unchanged
+primitive identities remain. Historical v13 pipeline/DTO and captured pre-change complete
+hashes preserve old semantics; expected hashes are not regenerated from new output.
+
+Rendering consumes Core profiles/states, clips water against carved bed and uses bounded
+bank/shore taper without a TypeScript profile solver. Existing normal ownership, shared
+clock, fog/lighting, vegetation masking and HDR/Bloom remain. No new controls/dependencies.
+Next refinements may improve channel cross-sections/shore detail; unsupported barriers
+remain honest limits. Execution diagnostics/progress/cancellation is a separate track.
+README remains empty; stock SSAO stays deferred.
+
+Stage 5 verification passes: 282 Core tests, 47 API tests, 436 Angular tests, 13 packaging
+checks and worker RPC. Release build has zero warnings/errors; locked restore and
+publication pass. Frozen v13 results match six complete pre-change API fingerprints.
+New invariants cover protection, exact caps, separate mass, changed final routing,
+profiles/ownership and allocation budgets. Cold climate-sampling warmup was corrected
+without increasing the existing allocation allowance.
+
+Seven real WASM/API cases match complete channel vectors and summaries. Four actual
+visual cases use exact paired prior cameras and retain immutable source hashes.
+Maximum-work landscape, no-Ocean, transitions/confluences, two/narrow views, night/moon
+and HDR/Bloom pass. Final PWA update/offline regression passes with Bloom and inland
+shader execution for new seeds; temporary deployment files restore. In the bounded-
+work 512x512 fixture 4025 edges are exposed; 1486 remain explicit unsupported barriers.
+These are correctness/resource observations, not a controlled performance campaign.

@@ -114,14 +114,14 @@ public sealed class RockPlacementV2Tests
     }
 
     [Fact]
-    public void AllNonRockFieldsMatchEveryPreChangeFingerprint()
+    public void PreChannelAllNonRockFieldsMatchEveryPreChangeFingerprint()
     {
         var options=new JsonSerializerOptions(JsonSerializerDefaults.Web);
         using var fixture=JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"Fixtures","landscape-v10-fingerprints.json")));
         foreach(var item in fixture.RootElement.GetProperty("cases").EnumerateArray())
         {
             var request=item.GetProperty("request").Deserialize<TerrainRequest>(options)!with{AlgorithmVersion=TerrainLimits.AlgorithmVersion};
-            var result=TerrainGenerator.Generate(request);var m=result.HeightMap;
+            var result=Historical.V13.TerrainGenerator.Generate(request);var m=result.HeightMap;
             var fields=new Dictionary<string,object>{["values"]=m.Values,["biomes"]=m.Biomes,["moisture"]=m.Moisture,["temperature"]=m.Temperature,["slope"]=m.Slope,["vegetationDensity"]=m.VegetationDensity,["surfaceWeights"]=m.SurfaceWeights,["trees"]=m.Trees,["simulation"]=result.Simulation};
             foreach(var(name,value)in fields)Assert.Equal(item.GetProperty("hashes").GetProperty(name).GetString(),Hash(value));
             var baseWeights=SurfaceCoverage.Derive(m.Values,m.Biomes,m.Moisture,m.Temperature,m.Slope,(float)request.HeightMap.HeightMultiplier);

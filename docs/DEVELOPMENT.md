@@ -73,10 +73,10 @@ The API exposes POST /api/v1/terrains and GET /api/health. Removed probe/region/
 
 Current identities:
 
-- Algorithm: diverse-landscape-v13; nested noise: value-noise-fbm-v1.
-- Result: landscape-ecology-v14.
-- Workload: landscape-ecology-hydraulic-v14.
-- Execution profile: landscape-worker-json-v14; RPC: worker-rpc-v1.
+- Algorithm: diverse-landscape-v14; nested noise: value-noise-fbm-v1.
+- Result: landscape-ecology-v15.
+- Workload: landscape-ecology-hydraulic-v15.
+- Execution profile: landscape-worker-json-v15; RPC: worker-rpc-v1.
 - Simulation: hydraulic-grid-v1.
 
 Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances, coastal distance/blending, finalized drainage, river extraction and lake selection. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
@@ -1199,3 +1199,63 @@ views and narrow layouts. Night/moon regression passes; zero-light positive colo
 delta is 997 versus 541886 in daylight, below the existing 1% criterion. PWA update/
 offline regression with `--bloom --inland` passes, including a new no-Ocean offline
 seed whose renderer executes the river shader. Temporary deployment files restore.
+
+## Hydrology Stage 5 — channel shaping and profiles
+
+See [RIVER_CHANNELS_V1.md](specs/RIVER_CHANNELS_V1.md) for frozen equations, ordering,
+protection, states, mass semantics and resource bounds. Generate now returns carved
+float32 heights and derives final climate/instances/water from them. Preliminary water
+analysis does not run ecology. Only one bounded carving pass occurs after hydraulic
+simulation; channels do not constitute another hydraulic simulation.
+
+`result.channels` is required: dense carveDepth[N], waterSurfaceHeight[K] and numeric
+enum segmentState[K] aligned with final rivers.cellIndices, plus summary and identity.
+State 0 is unsupported, 1 exposed, 2 same-lake submerged, 3 boundary. .NET enum arrays are
+JSON numeric arrays, not byte-array/base64 transport. Client normalizes to Float32Array/
+Uint8Array and includes every field/summary in equivalence. Protected Ocean boundaries
+and caps are checked; preliminary-lake protection is tested in Core without recomputing
+that analysis in TypeScript.
+
+Hydraulic finalTerrainMass refers to the end of hydraulic double computation. Channel
+beforeTerrainMass sums converted float samples; afterTerrainMass sums returned samples;
+removedTerrainMass sums double(original)-double(final). Each stage conserves separately.
+Client checks shaping reconciliation with 1e-9 relative double tolerance, float cut sums/
+conversion with 1e-6+1e-7*mass; ordinary profile comparisons retain the established tolerance.
+Do not compare hydraulic final mass directly to final mesh mass after shaping.
+
+The six full generation-v13 API fingerprints were captured before changes under
+Fixtures/landscape-v13-fingerprints.json. Tests/core/Historical/V13 preserves that exact
+pipeline and DTO; the test FrozenPreChannelPipelineMatchesCapturedApiIncludingWaterAndSimulation
+checks complete results and hydraulic summaries. Existing old relief/climate/rock
+fingerprint tests explicitly exercise the frozen pre-channel pipeline. Current-channel
+tests independently check protection, unchanged cells outside cuts, cap rounding,
+accounting, broad plains, final ecology/routing and deterministic ownership.
+
+The older tests/reference/*_preservation.py helpers intentionally remain for archived
+pre-channel deployments. They must not be retargeted to carved terrain or regenerate
+expected hashes. For current verification use the native historical fixture tests,
+new channel invariants and real WASM/API hydrology/visual scripts.
+
+The browser inland-water harness accepts fixed poses and uses the preceding ignored
+inland screenshots/cameras as paired evidence when available. Channels-after screenshots
+and channels-water-browser.json report new terrain/profile states and separate mass.
+The hydrology scenario verifies complete channel vectors, summaries and actual payload.
+The renderer consumes Exposed states rather than deriving its own river eligibility.
+Interpolated water is clipped to the carved bed; edge taper and protected-shore film
+avoid vertical sheet edges. Optical depth remains an appearance convention.
+
+Stage 5 verification: 282 Core tests, 47 API tests and 436 Angular tests pass, together
+with 13 packaging checks and worker RPC. Locked restore, zero-warning Release build
+and production publication pass. Six pre-change full API result/simulation hashes
+match the frozen V13 pipeline. Allocation bounds, changed final routing, independent
+storage, protection, mass accounting and final ecological consistency are covered.
+The existing climate allocation check now warms varying coordinates before measurement
+while retaining its original budget, avoiding cold-runtime-path noise.
+
+Real WASM/API parity passes seven cases including 512x512, all new vectors/state codes
+and shaping summary. Four visual cases retain exact pre-change camera poses where
+paired artifacts exist; rendering leaves normalized source hashes untouched. Reference,
+HDR/Bloom, confluences, no-Ocean, narrow/two-view, night/moon and maximum-work landscape
+regressions pass. Two extra water color draws/no water shadows remain. Final PWA
+update/offline checks with Bloom/inland shader probes pass for new seeds and restore
+temporary deployment files. Evidence is under ignored artifacts/channels-*.

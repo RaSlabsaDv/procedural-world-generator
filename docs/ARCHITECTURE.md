@@ -30,7 +30,7 @@ Generation preserves prior successful maps during work or errors. Display labels
 
 One primary result is visible by default; Local/Remote selection and Compare views are explicit. Comparison views can retain results from different requests, which are labelled and flagged; numerical verification is shown only for a verified identical request. Build identity remains separate from numeric agreement. Captured parameters, versions, simulation totals and startup/display details are expandable. Individual runs are not a benchmark campaign.
 
-Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v14 result semantics are specified below.
+Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v15 result semantics are specified below.
 
 Playback and brush editing are not implemented. Lighting, shadows and atmosphere are implemented as a presentation layer; bounded evolution capture remains later work.
 
@@ -38,9 +38,9 @@ Playback and brush editing are not implemented. Lighting, shadows and atmosphere
 
 The sole generation endpoint is `POST /api/v1/terrains`; `GET /api/health` reports availability. Unknown `/api` routes return 404 rather than the Angular shell. The sole WASM export is `GenerateTerrainJson`, exposed as the asynchronous `generateTerrainJson` worker proxy. See [development](DEVELOPMENT.md) for a complete request.
 
-`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v13`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
+`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v14`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
 
-The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v14`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v14`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights, rocks, hydrology, rivers and lakes. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v14`. The new result/workload identities distinguish ecology from historical v1.
+The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v15`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v15`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights, rocks, hydrology, rivers, lakes and channels. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v15`. The new result/workload identities distinguish ecology from historical v1.
 
 All wire members are required. Nullable wire records distinguish missing fields from zero. JSON is camelCase and case-sensitive; unknown members, numeric strings, comments, trailing commas, malformed JSON, and overflowing/non-finite numbers are rejected. Both hosts return the same `{ error, fields }` shape: `invalid_json` for transport failures or `validation` with field errors. Canonical numeric limits live only in Core. API failures return 400; all terrain responses use `Cache-Control: no-store`.
 
@@ -788,3 +788,38 @@ view. The same tree list feeds color LOD and shadow sources; fully submerged roc
 are removed, emergent rocks remain. Core arrays and source records stay untouched.
 Scene owns all added materials/geometry, including failed construction and disposal;
 preview retains texture ownership. No extra water shadows, dependencies or controls.
+
+## Hydrology Stage 5 — bounded Core channels
+
+[River channels v1](specs/RIVER_CHANNELS_V1.md) changes canonical terrain. The pipeline
+now composes and erodes, converts to float32, derives preliminary routing/water bodies,
+applies one bounded shaping pass, derives final routing/profiles, then derives final
+ecology/instances. Preliminary analysis uses only an Ocean/non-Ocean mask; full climate,
+coverage, vegetation and rocks run once. No unbounded carve/recompute loop exists.
+
+`ChannelCarver` protects boundary, Ocean and preliminary selected-lake cells and their
+D8 shore rings. A cap of min(1.5,.03*heightMultiplier), smooth bank falloff and maximum
+rather than summed overlap prevent deep confluence trenches. Float32 lower bounds
+round upward to respect the exact cap. `HydrologyAnalyzer` exposes its existing internal
+processing order; neither sorting indices nor recursion substitutes for graph order.
+
+Required `result.channels` contains dense actual carveDepth, waterSurfaceHeight and
+segmentState aligned with final river indices, shaping summary and river-channels-v1.
+A downstream-first final-graph solver respects bed/original-surface intervals and lake/
+Ocean pins. States are Unsupported 0, Exposed 1, Submerged 2, Boundary 3. Shared receivers
+have one height. Flat reaches are valid; large drops or insufficient allowance remain
+unsupported. All final drainage/ecology describes the returned carved heights.
+
+Hydraulic summary finalTerrainMass remains the post-erosion double mass. Channel summary
+sums float32 terrain before/after shaping and its separate removal. Do not count shaping
+removal as suspended hydraulic sediment; float32 conversion is a separate rounding step.
+Both hosts time the same complete pipeline. Current generation is v14 and result/workload/
+profile v15; primitive algorithms keep their existing identities. Old measurements do
+not represent equivalent work and are never relabeled.
+
+Strict decoding verifies caps, Ocean/boundary protection, alignment, states, mass and
+profile constraints without carving or solving again. Renderer consumes Core support/
+heights, interpolates into its existing union mesh and clips banks against carved bed.
+A bounded edge/shore taper meets the bed without hanging ribbon edges; centerline
+profiles stay authoritative. Existing water ownership, clock, vegetation filtering,
+lighting, fog and finishing remain. No new controls, dependencies or waterfalls.

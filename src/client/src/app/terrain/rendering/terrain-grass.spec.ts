@@ -1,3 +1,4 @@
+import { testEmptyChannels } from '../testing/terrain-test-fixture';
 import { testEmptyLakes } from '../testing/terrain-test-fixture';
 import { testEmptyRivers } from '../testing/terrain-test-fixture';
 import { testHydrology } from '../testing/terrain-test-fixture';
@@ -20,6 +21,7 @@ function map(width = 33, height = 25): TerrainResponse['result'] {
   for (let i = 0; i < n; i++) weights[i * 5] = 1;
   return {
     ...testWire().result,
+    channels: testEmptyChannels(new Float32Array(n)),
     lakes: testEmptyLakes(n),
     rivers: testEmptyRivers(),
     hydrology: testHydrology({

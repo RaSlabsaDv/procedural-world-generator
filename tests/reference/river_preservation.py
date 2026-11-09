@@ -1,6 +1,8 @@
 """Check all pre-river fields including hydrology against captured v11 API output, not new output.
 
-Run against a matching current deployment: PWG_BASE_URL=... python3 .../this.py.
+Historical helper: run against a frozen pre-channel generation-v13 deployment.
+Current generation-v14 terrain is intentionally different; use the native frozen
+V13 pipeline test for archived fingerprints. Command: PWG_BASE_URL=... python3 .../this.py.
 Canonical JSON hashing uses sorted keys, compact separators and Python's numeric
 formatting on parsed wire numbers. Timing, build identity and changed version tags
 are deliberately outside the fingerprint; every old result field and summary is in.

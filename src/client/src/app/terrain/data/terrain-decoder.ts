@@ -1,3 +1,4 @@
+import { decodeChannels } from './channel-decoder';
 import { decodeLakes } from './lake-decoder';
 import { decodeRivers } from './river-decoder';
 import { decodeHydrology } from './hydrology-decoder';
@@ -255,6 +256,15 @@ export function decodeTerrain(
     fail,
   );
   const rivers = decodeRivers(result['rivers'], biomeIds, hydrology, fail);
+  const lakes = decodeLakes(
+    result['lakes'],
+    normalized,
+    biomeIds,
+    hydrology,
+    rivers,
+    request,
+    fail,
+  );
   return {
     result: {
       width: request.width,
@@ -270,7 +280,19 @@ export function decodeTerrain(
       rocks,
       hydrology,
       rivers,
-      lakes: decodeLakes(result['lakes'], normalized, biomeIds, hydrology, rivers, request, fail),
+      lakes,
+      channels: decodeChannels(
+        result['channels'],
+        normalized,
+        biomeIds,
+        hydrology,
+        rivers,
+        lakes,
+        request,
+        terrain.seaLevel,
+        simulation,
+        fail,
+      ),
       resultVersion: RESULT_VERSION,
       algorithmVersion: terrain.algorithmVersion,
     },

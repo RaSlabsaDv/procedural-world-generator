@@ -1,3 +1,4 @@
+import { finalizeTestWire } from '../testing/terrain-test-fixture';
 import { decodeRivers } from './river-decoder';
 import { decodeTerrain } from './terrain-decoder';
 import { compareTerrains } from './terrain-comparison';
@@ -22,6 +23,7 @@ function fixture() {
     cellIndices: [34, 35],
     widths: [0.6038762, 0.6],
   };
+  finalizeTestWire(wire);
   return { terrain, wire };
 }
 function run() {

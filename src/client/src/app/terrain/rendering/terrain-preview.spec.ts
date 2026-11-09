@@ -1,3 +1,4 @@
+import { testEmptyChannels } from '../testing/terrain-test-fixture';
 import { OceanAnimationService } from './ocean-animation.service';
 import { testEmptyLakes } from '../testing/terrain-test-fixture';
 import { testEmptyRivers } from '../testing/terrain-test-fixture';
@@ -69,6 +70,7 @@ function run(): TerrainRun {
         width: 2,
         height: 2,
         values: new Float32Array([0, 10, 20, 30]),
+        channels: testEmptyChannels(new Float32Array([0, 10, 20, 30])),
         lakes: testEmptyLakes(4),
         rivers: testEmptyRivers(),
         hydrology: testHydrology({
@@ -79,7 +81,7 @@ function run(): TerrainRun {
         }),
         biomes: new Uint8Array([0, 1, 2, 3]),
         surfaceWeights: Float32Array.from(testSurfaceWeights([0, 1, 2, 3])),
-        resultVersion: 'landscape-ecology-v14',
+        resultVersion: 'landscape-ecology-v15',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },
@@ -761,6 +763,7 @@ describe('terrain preview lifecycle', () => {
     TestBed.overrideProvider(OCEAN_NORMAL_FACTORY, { useValue: factory });
     const value = run();
     value.response.result.biomes.fill(1);
+    value.response.result.values.set([0, 0.2, 0.4, 0.6]);
     value.response.result.hydrology.receiverIndex[3] = 1;
     const input = {
       ...value,
@@ -768,10 +771,15 @@ describe('terrain preview lifecycle', () => {
         ...value.response,
         result: {
           ...value.response.result,
+          channels: {
+            ...value.response.result.channels,
+            waterSurfaceHeight: new Float32Array([0.2, 0.6]),
+            segmentState: new Uint8Array([3, 1]),
+          },
           rivers: {
             ...value.response.result.rivers,
-            cellIndices: new Int32Array([3]),
-            widths: new Float32Array([1]),
+            cellIndices: new Int32Array([1, 3]),
+            widths: new Float32Array([1, 1]),
           },
         },
       },

@@ -44,6 +44,10 @@ const { artifactPath } = require("./support/editor.cjs");
       window.inland = await import("/__inland_test__.js");
     });
     const rows = [];
+    const baseline = await fs
+      .readFile(artifactPath("channels-before-browser.json"), "utf8")
+      .then(JSON.parse)
+      .catch(() => []);
     for (const item of [
       { name: "mixed", fields: { seed: 42 } },
       { name: "no-ocean", fields: { seed: -7, seaLevel: 0 } },
@@ -72,6 +76,10 @@ const { artifactPath } = require("./support/editor.cjs");
           localHash: window.data.localHash,
           lakes: window.data.result.lakes.basins.length,
           before: await window.view.digest(),
+          channelSummary: window.data.result.channels.summary,
+          channelStates: Array.from(
+            window.data.result.channels.segmentState,
+          ).reduce((a, s) => ((a[s] = (a[s] ?? 0) + 1), a), {}),
         };
       }, item.fields);
       assert.equal(data.hash, data.localHash);
@@ -79,22 +87,34 @@ const { artifactPath } = require("./support/editor.cjs");
       for (const focus of item.name === "maximum"
         ? ["map", "lake"]
         : ["map", "lake", "river", "confluence"]) {
-        const result = await page.evaluate((focus) => {
+        let result = await page.evaluate((focus) => {
           window.view.focus(focus);
           return window.view.draw();
         }, focus);
+        const prior = baseline
+          .find((r) => r.name === item.name)
+          ?.views.find((v) => v.focus === focus);
+        if (prior) {
+          result=await page.evaluate((prior) => {
+            window.view.pose(prior.camera, prior.target);
+            return window.view.draw();
+          }, prior);
+        }
         const visiblePixels =
           focus === "lake" || focus === "river"
             ? await page.evaluate((kind) => window.view.measure(kind), focus)
             : undefined;
-        row.views.push({ focus, ...result, visiblePixels });
+        row.views.push({
+          focus,
+          ...result,
+          visiblePixels,
+          pairedCamera: !!prior,
+        });
         assert.ok(result.waterCalls <= 2);
         assert.equal(result.waterShadowCasters, 0);
-        await page
-          .locator("#view")
-          .screenshot({
-            path: artifactPath(`inland-${item.name}-${focus}.png`),
-          });
+        await page.locator("#view").screenshot({
+          path: artifactPath(`channels-after-${item.name}-${focus}.png`),
+        });
       }
       if (item.name === "mixed") {
         for (const options of [
@@ -103,13 +123,11 @@ const { artifactPath } = require("./support/editor.cjs");
           { hour: 12, bloom: true },
         ]) {
           await page.evaluate((o) => window.view.draw(o), options);
-          await page
-            .locator("#view")
-            .screenshot({
-              path: artifactPath(
-                `inland-${item.name}-${options.hour === 0 ? "night" : (options.mode ?? "bloom")}.png`,
-              ),
-            });
+          await page.locator("#view").screenshot({
+            path: artifactPath(
+              `inland-${item.name}-${options.hour === 0 ? "night" : (options.mode ?? "bloom")}.png`,
+            ),
+          });
         }
         const off = await page.evaluate(() =>
           window.view.draw({ visible: false, mode: "reference" }),
@@ -164,7 +182,7 @@ const { artifactPath } = require("./support/editor.cjs");
     );
     assert.deepEqual(errors, []);
     await fs.writeFile(
-      artifactPath("inland-water-browser.json"),
+      artifactPath("channels-water-browser.json"),
       JSON.stringify(rows, null, 2),
     );
     console.log(JSON.stringify(rows));

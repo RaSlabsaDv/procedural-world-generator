@@ -51,7 +51,7 @@ const { artifactPath } = require("./support/editor.cjs");
           globalWarmth: 0.6,
           vegetationDensity: 1,
           landformRegionScale: 1,
-          algorithmVersion: "diverse-landscape-v13",
+          algorithmVersion: "diverse-landscape-v14",
         };
         const text = await runtime.generateTerrainJson(JSON.stringify(request));
         const local = JSON.parse(text);
@@ -64,7 +64,7 @@ const { artifactPath } = require("./support/editor.cjs");
         const remote = await response.json();
         if (
           local.coreBuildId !== remote.coreBuildId ||
-          local.workload !== "landscape-ecology-hydraulic-v14"
+          local.workload !== "landscape-ecology-hydraulic-v15"
         )
           throw Error("Identity");
         const n = width * height,
@@ -305,6 +305,62 @@ const { artifactPath } = require("./support/editor.cjs");
           )
             throw Error("Lake level parity");
         }
+        const channels = local.result.channels,
+          remoteChannels = remote.result.channels;
+        if (
+          channels.algorithmVersion !== "river-channels-v1" ||
+          remoteChannels.algorithmVersion !== channels.algorithmVersion
+        )
+          throw Error("Channel identity");
+        for (const field of [
+          "carveDepth",
+          "waterSurfaceHeight",
+          "segmentState",
+        ]) {
+          if (
+            !Array.isArray(channels[field]) ||
+            channels[field].length !==
+              (field === "carveDepth" ? n : rivers.cellIndices.length) ||
+            channels[field].length !== remoteChannels[field].length
+          )
+            throw Error("Channel shape");
+          for (let i = 0; i < channels[field].length; i++)
+            if (
+              !Number.isFinite(channels[field][i]) ||
+              channels[field][i] !== remoteChannels[field][i]
+            )
+              throw Error("Channel parity");
+        }
+        let finalMass = 0,
+          removedMass = 0;
+        const cap = Math.min(1.5, 0.03 * heightMultiplier),
+          states = [0, 0, 0, 0];
+        for (let i = 0; i < n; i++) {
+          finalMass += Math.fround(local.result.values[i]);
+          removedMass += Math.fround(channels.carveDepth[i]);
+          if (channels.carveDepth[i] < 0 || channels.carveDepth[i] > cap + 1e-6)
+            throw Error("Channel cap");
+        }
+        for (const state of channels.segmentState) {
+          if (!Number.isInteger(state) || state < 0 || state > 3)
+            throw Error("Channel state");
+          states[state]++;
+        }
+        const summary = channels.summary;
+        if (
+          JSON.stringify(summary) !== JSON.stringify(remoteChannels.summary) ||
+          Math.abs(summary.afterTerrainMass - finalMass) >
+            1e-9 * Math.max(1, finalMass) ||
+          Math.abs(
+            summary.beforeTerrainMass -
+              summary.afterTerrainMass -
+              summary.removedTerrainMass,
+          ) >
+            1e-9 * Math.max(1, finalMass) ||
+          Math.abs(summary.removedTerrainMass - removedMass) >
+            1e-6 + 1e-7 * removedMass
+        )
+          throw Error("Channel accounting/parity");
         rows.push({
           width,
           height,
@@ -313,6 +369,11 @@ const { artifactPath } = require("./support/editor.cjs");
           terminalMass: mass,
           maxDepth,
           typedBytes: n * 12,
+          channelStates: states,
+          channelRemovedMass: summary.removedTerrainMass,
+          channelTypedBytes: n * 4 + rivers.cellIndices.length * 5,
+          channelJsonBytes: new TextEncoder().encode(JSON.stringify(channels))
+            .length,
           lakeCount: lakes.basins.length,
           lakeArea,
           lakeNumericBytes:

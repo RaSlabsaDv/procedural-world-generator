@@ -1,3 +1,4 @@
+import { finalizeTestWire } from '../testing/terrain-test-fixture';
 import { testWireHydrology } from '../testing/terrain-test-fixture';
 import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { compareTerrains, decodeTerrain } from './terrain.contract';
@@ -21,6 +22,7 @@ function wire() {
   value.result.biomes = [0, 0, 1, 2, 2, 3];
   value.result.surfaceWeights = testSurfaceWeights(value.result.biomes);
   value.result.hydrology = testWireHydrology(value.result);
+  finalizeTestWire(value);
   return value;
 }
 
@@ -88,6 +90,7 @@ describe('heightmap contract', () => {
   it('uses float32 semantics at a rounded height bound', () => {
     const value = wire();
     value.result.values = Array(6).fill(0.7);
+    finalizeTestWire(value);
     expect(
       decodeTerrain(
         { ...value, parameters: testTerrain({ ...request, heightMultiplier: 0.7 }) },

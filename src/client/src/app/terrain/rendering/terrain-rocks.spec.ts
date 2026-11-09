@@ -1,3 +1,4 @@
+import { finalizeTestWire } from '../testing/terrain-test-fixture';
 import { testWireHydrology } from '../testing/terrain-test-fixture';
 import { Matrix4, Scene, Mesh, BoxGeometry, MeshLambertMaterial, Raycaster, Vector3 } from 'three';
 import { decodeTerrain, compareTerrains } from '../data/terrain.contract';
@@ -19,6 +20,7 @@ function fixture() {
   wire.result.biomes.fill(1);
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
   wire.result.hydrology = testWireHydrology(wire.result);
+  finalizeTestWire(wire);
   const rock: RockInstance = {
     cellIndex: 0,
     x: 0.5,
@@ -71,12 +73,14 @@ it('requires rocks, exact members, valid finite transforms, support, IDs and bud
   wire.result.biomes[1] = 0;
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
   wire.result.hydrology = testWireHydrology(wire.result);
+  finalizeTestWire(wire);
   expect(() => decodeTerrain(wire, request, terrain)).toThrow();
 });
 
 it('normalizes independent immutable records and permits embedded origins below dry zero ground', () => {
   const { request, terrain, wire } = fixture();
   wire.result.values.fill(0);
+  finalizeTestWire(wire);
   wire.result.rocks[0] = { ...wire.result.rocks[0], y: Math.fround(-0.048), groundY: 0 };
   const result = decodeTerrain(wire, request, terrain).result;
   expect(Object.isFrozen(result.rocks)).toBe(true);
@@ -200,6 +204,7 @@ it('checks multi-cell footprints including interior peaks and distant Ocean corn
   wire.result.biomes.fill(1);
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
   wire.result.hydrology = testWireHydrology(wire.result);
+  finalizeTestWire(wire);
   const rock: RockInstance = {
     cellIndex: 24,
     x: 3.5,
@@ -222,10 +227,12 @@ it('checks multi-cell footprints including interior peaks and distant Ocean corn
   wire.result.biomes[2 * 7 + 2] = 0;
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
   wire.result.hydrology = testWireHydrology(wire.result);
+  finalizeTestWire(wire);
   expect(() => decodeTerrain(wire, request, terrain)).toThrow();
   wire.result.biomes.fill(1);
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
   wire.result.hydrology = testWireHydrology(wire.result);
+  finalizeTestWire(wire);
   wire.result.rocks = [{ ...rock, kind: 2 }];
   expect(() => decodeTerrain(wire, request, terrain)).toThrow();
   const scree: RockInstance = {
