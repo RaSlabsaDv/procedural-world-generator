@@ -1,5 +1,7 @@
+import { foliageColor } from './foliage-color';
 import { TREE_CROWN_COLORS } from '../data/biome-presentation';
 import {
+  Color,
   ConeGeometry,
   CylinderGeometry,
   IcosahedronGeometry,
@@ -77,7 +79,7 @@ const APPEARANCE = {
 } as const;
 
 /** Core owns categories, variants, suitability and transforms. All returned instances are rendered. */
-export function terrainForest(result: TerrainResponse['result']) {
+export function terrainForest(result: TerrainResponse['result'], seed: number) {
   if (result.trees.length > MAX_TREES) throw new Error('Tree instance budget exceeded.');
   if (
     result.trees.some(
@@ -134,10 +136,13 @@ export function terrainForest(result: TerrainResponse['result']) {
         );
         const crowns = new InstancedMesh(
           crownGeometry,
-          new MeshLambertMaterial({ color: appearance.color }),
+          new MeshLambertMaterial({ color: 0xffffff }),
           trees.length,
         );
         groups.push({ kind, variant, trunks, crowns });
+        crowns.name = 'foliage-variation-v1';
+        const base = new Color(appearance.color),
+          tint = new Color();
         const pose = new Object3D();
         trees.forEach((tree, index) => {
           pose.position.set(
@@ -150,9 +155,11 @@ export function terrainForest(result: TerrainResponse['result']) {
           pose.updateMatrix();
           trunks.setMatrixAt(index, pose.matrix);
           crowns.setMatrixAt(index, pose.matrix);
+          crowns.setColorAt(index, foliageColor(seed, tree, base, tint));
         });
         trunks.instanceMatrix.needsUpdate = true;
         crowns.instanceMatrix.needsUpdate = true;
+        crowns.instanceColor!.needsUpdate = true;
         trunks.computeBoundingSphere();
         crowns.computeBoundingSphere();
       }

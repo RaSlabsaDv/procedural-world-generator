@@ -781,3 +781,43 @@ the existing 41-entry catalog includes the updated lazy JS. README stays empty.
 Grass PWA regression passes: cached reload/new tabs and new seeds, Remote recovery,
 deferred update while busy and updated-version offline 3D terrain. Generated
 deployment assets were restored after the update simulation.
+
+## Individual tree foliage colors
+
+Crown brightness/warmth/saturation now vary subtly by seed and stable Core cellIndex,
+kind and variant. Broadleaf, conifer and savanna retain their existing paired base
+palettes; trunks and transforms stay unchanged. The policy and hash reference are
+in [Foliage variation v1](specs/FOLIAGE_VARIATION_V1.md). No control is needed: generate
+terrain and zoom into a forest. Sun/time/atmosphere edits reuse the color buffers.
+
+Use the shared PWG_BASE_URL/PWG_PLAYWRIGHT_MODULE/PWG_BROWSER_EXECUTABLE overrides:
+
+- `node tests/browser/atlas-materials.cjs --foliage --before` against the prior publication.
+- `node tests/browser/atlas-materials.cjs --foliage` against the new publication.
+- `node tests/browser/foliage.cjs` for actual GPU colors/resources and Local/Remote parity.
+
+Six paired scenes cover broadleaf, conifer, savanna, mixed, sparse and maximum-cap
+forests at overview/close/grazing. Requests, actual camera matrices and full Core
+result/simulation hashes must remain exact; PNGs intentionally change. GPU checks
+read real instanceColor buffers, white material diffuse, bounds, occupied attribute
+locations, cleanup after replacement, stable buffers through noon/low/night and
+atmosphere-off, both views, narrow layout and offline new seeds. Raw evidence uses
+ignored `artifacts/foliage-*`. Browser software WebGL checks are correctness evidence.
+
+Maximum added color storage is 192 KiB/view (384 KiB for comparison). Up to six
+occupied crown groups still share twelve tree meshes; draw/caster ceilings stay
+22/19 for the whole scene. No new dependency or asset: offline catalog remains
+41 required assets. Native code is unchanged. Tree LOD remains a separate task.
+
+Verification: 376 Angular tests, 12 packaging/asset checks and worker RPC pass;
+production publication succeeds. All 18 paired camera/full Core hashes are exact.
+Actual GPU crown programs occupy seven attribute locations within the observed
+16-location limit, with six live color buffers for six occupied groups. Local/Remote
+GPU hashes match, maximum color storage is exactly 196608 bytes/view and replaced
+buffers are released. Sun, night/foam/moon and materials regressions pass. Native
+suites were not rerun because native sources did not change; no performance campaign
+was run. Known limits remain low-poly silhouettes and global shadow resolution.
+
+Final PWA regression passes: offline reload/new tabs/new seeds, Remote failure and
+online recovery, deferred update under a busy operation and updated-version offline
+3D terrain. Deployment files were restored after the update simulation.

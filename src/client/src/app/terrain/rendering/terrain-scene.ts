@@ -61,7 +61,7 @@ export function terrainScene(
       terrainSurfaceMaterial(textures, result.width, result.height, microNormals),
     );
     scene.add(terrain);
-    forest = terrainForest(result);
+    forest = terrainForest(result, request.seed);
     for (const group of forest.groups) scene.add(group.trunks, group.crowns);
     rocks = terrainRocks(result);
     for (const rock of rocks.meshes) scene.add(rock);

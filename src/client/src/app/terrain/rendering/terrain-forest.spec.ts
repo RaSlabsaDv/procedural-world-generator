@@ -122,10 +122,13 @@ describe('landscape forest contract and instancing', () => {
       },
     };
     expect(compareTerrains(a, b).vegetationMismatchCount).toBe(1);
-    const forest = terrainForest({
-      ...a.response.result,
-      trees: [a.response.result.trees[0], b.response.result.trees[0]],
-    });
+    const forest = terrainForest(
+      {
+        ...a.response.result,
+        trees: [a.response.result.trees[0], b.response.result.trees[0]],
+      },
+      request.seed,
+    );
     for (const group of forest.groups) group.crowns.geometry.computeBoundingBox();
     expect(forest.groups[0].crowns.geometry.boundingBox!.max.y).toBeLessThan(
       forest.groups[1].crowns.geometry.boundingBox!.max.y,
@@ -158,16 +161,19 @@ describe('landscape forest contract and instancing', () => {
   it('renders all categories/variants with at most twelve meshes and disposes every group', () => {
     const { request, terrain, wire } = fixture();
     const map = decodeTerrain(wire, request, terrain).result;
-    const forest = terrainForest({
-      ...map,
-      trees: [0, 1, 2].flatMap((kind) =>
-        [0, 1].map((variant) => ({
-          ...map.trees[0],
-          kind: kind as TreeKindId,
-          variant: variant as TreeVariantId,
-        })),
-      ),
-    });
+    const forest = terrainForest(
+      {
+        ...map,
+        trees: [0, 1, 2].flatMap((kind) =>
+          [0, 1].map((variant) => ({
+            ...map.trees[0],
+            kind: kind as TreeKindId,
+            variant: variant as TreeVariantId,
+          })),
+        ),
+      },
+      request.seed,
+    );
     expect(forest.groups.map((group) => group.kind)).toEqual([0, 0, 1, 1, 2, 2]);
     const spies = forest.groups.flatMap(({ trunks, crowns }) =>
       [trunks, crowns].flatMap((mesh) => [
@@ -182,7 +188,7 @@ describe('landscape forest contract and instancing', () => {
     forest.dispose();
     forest.dispose();
     for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
-    expect(terrainForest({ ...map, trees: [] }).groups).toEqual([]);
+    expect(terrainForest({ ...map, trees: [] }, request.seed).groups).toEqual([]);
   });
 
   it('compares environmental and tree differences independently of height agreement', () => {
@@ -219,7 +225,7 @@ describe('landscape forest contract and instancing', () => {
   it('creates two shared instanced meshes rooted at the Core terrain surface', () => {
     const { request, terrain, wire } = fixture();
     const response = decodeTerrain(wire, request, terrain);
-    const forest = terrainForest(response.result);
+    const forest = terrainForest(response.result, request.seed);
     const matrix = new Matrix4();
     forest.groups[0].trunks.getMatrixAt(0, matrix);
     expect(forest.groups[0].trunks.count).toBe(1);
@@ -231,10 +237,13 @@ describe('landscape forest contract and instancing', () => {
     expect(geometry).toHaveBeenCalledTimes(1);
     expect(material).toHaveBeenCalledTimes(1);
     expect(() =>
-      terrainForest({
-        ...response.result,
-        trees: Array(MAX_TREES + 1).fill(response.result.trees[0]),
-      }),
+      terrainForest(
+        {
+          ...response.result,
+          trees: Array(MAX_TREES + 1).fill(response.result.trees[0]),
+        },
+        request.seed,
+      ),
     ).toThrow(/budget/);
   });
 });

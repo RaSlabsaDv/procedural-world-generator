@@ -14,6 +14,7 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
+const foliageStudy = process.argv.includes("--foliage");
 const grassStudy = process.argv.includes("--grass");
 const microStudy = process.argv.includes("--micro") || grassStudy;
 const sunStudy = process.argv.includes("--sun");
@@ -24,7 +25,7 @@ const environmentStudy = process.argv.includes("--environment");
 const rockStudy = process.argv.includes("--rocks");
 const climateStudy = process.argv.includes("--climate");
 const biomeStudy = process.argv.includes("--biomes") || climateStudy;
-const study = grassStudy
+const defaultStudy = grassStudy
   ? "grass-presentation"
   : microStudy
     ? "terrain-microdetail"
@@ -45,6 +46,30 @@ const study = grassStudy
                 : biomeStudy
                   ? "biome-readability"
                   : "atlas-materials";
+const study = foliageStudy ? "foliage-variation" : defaultStudy;
+const foliageCases = [
+  ["broadleaf", { seed: 42, globalMoisture: 1 }],
+  ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
+  [
+    "savanna",
+    { seed: -7, globalWarmth: 0.9, globalMoisture: 0.45, seaLevel: 0.23 },
+  ],
+  ["mixed", { seed: 42, globalWarmth: 0.7 }],
+  ["sparse", { seed: 42, vegetationDensity: 0.1 }],
+  [
+    "maximum",
+    {
+      width: 512,
+      height: 512,
+      iterations: 0,
+      heightMultiplier: 60,
+      plainsCoverage: 1,
+      mountainCoverage: 0,
+      globalMoisture: 1,
+      seaLevel: 0,
+    },
+  ],
+];
 const cases = microStudy
   ? [
       [
@@ -208,7 +233,7 @@ const cases = microStudy
       viewport: { width: 1600, height: 1050 },
       deviceScaleFactor: 1,
       reducedMotion:
-        waterStudy || atmosphereStudy || sunStudy || microStudy
+        waterStudy || atmosphereStudy || sunStudy || microStudy || foliageStudy
           ? "reduce"
           : "no-preference",
     });
@@ -223,7 +248,7 @@ const cases = microStudy
     }
     const captures = [],
       diagnostics = [];
-    for (const [label, values] of cases) {
+    for (const [label, values] of foliageStudy ? foliageCases : cases) {
       await page.locator("#reset-parameters").click();
       await fillParameters(page, {
         width: 129,
@@ -261,7 +286,8 @@ const cases = microStudy
       };
       await page
         .locator(
-          (climateStudy ||
+          (foliageStudy ||
+            climateStudy ||
             rockStudy ||
             waterStudy ||
             atmosphereStudy ||
@@ -273,7 +299,8 @@ const cases = microStudy
         .click();
       await waitForTerrain(page);
       if (
-        (climateStudy ||
+        (foliageStudy ||
+          climateStudy ||
           rockStudy ||
           waterStudy ||
           atmosphereStudy ||
@@ -291,7 +318,7 @@ const cases = microStudy
         ["overview", 0],
         [
           "close",
-          microStudy
+          microStudy || foliageStudy
             ? label === "maximum"
               ? -6000
               : label === "rock"
@@ -299,14 +326,14 @@ const cases = microStudy
                 : -4400
             : -650,
         ],
-        ["detail", microStudy ? 0 : -700],
+        ["detail", microStudy || foliageStudy ? 0 : -700],
       ]) {
         if (wheel) {
           const box = await canvas.boundingBox();
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.mouse.wheel(0, wheel);
         }
-        if (microStudy && view === "detail") {
+        if ((microStudy || foliageStudy) && view === "detail") {
           const box = await canvas.boundingBox();
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.mouse.down();

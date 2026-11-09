@@ -313,6 +313,42 @@ describe('terrain preview lifecycle', () => {
     expect(state.render).toHaveBeenCalled();
   });
 
+  it('defers foliage color allocation under the operation lock and reuses it on light edits', async () => {
+    const color = vi.spyOn(InstancedMesh.prototype, 'setColorAt');
+    const fixture = TestBed.createComponent(TerrainPreview);
+    const value = run();
+    fixture.componentRef.setInput('run', {
+      ...value,
+      response: {
+        ...value.response,
+        result: {
+          ...value.response.result,
+          trees: [
+            { kind: 0, variant: 0, cellIndex: 0, x: 0.25, y: 1, z: 0.25, scale: 1, rotation: 0 },
+          ],
+        },
+      },
+    });
+    const release = TestBed.inject(OperationLock).tryAcquire()!;
+    try {
+      await settlePreview(fixture);
+      expect(color).not.toHaveBeenCalled();
+      release();
+      await settlePreview(fixture);
+      const calls = color.mock.calls.length;
+      expect(calls).toBeGreaterThan(0);
+      TestBed.inject(SceneEnvironmentService).set({
+        ...DEFAULT_ENVIRONMENT_SETTINGS,
+        timeOfDayHours: 7,
+      });
+      await settlePreview(fixture);
+      expect(color).toHaveBeenCalledTimes(calls);
+    } finally {
+      release();
+      color.mockRestore();
+    }
+  });
+
   it('defers scene preparation while paused and excludes texture/pause wait from CPU timing', async () => {
     let clock = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => clock);

@@ -416,3 +416,15 @@ visual buffers. Distance cutout does not remove vertex processing and is not a
 measured LOD speedup. The 32768 cap and world-distance fade affect visible cover on
 large maps; record them alongside application revision. Software WebGL instance/
 buffer/pixel assertions establish correctness, not a controlled performance finding.
+
+## Foliage color presentation
+
+Foliage-variation-v1 computes seeded per-tree tints and fills/uploads RGB float32
+instance attributes during display setup. This is excluded from computeMs/requestMs;
+first render submission does not imply GPU completion. No Core input, algorithm,
+workload/profile or comparison tolerance changes. Both views receive identical
+colors for identical captured seed and Core tree identity. Freeze application
+revision together with camera/lighting/atmosphere/wave phase for image comparisons.
+The additional 12 bytes/tree and one crown attribute location are resource bounds,
+not measured performance gains. Tree counts, draw calls and caster counts are
+unchanged; no LOD or frame-rate improvement is claimed.

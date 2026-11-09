@@ -540,3 +540,22 @@ Raw typed storage about3.22MiB; CPU preparation budget 8 MiB excludes engine int
 GPU occupied attribute locations8 (nine-slot index span observed), below minimum16.
 Existing41-asset PWA catalog remains complete with changed JS. Thin distant trunks,
 low-poly terrain and dither/rigid-grass limitations remain separately scoped.
+
+## Individual foliage colors
+
+[Foliage variation v1](specs/FOLIAGE_VARIATION_V1.md) adds restrained per-tree
+brightness, warmth and saturation to the existing species/variant crown palette.
+`terrainForest(result, seed)` uses Core cellIndex/kind/variant and the captured
+request seed, independent of array ordering, camera and time. It changes presentation
+only; ecological classification, placement and all Core records remain authoritative.
+
+Palette integers enter linear working space once per occupied group. Absolute linear
+RGB goes into crown instanceColor with a white Lambert material, so the palette is
+applied exactly once. Trunks retain their material and have no instanceColor. Each
+view owns its buffers; ordinary InstancedMesh disposal and setup rollback release
+them. Geometry, grouping, matrices, shadow participation and material/draw counts
+remain unchanged. Each crown program adds one occupied attribute location; storage
+is 12 bytes/tree, at most 196608 bytes/view or 393216 bytes for comparison views.
+Preparation/upload are display work outside computeMs/requestMs and retain the
+existing OperationLock setup boundary. No new texture, dependency, UI or animation.
+Tree LOD remains a separate next stage.

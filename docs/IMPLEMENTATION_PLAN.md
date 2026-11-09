@@ -1045,3 +1045,33 @@ stay separate. README remains empty. Raw evidence is under ignored artifacts/gra
 Grass PWA regression passes: cached reload/new tabs and new seeds, Remote recovery,
 deferred update while busy and updated-version offline 3D terrain. Generated
 deployment assets were restored after the update simulation.
+
+### Visual Stage 5B — individual tree foliage colors (complete)
+
+Implemented [Foliage variation v1](specs/FOLIAGE_VARIATION_V1.md): subtle independent
+brightness/warmth/saturation streams keyed by captured seed and Core cellIndex,
+kind and variant. Retained trees keep colors under reorder/insertion/removal.
+Existing paired species palettes convert to linear RGB once; white crown Lambert
+materials apply absolute per-instance colors once. Trunks, matrices, geometry,
+grouping, draw/caster counts, ecological records and workload identities are unchanged.
+
+One RGB float32 buffer per occupied crown group costs at most 196608 bytes/view,
+393216 for both views, and one additional occupied crown attribute location. Scratch
+colors are reused and buffers have independent view ownership with rollback/disposal.
+Setup remains display work outside computeMs/requestMs, deferred under OperationLock.
+No asset, dependency, UI, wind, species or seasonal logic was added.
+
+Next visual substep: tree LOD, with its own fixed policy, bounded resources and
+before/after verification. Timing diagnostics/progress/cancellation remain separate.
+README remains empty.
+
+Verification: 376 Angular tests, 12 packaging/asset checks, worker RPC and production
+publication pass. Eighteen paired views preserve full Core hashes and camera matrices.
+Real GPU checks confirm exact Local/Remote color hashes, seven occupied crown
+attribute locations within sixteen, 196608 bytes at the tree cap, disposal on
+replacement, unchanged light-edit buffers, narrow layout and offline new seeds.
+Materials/Sun/night regressions pass. Native sources remain unchanged; no native
+suite rerun or controlled performance campaign was needed for this presentation step.
+
+Final PWA regression also passes, including busy-update deferral, offline new tabs/
+seeds and updated-version offline terrain. Simulated deployment changes were restored.
