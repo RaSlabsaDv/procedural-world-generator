@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v12`, algorithm `diverse-landscape-v11`, result `landscape-ecology-v12`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v12`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v13`, algorithm `diverse-landscape-v12`, result `landscape-ecology-v13`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v13`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -50,11 +50,11 @@ Flag a negative residual as a precision or instrumentation issue and preserve th
 Before the campaign, run fixtures and verify the contract in both environments. For each measured pair, compare results after both timed operations have finished:
 
 1. Identical parameters, `algorithmVersion`, `coreBuildId`, `workload`, `width`, and `height`.
-2. Each array has exactly `width * height` elements; all values are finite.
+2. Dense cell fields contain `width * height` elements; surfaceWeights contains five values per cell. Sparse tree/rock/river arrays obey their documented budgets and matching vector lengths. All numeric values are finite.
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Preserve the execution profile and never pool v1/v2/v3/v4/v5/v6/v7/v8/v9/v10/v11 timings.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Compare every hydrology receiver and accumulation exactly, depression depths with the same tolerance, river indices exactly and river widths with the same tolerance; sparse network lengths must match. Preserve the execution profile and never pool timings from different workload/profile versions, including v12 and v13.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -520,3 +520,31 @@ for 3575388 bytes including its field names. This is an observed payload, not a
 worst-case JSON bound or a throughput measurement. Serialization/transfer/decoding
 stay outside `computeMs`, with no new per-stage timing claim. Keep previous v11
 measurements separate; rerun matching v12 builds for controlled experiments.
+
+## River-network workload v13
+
+Generation identity `diverse-landscape-v12` adds `river-network-v1` extraction to
+whole-call Core computeMs; result/workload/profile advance to v13. Existing drainage
+remains `d8-priority-flood-v1`. Keep v12 records separate from v13 and freeze matching
+builds and requests before measurement. No old record is relabeled or migrated.
+
+River indices/identity compare exactly, widths use the established float tolerance,
+and differing lengths fail numeric equivalence. Current comparison diagnostics add
+`riverMismatchCount` to the existing export container; outer schema and historical
+records remain unchanged. Do not interpret this additive diagnostic as permission
+to compare different workloads. Sparse vectors have K elements rather than width*
+height; the latter length rule continues to apply only to dense cell fields.
+
+Extraction costs O(N) time, 8K retained numeric bytes and no scratch arrays (K <= N).
+The conservative output bound is 2 MiB at 512x512, excluding array/record headers,
+existing terrain/drainage and JSON/parser storage. Client normalization retains 8K
+bytes without creating another connectivity graph. Widths use grid-cell units, not
+meters or flow rate. Serialization, transfer, decoding/comparison and rendering stay
+outside computeMs; no per-stage timing or performance improvement is claimed.
+
+In the real browser smoke fixture (seed -7, 512x512, zero erosion iterations, no
+Ocean, height 80), the network contained 6977 cells with 55816 retained numeric bytes.
+Its reserialized nested JSON object used 115228 UTF-8 bytes; the complete Local
+response used 22057761 bytes. These observations are fixture-specific, not bounds
+or performance measurements. 5241 selected cells crossed potential analysis fill;
+they must not be rendered as exposed water before basin semantics are defined.

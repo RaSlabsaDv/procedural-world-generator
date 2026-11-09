@@ -30,7 +30,7 @@ Generation preserves prior successful maps during work or errors. Display labels
 
 One primary result is visible by default; Local/Remote selection and Compare views are explicit. Comparison views can retain results from different requests, which are labelled and flagged; numerical verification is shown only for a verified identical request. Build identity remains separate from numeric agreement. Captured parameters, versions, simulation totals and startup/display details are expandable. Individual runs are not a benchmark campaign.
 
-Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v12 result semantics are specified below.
+Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v13 result semantics are specified below.
 
 Playback and brush editing are not implemented. Lighting, shadows and atmosphere are implemented as a presentation layer; bounded evolution capture remains later work.
 
@@ -38,9 +38,9 @@ Playback and brush editing are not implemented. Lighting, shadows and atmosphere
 
 The sole generation endpoint is `POST /api/v1/terrains`; `GET /api/health` reports availability. Unknown `/api` routes return 404 rather than the Angular shell. The sole WASM export is `GenerateTerrainJson`, exposed as the asynchronous `generateTerrainJson` worker proxy. See [development](DEVELOPMENT.md) for a complete request.
 
-`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v11`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
+`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v12`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
 
-The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v12`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v12`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights, rocks and hydrology. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v12`. The new result/workload identities distinguish ecology from historical v1.
+The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v13`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v13`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights, rocks, hydrology and rivers. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v13`. The new result/workload identities distinguish ecology from historical v1.
 
 All wire members are required. Nullable wire records distinguish missing fields from zero. JSON is camelCase and case-sensitive; unknown members, numeric strings, comments, trailing commas, malformed JSON, and overflowing/non-finite numbers are rejected. Both hosts return the same `{ error, fields }` shape: `invalid_json` for transport failures or `validation` with field errors. Canonical numeric limits live only in Core. API failures return 400; all terrain responses use `Cache-Control: no-store`.
 
@@ -710,3 +710,25 @@ Generation identity is now `diverse-landscape-v11`; result/workload/profile are
 v12. Noise and hydraulic simulation identities remain unchanged. The new generation
 identity covers additional output semantics, not altered height arithmetic. Benchmark
 records from v11 workloads retain their original identity and cannot form v12 pairs.
+
+## Hydrology Stage 2 — river network
+
+[River network v1](specs/RIVER_NETWORK_V1.md) adds required `result.rivers`:
+`cellIndices` (sorted unique int32), `widths` (matching float32, in grid-cell units)
+and algorithm identity `river-network-v1`. Core selects every land cell with
+accumulation >= max(32, ceil(landCount/512)). Existing receivers supply all channel,
+confluence, Ocean-mouth and boundary-outlet connectivity without a second graph.
+Width is a bounded illustrative function of accumulation; it is not discharge.
+
+Core extraction uses three linear scans, exact-sized output arrays and no scratch
+arrays or per-cell objects. It reads finalized hydrology and biomes without mutating
+them. Hosts retain their existing envelope, source-generated JSON and whole-call
+timing. Strict client decoding checks complete selection, sorted uniqueness,
+connectivity and width constraints; comparison includes identities, indices and
+widths. `riverMismatchCount` contributes to numeric equivalence and diagnostics.
+
+New identities are generation v12 and result/workload/profile v13; drainage, noise
+and hydraulic identities remain unchanged. No new dependency or public control is
+added. No river data reaches GPU buffers. A routed analysis depression crossing is
+not exposed river water; basin retention/spill policy precedes visible river/lake
+surfaces. Current ocean, atmosphere, tree LOD and Bloom remain unchanged.

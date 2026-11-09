@@ -1,3 +1,4 @@
+import { testEmptyRivers } from '../testing/terrain-test-fixture';
 import { testHydrology } from '../testing/terrain-test-fixture';
 import { AppearanceSettingsService, REFERENCE_APPEARANCE } from './appearance-settings.service';
 import { AtmosphereSettingsService } from './atmosphere-settings.service';
@@ -66,6 +67,7 @@ function run(): TerrainRun {
         width: 2,
         height: 2,
         values: new Float32Array([0, 10, 20, 30]),
+        rivers: testEmptyRivers(),
         hydrology: testHydrology({
           width: 2,
           height: 2,
@@ -74,7 +76,7 @@ function run(): TerrainRun {
         }),
         biomes: new Uint8Array([0, 1, 2, 3]),
         surfaceWeights: Float32Array.from(testSurfaceWeights([0, 1, 2, 3])),
-        resultVersion: 'landscape-ecology-v12',
+        resultVersion: 'landscape-ecology-v13',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },

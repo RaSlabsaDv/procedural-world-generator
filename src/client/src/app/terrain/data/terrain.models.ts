@@ -1,3 +1,10 @@
+export const RIVER_NETWORK_VERSION = 'river-network-v1';
+export interface RiverNetworkResult {
+  readonly algorithmVersion: typeof RIVER_NETWORK_VERSION;
+  readonly cellIndices: Int32Array;
+  readonly widths: Float32Array;
+}
+
 export const HYDROLOGY_VERSION = 'd8-priority-flood-v1';
 export interface HydrologyResult {
   readonly algorithmVersion: typeof HYDROLOGY_VERSION;
@@ -6,7 +13,7 @@ export interface HydrologyResult {
   readonly depressionDepth: Float32Array;
 }
 
-export const RESULT_VERSION = 'landscape-ecology-v12';
+export const RESULT_VERSION = 'landscape-ecology-v13';
 
 export const ALGORITHM_VERSION = 'value-noise-fbm-v1';
 
@@ -34,6 +41,7 @@ export interface TerrainResponse {
     readonly trees: readonly TreeInstance[];
     readonly rocks: readonly RockInstance[];
     readonly hydrology: HydrologyResult;
+    readonly rivers: RiverNetworkResult;
     readonly resultVersion: string;
     readonly algorithmVersion: string;
   };
@@ -41,7 +49,7 @@ export interface TerrainResponse {
   readonly coreBuildId: string;
   readonly workload: typeof TERRAIN_WORKLOAD;
   readonly simulation: SimulationSummary;
-  readonly executionProfile: 'landscape-worker-json-v12';
+  readonly executionProfile: 'landscape-worker-json-v13';
   readonly simulationVersion: typeof SIMULATION_VERSION;
 }
 
@@ -63,8 +71,8 @@ export class TerrainError extends Error {
   }
 }
 
-export const TERRAIN_ALGORITHM = 'diverse-landscape-v11';
-export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v12';
+export const TERRAIN_ALGORITHM = 'diverse-landscape-v12';
+export const TERRAIN_WORKLOAD = 'landscape-ecology-hydraulic-v13';
 export const SIMULATION_VERSION = 'hydraulic-grid-v1';
 
 export interface TerrainRequest {
@@ -106,9 +114,9 @@ export interface TreeInstance {
   readonly rotation: number;
 }
 export const MAX_TREES = 16384;
-export const EXECUTION_PROFILE = 'landscape-worker-json-v12';
+export const EXECUTION_PROFILE = 'landscape-worker-json-v13';
 
-/** Wire IDs for landscape-ecology-v12; classification itself belongs to Core. */
+/** Wire IDs for landscape-ecology-v13; classification itself belongs to Core. */
 export const LANDSCAPE_BIOME = {
   Ocean: 0,
   Grassland: 1,

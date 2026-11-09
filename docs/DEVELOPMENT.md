@@ -73,13 +73,13 @@ The API exposes POST /api/v1/terrains and GET /api/health. Removed probe/region/
 
 Current identities:
 
-- Algorithm: diverse-landscape-v11; nested noise: value-noise-fbm-v1.
-- Result: landscape-ecology-v12.
-- Workload: landscape-ecology-hydraulic-v12.
-- Execution profile: landscape-worker-json-v12; RPC: worker-rpc-v1.
+- Algorithm: diverse-landscape-v12; nested noise: value-noise-fbm-v1.
+- Result: landscape-ecology-v13.
+- Workload: landscape-ecology-hydraulic-v13.
+- Execution profile: landscape-worker-json-v13; RPC: worker-rpc-v1.
 - Simulation: hydraulic-grid-v1.
 
-Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances and coastal distance/blending. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
+Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances, coastal distance/blending, finalized drainage and river extraction. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
 
 One worker owns one runtime per document. Offline preparation may initialize it before an interactive request; record that startup/cache state separately. Display timing covers CPU setup and first submission, excludes texture/pause wait, and does not measure GPU completion. See [BENCHMARKING.md](BENCHMARKING.md).
 
@@ -1053,3 +1053,46 @@ The browser test uses real WASM/API output and checks graph invariants and full
 hydrology parity, with payload evidence under ignored artifacts/. These checks do
 not replace a controlled performance campaign. Whole-call Core timing includes
 hydrology; transport, typed-array decoding and rendering remain outside it.
+
+## Hydrology Stage 2 — river networks
+
+The required `result.rivers` record contains sorted row-major `cellIndices`, matching
+`widths` in grid-cell units and `algorithmVersion = river-network-v1`. Connectivity
+comes from existing `hydrology.receiverIndex`. No second graph or surface elevation
+is transmitted. See [RIVER_NETWORK_V1.md](specs/RIVER_NETWORK_V1.md) for the frozen
+threshold, width formula, mouths/outlets and depression-crossing limitation.
+
+Core tests include a hand-calculated pair of tributaries joining a central channel,
+an Ocean mouth/boundary outlet, exact threshold/rounding, width clamp, ownership,
+rectangles, all-Ocean/no-Ocean and maximum grids with depression crossings. Client
+checks reject incomplete/extra/unsorted selection, unsupported fields/versions,
+invalid widths, Ocean membership and broken downstream continuation. Every river
+vector and length participates in Local/Remote equivalence.
+
+Before changing Core, six complete v11-generation/v12-result API fingerprints were
+captured under tests/reference/fixtures/rivers-prechange.json. These retain all old
+fields including drainage and simulation summaries. Verify preservation against a
+matching current production deployment:
+
+```bash
+PWG_BASE_URL=http://127.0.0.1:8080 python3 tests/reference/river_preservation.py
+PWG_BASE_URL=http://127.0.0.1:8080 python3 tests/reference/hydrology_preservation.py
+PWG_BASE_URL=http://127.0.0.1:8080 node tests/browser/hydrology.cjs
+```
+
+The older preservation helper explicitly excludes newly introduced rivers and
+hydrology to retain its original pre-hydrology schema. The new helper excludes only
+rivers and changed version tags. Neither regenerates expected hashes from new output.
+The browser hydrology scenario now also checks complete river selection/connectivity,
+WASM/API indices and widths, and records actual payload sizes. Use the documented
+Playwright/Chromium overrides. No new UI settings or visible river surfaces exist yet.
+
+Stage 2 verification: 253 Core tests, 44 API tests and 410 Angular tests pass, together
+with 13 packaging checks and worker RPC. Locked restore and Release build have zero
+warnings/errors; production publish succeeds. Six actual browser WASM/API graph/
+river cases match, including 512x512. Both the six pre-river fingerprints (including
+drainage) and the older six pre-hydrology fingerprints remain exact. Existing landscape
+browser regression passes maximum work, Local/Remote 3D and offline new seeds.
+Final Stage 2 PWA regression also passes offline reload/new tab/new seeds, Remote
+failure/recovery and busy-update deferral, followed by updated offline 3D with Bloom.
+The temporary deployment modifications are restored after the test.

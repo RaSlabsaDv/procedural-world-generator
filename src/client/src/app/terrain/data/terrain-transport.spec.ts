@@ -8,6 +8,7 @@ import { WasmHostService } from '../../platform/wasm-host.service';
 import {
   ALGORITHM_VERSION,
   RESULT_VERSION,
+  RIVER_NETWORK_VERSION,
   TERRAIN_ALGORITHM,
   TERRAIN_WORKLOAD,
   SIMULATION_VERSION,
@@ -52,6 +53,7 @@ function wire() {
       trees: [],
       rocks: [],
       biomes: [1, 0, 1, 0, 1, 2],
+      rivers: { algorithmVersion: RIVER_NETWORK_VERSION, cellIndices: [], widths: [] },
       hydrology: testWireHydrology({
         width: 3,
         height: 2,
@@ -65,7 +67,7 @@ function wire() {
     parameters: terrain,
     simulationVersion: SIMULATION_VERSION,
     workload: TERRAIN_WORKLOAD,
-    executionProfile: 'landscape-worker-json-v12',
+    executionProfile: 'landscape-worker-json-v13',
     computeMs: 2,
     coreBuildId: 'test',
     simulation: {
@@ -94,6 +96,10 @@ describe('terrain transport and adapters', () => {
       { workload: 'landscape-ecology-hydraulic-v9' },
       { workload: 'landscape-ecology-hydraulic-v10' },
       { workload: 'landscape-ecology-hydraulic-v11' },
+      { workload: 'landscape-ecology-hydraulic-v12' },
+      { executionProfile: 'landscape-worker-json-v12' },
+      { result: { ...wire().result, resultVersion: 'landscape-ecology-v12' } },
+      { result: { ...wire().result, algorithmVersion: 'diverse-landscape-v11' } },
       { executionProfile: 'landscape-worker-json-v11' },
       { result: { ...wire().result, resultVersion: 'landscape-ecology-v11' } },
       { result: { ...wire().result, algorithmVersion: 'diverse-landscape-v10' } },

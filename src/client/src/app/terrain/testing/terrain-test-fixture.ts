@@ -5,6 +5,8 @@ import {
   SIMULATION_VERSION,
   RESULT_VERSION,
   HYDROLOGY_VERSION,
+  RIVER_NETWORK_VERSION,
+  RiverNetworkResult,
   HydrologyResult,
   HeightMapRequest,
   TerrainRequest,
@@ -51,6 +53,11 @@ export function testWire(terrain = testTerrain()) {
       vegetationDensity: Array(map.width * map.height).fill(0),
       trees: [],
       rocks: [],
+      rivers: {
+        algorithmVersion: RIVER_NETWORK_VERSION,
+        cellIndices: [] as number[],
+        widths: [] as number[],
+      },
       hydrology: testWireHydrology({
         width: map.width,
         height: map.height,
@@ -63,7 +70,7 @@ export function testWire(terrain = testTerrain()) {
     parameters: terrain,
     workload: TERRAIN_WORKLOAD as typeof TERRAIN_WORKLOAD,
     simulationVersion: SIMULATION_VERSION as typeof SIMULATION_VERSION,
-    executionProfile: 'landscape-worker-json-v12' as const,
+    executionProfile: 'landscape-worker-json-v13' as const,
     computeMs: 1,
     coreBuildId: 'git:123456789abc',
     simulation: {
@@ -117,5 +124,14 @@ export function testWireHydrology(map: Parameters<typeof testHydrology>[0]) {
     receiverIndex: Array.from(h.receiverIndex),
     flowAccumulation: Array.from(h.flowAccumulation),
     depressionDepth: Array.from(h.depressionDepth),
+  };
+}
+
+/** Empty network for fixtures whose maximum catchment is below the v1 threshold. */
+export function testEmptyRivers(): RiverNetworkResult {
+  return {
+    algorithmVersion: RIVER_NETWORK_VERSION,
+    cellIndices: new Int32Array(),
+    widths: new Float32Array(),
   };
 }

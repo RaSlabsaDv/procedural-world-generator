@@ -1253,3 +1253,32 @@ remain exact. Existing landscape browser regression passes maximum configured wo
 3D Local/Remote and offline generation. The final PWA update/offline regression
 passes with Bloom enabled and restored deployment files. README remains empty.
 No physical-device performance claim or river/lake rendering is made.
+
+### Hydrology Stage 2 — deterministic river network
+
+Implemented [River network v1](specs/RIVER_NETWORK_V1.md): Core selects all land
+cells meeting max(32, ceil(landCount/512)) accumulation and derives bounded channel
+width metadata. Existing drainage receivers define channels, confluences, mouths and
+boundary outlets. Three linear scans and two exact-sized arrays add 8K output bytes
+without scratch arrays. No terrain, ecology, drainage or simulation output is changed.
+
+Both hosts serialize the required sparse result through existing timing boundaries.
+Client validation checks complete selection, connectivity and width consistency;
+equivalence includes all vectors and length. Generation advances to v12 and result/
+workload/profile to v13; noise, hydraulic and drainage identities remain frozen.
+Old measurements keep their original identity. Visualization is unchanged: no river
+control, carving or premature water surface is introduced. Stock SSAO stays deferred.
+
+Next: freeze lake basin, retention and spill semantics, then implement 3D river/lake
+surfaces that respect both network and basin data. Analysis depression depth must
+not directly flood all low land. Detailed timing/progress/cancellation remains an
+independent execution track.
+
+Stage 2 verification passes: locked restore, Release build with zero warnings/errors,
+253 Core tests, 44 API tests, 410 Angular tests, 13 packaging checks and worker RPC.
+Production publication succeeds. Six real browser WASM/API drainage/network cases
+match, including 512x512. All six pre-river complete fingerprints (including drainage)
+and all six older pre-hydrology fingerprints remain exact. Existing landscape browser
+regression passes maximum work, Local/Remote 3D and offline new seeds. Final PWA
+update/offline regression passes with Bloom enabled; simulated deployment files are
+restored. No physical-device timing or visible river/lake claim is made.

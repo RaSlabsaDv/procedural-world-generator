@@ -4,6 +4,7 @@ import {
   HeightMapRequest,
   SURFACE_CHANNELS,
   HYDROLOGY_VERSION,
+  RIVER_NETWORK_VERSION,
 } from './terrain.models';
 import { sameObject } from './contract-utils';
 
@@ -19,6 +20,7 @@ export interface TerrainComparison {
   readonly coverageMismatchCount: number;
   readonly rockMismatchCount: number;
   readonly hydrologyMismatchCount: number;
+  readonly riverMismatchCount: number;
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
@@ -152,6 +154,19 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
       !close(ha.depressionDepth[i], hb.depressionDepth[i])
     )
       hydrologyMismatchCount++;
+  const ra = a.result.rivers,
+    rb = b.result.rivers;
+  if (
+    ra.algorithmVersion !== RIVER_NETWORK_VERSION ||
+    rb.algorithmVersion !== RIVER_NETWORK_VERSION ||
+    ra.cellIndices.length !== ra.widths.length ||
+    rb.cellIndices.length !== rb.widths.length
+  )
+    throw new TerrainError('protocol', 'Incompatible river network contract.');
+  let riverMismatchCount = Math.abs(ra.cellIndices.length - rb.cellIndices.length);
+  for (let i = 0; i < Math.min(ra.cellIndices.length, rb.cellIndices.length); i++)
+    if (ra.cellIndices[i] !== rb.cellIndices[i] || !close(ra.widths[i], rb.widths[i]))
+      riverMismatchCount++;
   const verifiable = (id: string) =>
     id.trim().length > 0 && id.trim() !== 'unversioned' && !id.trim().endsWith('-dirty');
   const identity =
@@ -170,12 +185,14 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
       vegetationMismatchCount === 0 &&
       coverageMismatchCount === 0 &&
       rockMismatchCount === 0 &&
-      hydrologyMismatchCount === 0,
+      hydrologyMismatchCount === 0 &&
+      riverMismatchCount === 0,
     environmentMismatchCount,
     vegetationMismatchCount,
     coverageMismatchCount,
     rockMismatchCount,
     hydrologyMismatchCount,
+    riverMismatchCount,
     biomeMismatchCount,
     biomesMatch: biomeMismatchCount === 0,
     identity,

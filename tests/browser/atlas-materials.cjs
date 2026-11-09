@@ -362,10 +362,10 @@ const cases = microStudy
         algorithmVersion: rockStudy
           ? before
             ? "diverse-landscape-v9"
-            : "diverse-landscape-v11"
+            : "diverse-landscape-v12"
           : climateStudy && before
             ? "diverse-landscape-v7"
-            : "diverse-landscape-v11",
+            : "diverse-landscape-v12",
       };
       await page
         .locator(

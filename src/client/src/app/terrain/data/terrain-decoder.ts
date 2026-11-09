@@ -1,3 +1,4 @@
+import { decodeRivers } from './river-decoder';
 import { decodeHydrology } from './hydrology-decoder';
 import { sameObject, object } from './contract-utils';
 import { decodeRocks } from './rock-decoder';
@@ -243,6 +244,15 @@ export function decodeTerrain(
       return fail();
     simulation = stats as unknown as SimulationSummary;
   }
+  const hydrology = decodeHydrology(
+    result['hydrology'],
+    normalized,
+    biomeIds,
+    request.width,
+    request.height,
+    upper,
+    fail,
+  );
   return {
     result: {
       width: request.width,
@@ -256,15 +266,8 @@ export function decodeTerrain(
       surfaceWeights,
       trees: Object.freeze(trees),
       rocks,
-      hydrology: decodeHydrology(
-        result['hydrology'],
-        normalized,
-        biomeIds,
-        request.width,
-        request.height,
-        upper,
-        fail,
-      ),
+      hydrology,
+      rivers: decodeRivers(result['rivers'], biomeIds, hydrology, fail),
       resultVersion: RESULT_VERSION,
       algorithmVersion: terrain.algorithmVersion,
     },

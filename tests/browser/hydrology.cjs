@@ -1,4 +1,4 @@
-// Shared-Core drainage parity and graph invariants, using the real WASM runtime.
+// Shared-Core drainage/river parity and graph invariants, using the real WASM runtime.
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
 const {
@@ -50,7 +50,7 @@ const { artifactPath } = require("./support/editor.cjs");
           globalWarmth: 0.6,
           vegetationDensity: 1,
           landformRegionScale: 1,
-          algorithmVersion: "diverse-landscape-v11",
+          algorithmVersion: "diverse-landscape-v12",
         };
         const text = await runtime.generateTerrainJson(JSON.stringify(request));
         const local = JSON.parse(text);
@@ -63,7 +63,7 @@ const { artifactPath } = require("./support/editor.cjs");
         const remote = await response.json();
         if (
           local.coreBuildId !== remote.coreBuildId ||
-          local.workload !== "landscape-ecology-hydraulic-v12"
+          local.workload !== "landscape-ecology-hydraulic-v13"
         )
           throw Error("Identity");
         const n = width * height,
@@ -144,8 +144,28 @@ const { artifactPath } = require("./support/editor.cjs");
           }
         }
         if (head !== n || mass !== land) throw Error("Cycle/mass");
-        const before = { ...local.result };
-        delete before.hydrology;
+        const rivers = local.result.rivers, remoteRivers = remote.result.rivers;
+        if (rivers.algorithmVersion !== "river-network-v1" || remoteRivers.algorithmVersion !== rivers.algorithmVersion ||
+            rivers.cellIndices.length !== rivers.widths.length || remoteRivers.cellIndices.length !== rivers.cellIndices.length ||
+            remoteRivers.widths.length !== rivers.widths.length) throw Error("River shape/identity");
+        const threshold = Math.max(32, Math.ceil(land / 512));
+        let cursor = 0, mouths = 0, boundaryOutlets = 0, depressionCrossings = 0;
+        for (let i = 0; i < n; i++) {
+          if (local.result.biomes[i] === 0 || h.flowAccumulation[i] < threshold) continue;
+          if (rivers.cellIndices[cursor] !== i || remoteRivers.cellIndices[cursor] !== i) throw Error("River membership/parity");
+          const width = rivers.widths[cursor], otherWidth = remoteRivers.widths[cursor];
+          const expectedWidth = Math.fround(Math.min(3, Math.max(.6, .35 + .25 * Math.sqrt(h.flowAccumulation[i] / threshold))));
+          if (!Number.isFinite(width) || !Number.isFinite(otherWidth) || width < .6 || width > 3 ||
+              Math.abs(width - expectedWidth) > 1e-6 + 1e-5 * Math.max(width, expectedWidth) ||
+              Math.abs(width - otherWidth) > 1e-6 + 1e-5 * Math.max(width, otherWidth)) throw Error("River width/parity");
+          const next = h.receiverIndex[i];
+          if (next < 0) boundaryOutlets++;
+          else if (local.result.biomes[next] === 0) mouths++;
+          else if (h.flowAccumulation[next] < threshold) throw Error("Broken downstream channel");
+          if (h.depressionDepth[i] > 0) depressionCrossings++;
+          cursor++;
+        }
+        if (cursor !== rivers.cellIndices.length) throw Error("Extra river cells");
         rows.push({
           width,
           height,
@@ -154,6 +174,10 @@ const { artifactPath } = require("./support/editor.cjs");
           terminalMass: mass,
           maxDepth,
           typedBytes: n * 12,
+          riverCount: rivers.cellIndices.length,
+          riverTypedBytes: rivers.cellIndices.length * 8,
+          riverJsonBytes: new TextEncoder().encode(JSON.stringify(rivers)).length,
+          threshold, mouths, boundaryOutlets, depressionCrossings,
           jsonBytes: new TextEncoder().encode(text).length,
           hydrologyJsonBytes: new TextEncoder().encode(JSON.stringify(h))
             .length,

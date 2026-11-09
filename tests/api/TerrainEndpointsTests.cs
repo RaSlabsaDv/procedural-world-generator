@@ -11,7 +11,7 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
 {
     private readonly HttpClient client;
     public TerrainEndpointsTests(WebApplicationFactory<Program> factory) => client = factory.CreateClient();
-    internal const string Valid = """{"heightMap":{"seed":42,"width":5,"height":3,"noiseScale":0.37,"octaves":3,"heightMultiplier":30,"algorithmVersion":"value-noise-fbm-v1"},"mountainStrength":0.55,"warpStrength":2,"iterations":8,"rainfall":0.05,"evaporation":0.1,"plainsCoverage":0.45,"mountainCoverage":0.3,"globalMoisture":0.65,"seaLevel":0.16,"globalWarmth":0.6,"vegetationDensity":1,"landformRegionScale":1,"algorithmVersion":"diverse-landscape-v11"}""";
+    internal const string Valid = """{"heightMap":{"seed":42,"width":5,"height":3,"noiseScale":0.37,"octaves":3,"heightMultiplier":30,"algorithmVersion":"value-noise-fbm-v1"},"mountainStrength":0.55,"warpStrength":2,"iterations":8,"rainfall":0.05,"evaporation":0.1,"plainsCoverage":0.45,"mountainCoverage":0.3,"globalMoisture":0.65,"seaLevel":0.16,"globalWarmth":0.6,"vegetationDensity":1,"landformRegionScale":1,"algorithmVersion":"diverse-landscape-v12"}""";
 
     [Fact]
     public async Task BothHostsSerializeIdenticalFullResultsParametersAndConservationSummary()
@@ -25,9 +25,14 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
         var b = wasm.RootElement;
         foreach (var key in new[] { "result", "simulation", "parameters", "coreBuildId", "workload", "simulationVersion", "executionProfile" })
             Assert.Equal(a.GetProperty(key).GetRawText(), b.GetProperty(key).GetRawText());
-        Assert.Equal("landscape-ecology-hydraulic-v12", a.GetProperty("workload").GetString());
+        Assert.Equal("landscape-ecology-hydraulic-v13", a.GetProperty("workload").GetString());
         Assert.Equal("hydraulic-grid-v1", a.GetProperty("simulationVersion").GetString());
-        Assert.Equal("diverse-landscape-v11", a.GetProperty("result").GetProperty("algorithmVersion").GetString());
+        Assert.Equal("diverse-landscape-v12", a.GetProperty("result").GetProperty("algorithmVersion").GetString());
+        var rivers = a.GetProperty("result").GetProperty("rivers");
+        Assert.Equal(3, rivers.EnumerateObject().Count());
+        Assert.Equal("river-network-v1", rivers.GetProperty("algorithmVersion").GetString());
+        Assert.Equal(0, rivers.GetProperty("cellIndices").GetArrayLength());
+        Assert.Equal(0, rivers.GetProperty("widths").GetArrayLength());
         var hydrology = a.GetProperty("result").GetProperty("hydrology");
         Assert.Equal(4, hydrology.EnumerateObject().Count());
         Assert.Equal("d8-priority-flood-v1", hydrology.GetProperty("algorithmVersion").GetString());
@@ -64,6 +69,7 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
     [InlineData("preCoastV2Version", "validation")]
     [InlineData("preRockV2Version", "validation")]
     [InlineData("preHydrologyVersion", "validation")]
+    [InlineData("preRiverVersion", "validation")]
     [InlineData("negative", "validation")]
     [InlineData("budget", "validation")]
     public async Task BothHostsRejectInvalidRequestsConsistently(string input, string category)
@@ -74,12 +80,13 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
             "unknown" => Valid.Replace("\"mountainStrength\"", "\"unexpected\""),
             "nestedUnknown" => Valid.Replace("\"seed\"", "\"unknownSeed\""),
             "missing" => Valid.Replace("\"rainfall\":0.05,", ""),
-            "version" => Valid.Replace("diverse-landscape-v11", "v2"),
-            "preClimateVersion" => Valid.Replace("diverse-landscape-v11", "diverse-landscape-v7"),
-            "preRockV2Version" => Valid.Replace("diverse-landscape-v11", "diverse-landscape-v9"),
-            "preCoastV2Version" => Valid.Replace("diverse-landscape-v11", "diverse-landscape-v8"),
-            "preHydrologyVersion" => Valid.Replace("diverse-landscape-v11", "diverse-landscape-v10"),
-            "oldVersion" => Valid.Replace("diverse-landscape-v11", "diverse-landscape-v3"),
+            "version" => Valid.Replace("diverse-landscape-v12", "v2"),
+            "preClimateVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v7"),
+            "preRockV2Version" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v9"),
+            "preCoastV2Version" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v8"),
+            "preRiverVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v11"),
+            "preHydrologyVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v10"),
+            "oldVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v3"),
             "negative" => Valid.Replace("\"iterations\":8", "\"iterations\":-1"),
             "budget" => Valid.Replace("\"width\":5", "\"width\":512").Replace("\"height\":3", "\"height\":512").Replace("\"iterations\":8", "\"iterations\":129"),
             _ => input
@@ -150,6 +157,20 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
         var a = api.RootElement.GetProperty("result");
         Assert.Equal(a.GetRawText(), wasm.RootElement.GetProperty("result").GetRawText());
         foreach (var field in new[] { "moisture", "temperature", "slope", "vegetationDensity" }) Assert.Equal(16384, a.GetProperty(field).GetArrayLength());
+        var rivers = a.GetProperty("rivers");
+        var indices = rivers.GetProperty("cellIndices");
+        var widths = rivers.GetProperty("widths");
+        Assert.True(indices.GetArrayLength() > 0);
+        Assert.Equal(indices.GetArrayLength(), widths.GetArrayLength());
+        var previous = -1;
+        for (var i = 0; i < indices.GetArrayLength(); i++)
+        {
+            var cell = indices[i].GetInt32();
+            Assert.InRange(cell, previous + 1, 16383);
+            Assert.NotEqual(0, a.GetProperty("biomes")[cell].GetInt32());
+            Assert.InRange(widths[i].GetSingle(), .6f, 3f);
+            previous = cell;
+        }
         Assert.True(a.GetProperty("trees").GetArrayLength() > 0);
         Assert.True(a.GetProperty("rocks").GetArrayLength() > 0);
         Assert.InRange(a.GetProperty("rocks").GetArrayLength(), 1, 8192);
@@ -167,7 +188,7 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
             Assert.InRange(tree.GetProperty("variant").GetInt32(), 0, 1);
             Assert.InRange(tree.GetProperty("kind").GetInt32(), 0, 2);
         }
-        Assert.Equal("landscape-ecology-v12", a.GetProperty("resultVersion").GetString());
+        Assert.Equal("landscape-ecology-v13", a.GetProperty("resultVersion").GetString());
     }
 
     [Theory]

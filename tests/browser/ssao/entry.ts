@@ -46,7 +46,7 @@ export async function fetchTerrain(fields: Record<string, number>) {
     ...DEFAULT_SIMULATION_PARAMETERS,
     iterations: 16,
     heightMap,
-    algorithmVersion: "diverse-landscape-v11",
+    algorithmVersion: "diverse-landscape-v12",
   };
   for (const [key, value] of Object.entries(fields)) {
     if (key in heightMap) (heightMap as any)[key] = value;
