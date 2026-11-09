@@ -7,13 +7,16 @@ const { artifactPath } = require("./support/editor.cjs");
 const banks = process.argv.includes("--banks");
 const stones = process.argv.includes("--stones");
 const reeds = process.argv.includes("--reeds");
-const prefix = reeds
-  ? "reeds"
-  : stones
-    ? "shore-stones"
-    : banks
-      ? "banks"
-      : "channels";
+const continuity = process.argv.includes("--continuity");
+const prefix = continuity
+  ? "continuity"
+  : reeds
+    ? "reeds"
+    : stones
+      ? "shore-stones"
+      : banks
+        ? "banks"
+        : "channels";
 (async () => {
   const built = await build({
     entryPoints: [path.resolve(__dirname, "inland/entry.ts")],
@@ -133,7 +136,7 @@ const prefix = reeds
         };
       }, item.fields);
       assert.equal(data.hash, data.localHash);
-      if (banks || stones || reeds) {
+      if (banks || stones || reeds || continuity) {
         const before = baseline.find((r) => r.name === item.name);
         if (before)
           assert.equal(data.hash, before.hash, "canonical result changed");

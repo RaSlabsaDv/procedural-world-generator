@@ -1301,3 +1301,16 @@ records reeds/off pixel contributions, fixed close/distant views, actual counts,
 night/HDR/Bloom and disposal. Run the PWA update/offline regression last with
 `node tests/browser/pwa.cjs --bloom --inland --shore-stones --reeds`; optional reed
 instrumentation checks instanced shader submission after updated offline generation.
+
+### River continuity diagnostics
+
+[River continuity v1](specs/RIVER_CONTINUITY_V1.md) documents renderer corrections and
+remaining physical/zero-width barriers. Run `node tests/browser/river-continuity.cjs`
+against a published API for exact-mesh centerline diagnostics. `--before --baseline-source`
+bundles the historical renderer from commit 9857d1c; it does not replace current files.
+Ignored before/after complete wires and metrics stay under artifacts. After diagnostics
+compare complete result/simulation snapshots where a before capture exists.
+
+`node tests/browser/inland-continuity.cjs` runs the full production-factory visual
+matrix with fixed prior cameras. PWA update/offline checks run last, using the existing
+Bloom/inland/stone/reed options. Setup observations are not controlled benchmarks.

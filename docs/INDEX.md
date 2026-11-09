@@ -13,6 +13,7 @@
 Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v14, landscape-ecology-v15, landscape-ecology-hydraulic-v15 and landscape-worker-json-v15.
 
 - [River channels v1](specs/RIVER_CHANNELS_V1.md): bounded Core carving, final-graph profiles, protected shores and separate shaping mass; v15 workload.
+- [River continuity v1](specs/RIVER_CONTINUITY_V1.md): diagonal surface refinement, nearest profile selection, exact water queries and diagnosed remaining barriers.
 - [Inland reeds v1](specs/INLAND_REEDS_V1.md): sparse shallow-edge tufts, dry-bank witnesses, bounded clearances and a single instanced batch.
 - [Shore stones v1](specs/INLAND_SHORE_STONES_V1.md): bounded decorative gravel beside emitted inland water, instancing, terrain support and distance fading.
 - [Inland bank materials v1](specs/INLAND_BANK_MATERIALS_V1.md): narrow damp-bank presentation from emitted water triangles, protected snow and bounded vertex storage.

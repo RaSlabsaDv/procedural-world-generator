@@ -850,3 +850,13 @@ placement to gentle damp banks and shallow edges. Shared bounded obstacle querie
 read canonical rocks/trunks plus minimal decorative stone envelopes. Stone positions,
 Core output and water meshes remain unchanged. Reeds share scene illumination/fog,
 receive existing shadows, cast none and fade by camera distance in the shader.
+
+### River continuity refinement
+
+[River continuity v1](specs/RIVER_CONTINUITY_V1.md) refines river cells around the
+existing terrain diagonal midpoint, so both D8 diagonals have supporting mesh edges.
+Coverage remains a union of Core-supported widths; nearest supported centerlines
+supply authoritative profiles/flow. Center profiles retain double interpolation
+precision. Original terrain planes and lake/Ocean clipping remain unchanged.
+Cell-indexed queries interpolate actual emitted geometry and drive decoration masking.
+Core source/contracts/identities remain fixed; dry barriers are not repaired in JS.

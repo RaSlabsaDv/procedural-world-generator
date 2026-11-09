@@ -1479,3 +1479,42 @@ Final PWA update/offline regression passes with Bloom, inland water, shoreline s
 and reed-instancing checks enabled. Updated offline generation of seed 1001 submits
 the reed shader; worker initialization remains single and deployment test files are
 restored. Production remains available at the documented local startup address.
+
+### River continuity — presentation refinement
+
+Implemented [River continuity v1](specs/RIVER_CONTINUITY_V1.md). Diagnostics separated
+false renderer gaps from actual bed barriers and unsupported/submerged routes. River
+cells now include the existing terrain-diagonal midpoint, with nearest supported
+centerline profiles and double midpoint precision. Queries return emitted geometry
+heights, including bank taper, so surrounding vegetation follows the actual surface.
+No Core version, shaping cap, lake/sea level, graph or canonical result changes.
+
+Remaining bed barriers, conflicting profiles and zero-area reaches remain explicit
+limitations. Repairing those would require a separately scoped/versioned Core channel
+cross-section policy; this step does not invent bridges, waterfalls or basin flooding.
+
+Continuity verification passes: 482 Angular tests, 13 packaging checks, worker RPC,
+locked production publication and real published WASM/API full-result equivalence.
+All four captured complete result/simulation snapshots remain exact. Diagnostics use
+actual emitted triangles, correcting false positives in the old analytic query.
+
+| Fixture | Eligible missing samples before → after | Complete sampled edges before → after | Touching mesh components before → after |
+| --- | --- | --- | --- |
+| mixed | 436 → 0 | 516 → 537 | 209 → 173 |
+| no-Ocean | 353 → 186 | 394 → 403 | 174 → 164 |
+| coastal | 47 → 0 | 56 → 58 | 34 → 31 |
+| maximum | 4993 → 1056 | 2629 → 2837 | 1738 → 1382 |
+
+Bed-blocked samples and Core state counts are unchanged. Remaining eligible misses
+include zero-area/profile-limited reaches; no terrain was flooded to meet a metric.
+All diagnostic query/mesh disagreement counters are now zero. Fixed before/after
+screenshots, near/far, lake/mouth/confluence, no-Ocean, independent/narrow previews,
+Reference/HDR/Bloom, night/moon and owned GPU cleanup pass. Water retains at most two
+color draws and no shadow caster. Maximum actual combined water output is 8614220
+numeric bytes per CPU/GPU copy; field/scratch storage is 18083848 bytes. Node-only
+setup smoke observations are retained with the raw diagnostic artifacts and are not
+controlled performance or physical-GPU measurements.
+
+The final PWA update/offline new-seed regression passes with Bloom, inland water,
+shore-stone and reed-instancing checks. Deployment simulation files are restored;
+README remains empty. No Core source, historical fixture or canonical version changed.

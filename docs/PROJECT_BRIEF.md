@@ -83,3 +83,8 @@ Core rock instances and water profiles. Reeds use a separate presentation policy
 suitable damp banks and shallow edges, using actual visible water and a nearby dry
 shore witness. This illustrative layer does not change ecological species, terrain,
 water profiles or the measured generation workload.
+
+[River continuity v1](specs/RIVER_CONTINUITY_V1.md) repairs narrow diagonal coverage,
+profile selection and water-query inaccuracies in presentation. Authoritative Core
+profiles and terrain remain unchanged; bed barriers and unsupported routes can still
+interrupt the visible network. This is not dynamic river simulation.

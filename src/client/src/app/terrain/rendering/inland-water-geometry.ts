@@ -18,6 +18,7 @@ export function inlandWaterGeometry(result: Result, sea: number) {
     lakeVertices: 0,
     riverVertices: 0,
     bytes: 0,
+    fieldBytes: 0,
   };
   if (!lakes.basins.length && !rivers.cellIndices.length)
     return {
@@ -27,6 +28,19 @@ export function inlandWaterGeometry(result: Result, sea: number) {
       riverSurfaceAt: () => -1,
       dispose: () => {},
     };
+  const hasExposed = result.channels.segmentState.includes(CHANNEL_STATE.Exposed);
+  const centerCoverage = new Float32Array(hasExposed ? n : 0).fill(-4),
+    centerFlowX = new Float32Array(hasExposed ? n : 0),
+    centerFlowZ = new Float32Array(hasExposed ? n : 0),
+    centerProfile = new Float64Array(hasExposed ? n : 0),
+    centerDistance = new Float32Array(hasExposed ? n : 0).fill(Infinity),
+    gridDistance = new Float32Array(hasExposed ? n : 0).fill(Infinity),
+    riverRanges = new Uint32Array(hasExposed ? (w - 1) * (h - 1) + 1 : 0);
+  const at = (field: Float32Array, center: Float32Array | Float64Array, i: number) =>
+    i < n ? field[i] : center[i - n];
+  const bedAt = (i: number) => (i < n ? bed[i] : (bed[i - n + 1] + bed[i - n + w]) * 0.5);
+  const xAt = (i: number) => (i < n ? i % w : ((i - n) % w) + 0.5);
+  const zAt = (i: number) => (i < n ? Math.floor(i / w) : Math.floor((i - n) / w) + 0.5);
   const coverage = new Float32Array(n).fill(-4),
     flowX = new Float32Array(n),
     flowZ = new Float32Array(n),
@@ -64,26 +78,38 @@ export function inlandWaterGeometry(result: Result, sea: number) {
     const ra = rivers.widths[k] * 0.5;
     const rb = widthByCell[b] > 0 ? widthByCell[b] * 0.5 : ra,
       radius = Math.max(ra, rb);
-    for (
-      let z = Math.max(0, Math.floor(Math.min(az, bz) - radius));
-      z <= Math.min(h - 1, Math.ceil(Math.max(az, bz) + radius));
-      z++
-    )
+    for (let grid = 0; grid < 2; grid++) {
+      const offset = grid * 0.5,
+        cov = grid ? centerCoverage : coverage,
+        fx = grid ? centerFlowX : flowX,
+        fz = grid ? centerFlowZ : flowZ,
+        levels = grid ? centerProfile : profile,
+        nearest = grid ? centerDistance : gridDistance;
       for (
-        let x = Math.max(0, Math.floor(Math.min(ax, bx) - radius));
-        x <= Math.min(w - 1, Math.ceil(Math.max(ax, bx) + radius));
-        x++
-      ) {
-        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2));
-        const value = ra + (rb - ra) * t - Math.hypot(x - ax - t * dx, z - az - t * dz),
-          i = z * w + x;
-        if (value > coverage[i]) {
-          coverage[i] = value;
-          flowX[i] = dx / len;
-          flowZ[i] = dz / len;
-          profile[i] = node[a] + (node[b] - node[a]) * t;
+        let z = Math.max(0, Math.floor(Math.min(az, bz) - radius));
+        z <= Math.min(h - 1 - grid, Math.ceil(Math.max(az, bz) + radius));
+        z++
+      )
+        for (
+          let x = Math.max(0, Math.floor(Math.min(ax, bx) - radius));
+          x <= Math.min(w - 1 - grid, Math.ceil(Math.max(ax, bx) + radius));
+          x++
+        ) {
+          const px = x + offset,
+            pz = z + offset;
+          const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / len2));
+          const value = ra + (rb - ra) * t - Math.hypot(px - ax - t * dx, pz - az - t * dz),
+            i = z * w + x;
+          if (value > cov[i]) cov[i] = value;
+          const distanceSquared = (px - ax - t * dx) ** 2 + (pz - az - t * dz) ** 2;
+          if (distanceSquared < nearest[i]) {
+            nearest[i] = distanceSquared;
+            fx[i] = dx / len;
+            fz[i] = dz / len;
+            levels[i] = node[a] + (node[b] - node[a]) * t;
+          }
         }
-      }
+    }
   }
   // Shared grid normals avoid faceted reflection seams between independently clipped polygons.
   const surfaceNormals = new Float32Array(stats.supported ? n * 3 : 0);
@@ -103,7 +129,24 @@ export function inlandWaterGeometry(result: Result, sea: number) {
       surfaceNormals[i * 3 + 1] = 1 / len;
       surfaceNormals[i * 3 + 2] = -dz / len;
     }
+  stats.fieldBytes =
+    coverage.byteLength +
+    flowX.byteLength +
+    flowZ.byteLength +
+    profile.byteLength +
+    node.byteLength +
+    incoming.byteLength +
+    widthByCell.byteLength +
+    surfaceNormals.byteLength +
+    centerCoverage.byteLength +
+    centerFlowX.byteLength +
+    centerFlowZ.byteLength +
+    centerProfile.byteLength +
+    centerDistance.byteLength +
+    gridDistance.byteLength +
+    riverRanges.byteLength;
   let lake: BufferGeometry | undefined, river: BufferGeometry | undefined;
+  let disposed = false;
   try {
     lake = build(false);
     river = stats.supported ? build(true) : undefined;
@@ -114,7 +157,6 @@ export function inlandWaterGeometry(result: Result, sea: number) {
         for (const a of Object.values(g.attributes)) stats.bytes += a.array.byteLength;
         stats.bytes += g.index?.array.byteLength ?? 0;
       }
-    let disposed = false;
     return {
       lake,
       river,
@@ -133,35 +175,45 @@ export function inlandWaterGeometry(result: Result, sea: number) {
     throw error;
   }
 
+  /** Exact emitted triangles, including clipped banks and interpolated displayed heights. */
   function sampleRiver(x: number, z: number): number {
-    if (x < 0 || z < 0 || x > w - 1 || z > h - 1) return -1;
+    if (!river || disposed || x < 0 || z < 0 || x > w - 1 || z > h - 1) return -1;
     const cx = Math.min(w - 2, Math.floor(x)),
-      cz = Math.min(h - 2, Math.floor(z)),
-      i = cz * w + cx,
-      fx = x - cx,
-      fz = z - cz,
-      first = fx + fz <= 1;
-    const a = first ? i : i + 1,
-      b = i + w,
-      c = first ? i + 1 : i + w + 1;
-    const wa = first ? 1 - fx - fz : 1 - fz,
-      wb = first ? fz : 1 - fx,
-      wc = first ? fx : fx + fz - 1;
-    if (wa * coverage[a] + wb * coverage[b] + wc * coverage[c] <= 0) return -1;
-    const ground = wa * bed[a] + wb * bed[b] + wc * bed[c],
-      water = wa * profile[a] + wb * profile[b] + wc * profile[c],
-      owner = lakeTriangleOwner(result, a, b, c);
-    if (water < ground || owner === -2 || (owner >= 0 && ground < lakes.basins[owner].waterLevel))
-      return -1;
-    const mouth = biomes[a] === 0 || biomes[b] === 0 || biomes[c] === 0;
-    if (mouth && ground < sea) return -1;
-    const cover = wa * coverage[a] + wb * coverage[b] + wc * coverage[c],
-      fade = Math.min(1, Math.max(0, cover / 0.25));
-    return (
-      ground +
-      (owner >= 0 || mouth ? 0 : Math.max(0, water - ground) * fade * fade * (3 - 2 * fade)) +
-      OFFSET
-    );
+      cz = Math.min(h - 2, Math.floor(z));
+    const p = river.getAttribute('position'),
+      idx = river.index!,
+      px = x - (w - 1) / 2,
+      pz = z - (h - 1) / 2;
+    const minX = Math.max(0, Math.min(w - 2, Math.floor(x - 1e-7))),
+      minZ = Math.max(0, Math.min(h - 2, Math.floor(z - 1e-7)));
+    for (let qz = minZ; qz <= cz; qz++)
+      for (let qx = minX; qx <= cx; qx++) {
+        const q = qz * (w - 1) + qx;
+        for (let k = riverRanges[q]; k < riverRanges[q + 1]; k += 3) {
+          const a = idx.getX(k),
+            b = idx.getX(k + 1),
+            c = idx.getX(k + 2);
+          const ax = p.getX(a),
+            az = p.getZ(a),
+            bx = p.getX(b),
+            bz = p.getZ(b),
+            dx = p.getX(c),
+            dz = p.getZ(c);
+          const det = (bz - dz) * (ax - dx) + (dx - bx) * (az - dz);
+          if (Math.abs(det) < EPS) continue;
+          const wa = ((bz - dz) * (px - dx) + (dx - bx) * (pz - dz)) / det,
+            wb = ((dz - az) * (px - dx) + (ax - dx) * (pz - dz)) / det,
+            wc = 1 - wa - wb;
+          if (
+            (wa >= 0 && wb >= 0 && wc >= 0) ||
+            (wa * Math.abs(det) >= -1e-7 * Math.hypot(bx - dx, bz - dz) &&
+              wb * Math.abs(det) >= -1e-7 * Math.hypot(dx - ax, dz - az) &&
+              wc * Math.abs(det) >= -1e-7 * Math.hypot(ax - bx, az - bz))
+          )
+            return wa * p.getY(a) + wb * p.getY(b) + wc * p.getY(c);
+        }
+      }
+    return -1;
   }
 
   function build(isRiver: boolean): BufferGeometry | undefined {
@@ -176,7 +228,9 @@ export function inlandWaterGeometry(result: Result, sea: number) {
       vertices = 0,
       indexCount = 0,
       vCursor = 0,
-      iCursor = 0;
+      iCursor = 0,
+      lakeOwner = -1,
+      mouth = false;
     let position: Float32Array,
       depth: Float32Array,
       shore: Float32Array,
@@ -246,19 +300,32 @@ export function inlandWaterGeometry(result: Result, sea: number) {
       for (let k = 0; k < count; k++) {
         const u = poly[k * 2],
           v = poly[k * 2 + 1],
-          x = sample(a % w, b % w, c % w, u, v),
-          z = sample(Math.floor(a / w), Math.floor(b / w), Math.floor(c / w), u, v),
-          ground = sample(bed[a], bed[b], bed[c], u, v);
+          x = sample(xAt(a), xAt(b), xAt(c), u, v),
+          z = sample(zAt(a), zAt(b), zAt(c), u, v),
+          ground = sample(bedAt(a), bedAt(b), bedAt(c), u, v);
         const cover = isRiver
-          ? Math.max(0, sample(coverage[a], coverage[b], coverage[c], u, v))
+          ? Math.max(
+              0,
+              sample(
+                at(coverage, centerCoverage, a),
+                at(coverage, centerCoverage, b),
+                at(coverage, centerCoverage, c),
+                u,
+                v,
+              ),
+            )
           : 0;
-        const rawWater = isRiver ? sample(profile[a], profile[b], profile[c], u, v) : level;
+        const rawWater = isRiver
+          ? sample(
+              at(profile, centerProfile, a),
+              at(profile, centerProfile, b),
+              at(profile, centerProfile, c),
+              u,
+              v,
+            )
+          : level;
         const fade = Math.min(1, cover / 0.25),
-          shoreTriangle =
-            lakeTriangleOwner(result, a, b, c) >= 0 ||
-            biomes[a] === 0 ||
-            biomes[b] === 0 ||
-            biomes[c] === 0;
+          shoreTriangle = lakeOwner >= 0 || mouth;
         const shown = isRiver
           ? ground +
             (shoreTriangle ? 0 : Math.max(0, rawWater - ground) * fade * fade * (3 - 2 * fade))
@@ -269,16 +336,37 @@ export function inlandWaterGeometry(result: Result, sea: number) {
         position[vCursor * 3 + 2] = z - (h - 1) / 2;
         depth[vCursor] = Math.max(0, shown - ground);
         shore[vCursor] = isRiver
-          ? Math.max(0, sample(coverage[a], coverage[b], coverage[c], u, v))
+          ? Math.max(
+              0,
+              sample(
+                at(coverage, centerCoverage, a),
+                at(coverage, centerCoverage, b),
+                at(coverage, centerCoverage, c),
+                u,
+                v,
+              ),
+            )
           : Math.min(3, Math.max(0, level - ground) * 2);
         if (isRiver) {
-          flow[vCursor * 2] = sample(flowX[a], flowX[b], flowX[c], u, v);
-          flow[vCursor * 2 + 1] = sample(flowZ[a], flowZ[b], flowZ[c], u, v);
+          flow[vCursor * 2] = sample(
+            at(flowX, centerFlowX, a),
+            at(flowX, centerFlowX, b),
+            at(flowX, centerFlowX, c),
+            u,
+            v,
+          );
+          flow[vCursor * 2 + 1] = sample(
+            at(flowZ, centerFlowZ, a),
+            at(flowZ, centerFlowZ, b),
+            at(flowZ, centerFlowZ, c),
+            u,
+            v,
+          );
           for (let axis = 0; axis < 3; axis++)
             normal[vCursor * 3 + axis] = sample(
-              surfaceNormals[a * 3 + axis],
-              surfaceNormals[b * 3 + axis],
-              surfaceNormals[c * 3 + axis],
+              normalAt(a, axis),
+              normalAt(b, axis),
+              normalAt(c, axis),
               u,
               v,
             );
@@ -296,7 +384,13 @@ export function inlandWaterGeometry(result: Result, sea: number) {
           indices[iCursor++] = base + k + 1;
         }
     };
-    const triangle = (aa: number, bb: number, cc: number) => {
+    const normalAt = (i: number, axis: number) =>
+      i < n
+        ? surfaceNormals[i * 3 + axis]
+        : (surfaceNormals[(i - n + 1) * 3 + axis] + surfaceNormals[(i - n + w) * 3 + axis]) * 0.5;
+    const triangle = (aa: number, bb: number, cc: number, owner: number, ocean: boolean) => {
+      lakeOwner = owner;
+      mouth = ocean;
       a = aa;
       b = bb;
       c = cc;
@@ -309,35 +403,61 @@ export function inlandWaterGeometry(result: Result, sea: number) {
         poly[4] = 0;
         poly[5] = 1;
       };
-      const owner = lakeTriangleOwner(result, a, b, c);
       if (owner === -2) return;
       if (!isRiver) {
         if (owner < 0) return;
         level = lakes.basins[owner].waterLevel;
         reset();
-        clip(level - bed[a], level - bed[b], level - bed[c]);
+        clip(level - bedAt(a), level - bedAt(b), level - bedAt(c));
         emit();
       } else {
-        if (coverage[a] <= 0 && coverage[b] <= 0 && coverage[c] <= 0) return;
+        if (
+          at(coverage, centerCoverage, a) <= 0 &&
+          at(coverage, centerCoverage, b) <= 0 &&
+          at(coverage, centerCoverage, c) <= 0
+        )
+          return;
         reset();
-        clip(coverage[a], coverage[b], coverage[c]);
-        clip(profile[a] - bed[a], profile[b] - bed[b], profile[c] - bed[c]);
+        clip(
+          at(coverage, centerCoverage, a),
+          at(coverage, centerCoverage, b),
+          at(coverage, centerCoverage, c),
+        );
+        clip(
+          at(profile, centerProfile, a) - bedAt(a),
+          at(profile, centerProfile, b) - bedAt(b),
+          at(profile, centerProfile, c) - bedAt(c),
+        );
         if (owner >= 0) {
           const surface = lakes.basins[owner].waterLevel;
-          clip(bed[a] - surface, bed[b] - surface, bed[c] - surface);
+          clip(bedAt(a) - surface, bedAt(b) - surface, bedAt(c) - surface);
         }
-        if (biomes[a] === 0 || biomes[b] === 0 || biomes[c] === 0)
-          clip(bed[a] - sea, bed[b] - sea, bed[c] - sea);
+        if (mouth) clip(bedAt(a) - sea, bedAt(b) - sea, bedAt(c) - sea);
         emit();
       }
     };
     const traverse = () => {
       for (let z = 0; z < h - 1; z++)
         for (let x = 0; x < w - 1; x++) {
-          const i = z * w + x;
-          triangle(i, i + w, i + 1);
-          triangle(i + 1, i + w, i + w + 1);
+          const i = z * w + x,
+            m = n + i,
+            cell = z * (w - 1) + x;
+          if (isRiver && pass === 1) riverRanges[cell] = iCursor;
+          const owner0 = lakeTriangleOwner(result, i, i + w, i + 1),
+            owner1 = lakeTriangleOwner(result, i + 1, i + w, i + w + 1);
+          const mouth0 = biomes[i] === 0 || biomes[i + w] === 0 || biomes[i + 1] === 0,
+            mouth1 = biomes[i + 1] === 0 || biomes[i + w] === 0 || biomes[i + w + 1] === 0;
+          if (isRiver) {
+            triangle(i, i + w, m, owner0, mouth0);
+            triangle(i, m, i + 1, owner0, mouth0);
+            triangle(i + 1, m, i + w + 1, owner1, mouth1);
+            triangle(m, i + w, i + w + 1, owner1, mouth1);
+          } else {
+            triangle(i, i + w, i + 1, owner0, mouth0);
+            triangle(i + 1, i + w, i + w + 1, owner1, mouth1);
+          }
         }
+      if (isRiver && pass === 1) riverRanges[(w - 1) * (h - 1)] = iCursor;
     };
     traverse();
     if (!indexCount) return undefined;

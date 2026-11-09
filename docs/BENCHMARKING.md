@@ -666,3 +666,11 @@ at most 8 KiB. Stone-to-reed clearance adds 12 bytes per stone of CPU-only envel
 Per-layer setup scratch and actual counts are recorded separately; shader fading
 still submits static buffers. Pixel/instrumentation checks are test-only and do
 not establish physical-GPU frame rates or a controlled Local/Remote speed claim.
+
+River continuity v1 changes display work only. Its conservative field/scratch bound
+is 69*N+4 numeric bytes; actual 512x512 fixture fields use 18083848 bytes. The same
+fixture's combined lake/river output uses 8614220 bytes per CPU/GPU copy. Water still
+has at most two color batches, no shadow caster and no frame-loop allocation. Output
+and scratch are reported separately from Core computeMs. Node setup wall time is a
+smoke observation affected by JIT/host load, not browser GPU completion or a controlled
+Local/Remote comparison. See the specification for worst-case bounds and limits.
