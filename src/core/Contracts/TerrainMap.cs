@@ -6,4 +6,4 @@ public enum TreeVariant { Small = 0, Mature = 1 }
 public sealed record TreeInstance(int CellIndex, float X, float Y, float Z, float Scale, float Rotation, TreeKind Kind, TreeVariant Variant);
 public sealed record TerrainMap(int Width, int Height, float[] Values, string AlgorithmVersion,
     LandscapeBiome[] Biomes, string ResultVersion, float[] Moisture, float[] Temperature,
-    float[] Slope, float[] VegetationDensity, TreeInstance[] Trees, float[] SurfaceWeights, RockInstance[] Rocks, HydrologyResult Hydrology, RiverNetworkResult Rivers);
+    float[] Slope, float[] VegetationDensity, TreeInstance[] Trees, float[] SurfaceWeights, RockInstance[] Rocks, HydrologyResult Hydrology, RiverNetworkResult Rivers, LakeMapResult Lakes);

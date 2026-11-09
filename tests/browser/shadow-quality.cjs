@@ -176,7 +176,7 @@ const cases = [
       const request = {
         ...params,
         heightMap,
-        algorithmVersion: "diverse-landscape-v12",
+        algorithmVersion: "diverse-landscape-v13",
       };
       await page.locator("#generate-local").click();
       await waitForTerrain(page);

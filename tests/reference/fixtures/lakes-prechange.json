@@ -1,0 +1,170 @@
+[
+  {
+    "name": "mixed",
+    "request": {
+      "heightMap": {
+        "seed": 42,
+        "width": 129,
+        "height": 97,
+        "noiseScale": 0.03,
+        "octaves": 4,
+        "heightMultiplier": 30,
+        "algorithmVersion": "value-noise-fbm-v1"
+      },
+      "mountainStrength": 0.55,
+      "warpStrength": 2,
+      "iterations": 16,
+      "rainfall": 0.05,
+      "evaporation": 0.1,
+      "plainsCoverage": 0.45,
+      "mountainCoverage": 0.3,
+      "globalMoisture": 0.65,
+      "seaLevel": 0.16,
+      "globalWarmth": 0.6,
+      "vegetationDensity": 1,
+      "landformRegionScale": 1,
+      "algorithmVersion": "diverse-landscape-v12"
+    },
+    "sha256": "cda59f52318bece24c2185f9dd27b92d79ceb47a98bf4647dc96bdb0d74d18fc"
+  },
+  {
+    "name": "mountains",
+    "request": {
+      "heightMap": {
+        "seed": 42,
+        "width": 129,
+        "height": 97,
+        "noiseScale": 0.03,
+        "octaves": 4,
+        "heightMultiplier": 30,
+        "algorithmVersion": "value-noise-fbm-v1"
+      },
+      "mountainStrength": 0.55,
+      "warpStrength": 2,
+      "iterations": 16,
+      "rainfall": 0.05,
+      "evaporation": 0.1,
+      "plainsCoverage": 0,
+      "mountainCoverage": 1,
+      "globalMoisture": 0.65,
+      "seaLevel": 0.16,
+      "globalWarmth": 0.6,
+      "vegetationDensity": 1,
+      "landformRegionScale": 1,
+      "algorithmVersion": "diverse-landscape-v12"
+    },
+    "sha256": "859bfebc373fcf8813f9fc14c4559ec2e393391e5ac2fb14491a8f05e7244f4b"
+  },
+  {
+    "name": "coast",
+    "request": {
+      "heightMap": {
+        "seed": -7,
+        "width": 129,
+        "height": 97,
+        "noiseScale": 0.03,
+        "octaves": 4,
+        "heightMultiplier": 30,
+        "algorithmVersion": "value-noise-fbm-v1"
+      },
+      "mountainStrength": 0.55,
+      "warpStrength": 2,
+      "iterations": 16,
+      "rainfall": 0.05,
+      "evaporation": 0.1,
+      "plainsCoverage": 0.45,
+      "mountainCoverage": 0.3,
+      "globalMoisture": 0.65,
+      "seaLevel": 0.23,
+      "globalWarmth": 0.6,
+      "vegetationDensity": 1,
+      "landformRegionScale": 1,
+      "algorithmVersion": "diverse-landscape-v12"
+    },
+    "sha256": "968ff07609f03e66543166ef93cfa2f8b28c24440a745fdd96b5a2e92b6a0586"
+  },
+  {
+    "name": "no-ocean",
+    "request": {
+      "heightMap": {
+        "seed": 42,
+        "width": 129,
+        "height": 97,
+        "noiseScale": 0.03,
+        "octaves": 4,
+        "heightMultiplier": 30,
+        "algorithmVersion": "value-noise-fbm-v1"
+      },
+      "mountainStrength": 0.55,
+      "warpStrength": 2,
+      "iterations": 16,
+      "rainfall": 0.05,
+      "evaporation": 0.1,
+      "plainsCoverage": 0.45,
+      "mountainCoverage": 0.3,
+      "globalMoisture": 0.65,
+      "seaLevel": 0,
+      "globalWarmth": 0.6,
+      "vegetationDensity": 1,
+      "landformRegionScale": 1,
+      "algorithmVersion": "diverse-landscape-v12"
+    },
+    "sha256": "fa711c58c1863adeee94a2706e242c58f679087d0da1e0099d0c34cc07287568"
+  },
+  {
+    "name": "flat",
+    "request": {
+      "heightMap": {
+        "seed": 42,
+        "width": 129,
+        "height": 97,
+        "noiseScale": 0.03,
+        "octaves": 4,
+        "heightMultiplier": 0,
+        "algorithmVersion": "value-noise-fbm-v1"
+      },
+      "mountainStrength": 0.55,
+      "warpStrength": 2,
+      "iterations": 16,
+      "rainfall": 0.05,
+      "evaporation": 0.1,
+      "plainsCoverage": 0.45,
+      "mountainCoverage": 0.3,
+      "globalMoisture": 0.65,
+      "seaLevel": 0.16,
+      "globalWarmth": 0.6,
+      "vegetationDensity": 1,
+      "landformRegionScale": 1,
+      "algorithmVersion": "diverse-landscape-v12"
+    },
+    "sha256": "9011a08d2594a54eea3427bdd9381f74ca748812a5e88b13c0fa9c05ec4a9c51"
+  },
+  {
+    "name": "maximum",
+    "request": {
+      "heightMap": {
+        "seed": 42,
+        "width": 512,
+        "height": 512,
+        "noiseScale": 0.03,
+        "octaves": 4,
+        "heightMultiplier": 30,
+        "algorithmVersion": "value-noise-fbm-v1"
+      },
+      "mountainStrength": 0.55,
+      "warpStrength": 2,
+      "iterations": 0,
+      "rainfall": 0.05,
+      "evaporation": 0.1,
+      "plainsCoverage": 0.45,
+      "mountainCoverage": 0.3,
+      "globalMoisture": 0.65,
+      "seaLevel": 0.16,
+      "globalWarmth": 0.6,
+      "vegetationDensity": 1,
+      "landformRegionScale": 1,
+      "algorithmVersion": "diverse-landscape-v12"
+    },
+    "sha256": "198888d54b23f00fbd4bcec92970b46d04fcfce784bee666fdecb02c5c2ddf6f"
+  }
+]

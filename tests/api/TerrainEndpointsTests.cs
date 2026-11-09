@@ -11,7 +11,7 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
 {
     private readonly HttpClient client;
     public TerrainEndpointsTests(WebApplicationFactory<Program> factory) => client = factory.CreateClient();
-    internal const string Valid = """{"heightMap":{"seed":42,"width":5,"height":3,"noiseScale":0.37,"octaves":3,"heightMultiplier":30,"algorithmVersion":"value-noise-fbm-v1"},"mountainStrength":0.55,"warpStrength":2,"iterations":8,"rainfall":0.05,"evaporation":0.1,"plainsCoverage":0.45,"mountainCoverage":0.3,"globalMoisture":0.65,"seaLevel":0.16,"globalWarmth":0.6,"vegetationDensity":1,"landformRegionScale":1,"algorithmVersion":"diverse-landscape-v12"}""";
+    internal const string Valid = """{"heightMap":{"seed":42,"width":5,"height":3,"noiseScale":0.37,"octaves":3,"heightMultiplier":30,"algorithmVersion":"value-noise-fbm-v1"},"mountainStrength":0.55,"warpStrength":2,"iterations":8,"rainfall":0.05,"evaporation":0.1,"plainsCoverage":0.45,"mountainCoverage":0.3,"globalMoisture":0.65,"seaLevel":0.16,"globalWarmth":0.6,"vegetationDensity":1,"landformRegionScale":1,"algorithmVersion":"diverse-landscape-v13"}""";
 
     [Fact]
     public async Task BothHostsSerializeIdenticalFullResultsParametersAndConservationSummary()
@@ -25,9 +25,16 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
         var b = wasm.RootElement;
         foreach (var key in new[] { "result", "simulation", "parameters", "coreBuildId", "workload", "simulationVersion", "executionProfile" })
             Assert.Equal(a.GetProperty(key).GetRawText(), b.GetProperty(key).GetRawText());
-        Assert.Equal("landscape-ecology-hydraulic-v13", a.GetProperty("workload").GetString());
+        Assert.Equal("landscape-ecology-hydraulic-v14", a.GetProperty("workload").GetString());
         Assert.Equal("hydraulic-grid-v1", a.GetProperty("simulationVersion").GetString());
-        Assert.Equal("diverse-landscape-v12", a.GetProperty("result").GetProperty("algorithmVersion").GetString());
+        Assert.Equal("diverse-landscape-v13", a.GetProperty("result").GetProperty("algorithmVersion").GetString());
+        var lakes = a.GetProperty("result").GetProperty("lakes");
+        Assert.Equal(5, lakes.EnumerateObject().Count());
+        Assert.Equal("lake-basins-v1", lakes.GetProperty("algorithmVersion").GetString());
+        Assert.Equal(15, lakes.GetProperty("lakeIdByCell").GetArrayLength());
+        Assert.Empty(lakes.GetProperty("basins").EnumerateArray());
+        Assert.Empty(lakes.GetProperty("spillFromCells").EnumerateArray());
+        Assert.Empty(lakes.GetProperty("riverCrossingFromCells").EnumerateArray());
         var rivers = a.GetProperty("result").GetProperty("rivers");
         Assert.Equal(3, rivers.EnumerateObject().Count());
         Assert.Equal("river-network-v1", rivers.GetProperty("algorithmVersion").GetString());
@@ -55,6 +62,22 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
             Assert.True(double.IsFinite(root.GetProperty("computeMs").GetDouble()) && root.GetProperty("computeMs").GetDouble() >= 0);
     }
 
+    [Fact]
+    public async Task BothHostsAgreeOnNonemptyLakesAndPackedConnections()
+    {
+        var json = Valid.Replace("\"width\":5", "\"width\":129").Replace("\"height\":3", "\"height\":97").Replace("0.37", "0.03");
+        using var response = await Post(json);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var api = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        using var wasm = JsonDocument.Parse(Export(json));
+        var lakes = api.RootElement.GetProperty("result").GetProperty("lakes");
+        Assert.Equal(lakes.GetRawText(), wasm.RootElement.GetProperty("result").GetProperty("lakes").GetRawText());
+        Assert.InRange(lakes.GetProperty("basins").GetArrayLength(), 1, 64);
+        Assert.Equal(129 * 97, lakes.GetProperty("lakeIdByCell").GetArrayLength());
+        Assert.True(lakes.GetProperty("spillFromCells").GetArrayLength() > 0);
+        Assert.True(lakes.GetProperty("riverCrossingFromCells").GetArrayLength() > 0);
+    }
+
     [Theory]
     [InlineData("null", "invalid_json")]
     [InlineData("{}", "validation")]
@@ -70,6 +93,7 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
     [InlineData("preRockV2Version", "validation")]
     [InlineData("preHydrologyVersion", "validation")]
     [InlineData("preRiverVersion", "validation")]
+    [InlineData("preLakeVersion", "validation")]
     [InlineData("negative", "validation")]
     [InlineData("budget", "validation")]
     public async Task BothHostsRejectInvalidRequestsConsistently(string input, string category)
@@ -80,13 +104,14 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
             "unknown" => Valid.Replace("\"mountainStrength\"", "\"unexpected\""),
             "nestedUnknown" => Valid.Replace("\"seed\"", "\"unknownSeed\""),
             "missing" => Valid.Replace("\"rainfall\":0.05,", ""),
-            "version" => Valid.Replace("diverse-landscape-v12", "v2"),
-            "preClimateVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v7"),
-            "preRockV2Version" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v9"),
-            "preCoastV2Version" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v8"),
-            "preRiverVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v11"),
-            "preHydrologyVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v10"),
-            "oldVersion" => Valid.Replace("diverse-landscape-v12", "diverse-landscape-v3"),
+            "version" => Valid.Replace("diverse-landscape-v13", "v2"),
+            "preClimateVersion" => Valid.Replace("diverse-landscape-v13", "diverse-landscape-v7"),
+            "preRockV2Version" => Valid.Replace("diverse-landscape-v13", "diverse-landscape-v9"),
+            "preCoastV2Version" => Valid.Replace("diverse-landscape-v13", "diverse-landscape-v8"),
+            "preLakeVersion" => Valid.Replace("diverse-landscape-v13", "diverse-landscape-v12"),
+            "preRiverVersion" => Valid.Replace("diverse-landscape-v13", "diverse-landscape-v11"),
+            "preHydrologyVersion" => Valid.Replace("diverse-landscape-v13", "diverse-landscape-v10"),
+            "oldVersion" => Valid.Replace("diverse-landscape-v13", "diverse-landscape-v3"),
             "negative" => Valid.Replace("\"iterations\":8", "\"iterations\":-1"),
             "budget" => Valid.Replace("\"width\":5", "\"width\":512").Replace("\"height\":3", "\"height\":512").Replace("\"iterations\":8", "\"iterations\":129"),
             _ => input
@@ -188,7 +213,7 @@ public sealed class TerrainEndpointsTests : IClassFixture<WebApplicationFactory<
             Assert.InRange(tree.GetProperty("variant").GetInt32(), 0, 1);
             Assert.InRange(tree.GetProperty("kind").GetInt32(), 0, 2);
         }
-        Assert.Equal("landscape-ecology-v13", a.GetProperty("resultVersion").GetString());
+        Assert.Equal("landscape-ecology-v14", a.GetProperty("resultVersion").GetString());
     }
 
     [Theory]

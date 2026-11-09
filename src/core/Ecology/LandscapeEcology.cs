@@ -33,10 +33,11 @@ internal static class LandscapeEcology
         var rocks = RockPlacement.Place(values, biomes, slope, surfaceWeights, trees, map.Width, map.Height, seed);
         // Placement consumes frozen base coverage; coastal appearance must not change rocks.
         CoastalSurfaces.Apply(surfaceWeights, values, ocean, moisture, temperature, slope, map.Width, map.Height, bound, request.SeaLevel);
-        var hydrology = HydrologyAnalyzer.Analyze(values, biomes, map.Width, map.Height);
+        var hydrology = HydrologyAnalyzer.Analyze(values, biomes, map.Width, map.Height, out var spillSurface);
         var rivers = RiverNetworkExtractor.Extract(hydrology, biomes);
+        var lakes = LakeBasinAnalyzer.Analyze(values, spillSurface, biomes, hydrology, rivers, map.Width, map.Height, map.HeightMultiplier);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,
             moisture, temperature, slope, density, trees, surfaceWeights, rocks,
-            hydrology, rivers);
+            hydrology, rivers, lakes);
     }
 }

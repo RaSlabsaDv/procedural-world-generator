@@ -73,13 +73,13 @@ The API exposes POST /api/v1/terrains and GET /api/health. Removed probe/region/
 
 Current identities:
 
-- Algorithm: diverse-landscape-v12; nested noise: value-noise-fbm-v1.
-- Result: landscape-ecology-v13.
-- Workload: landscape-ecology-hydraulic-v13.
-- Execution profile: landscape-worker-json-v13; RPC: worker-rpc-v1.
+- Algorithm: diverse-landscape-v13; nested noise: value-noise-fbm-v1.
+- Result: landscape-ecology-v14.
+- Workload: landscape-ecology-hydraulic-v14.
+- Execution profile: landscape-worker-json-v14; RPC: worker-rpc-v1.
 - Simulation: hydraulic-grid-v1.
 
-Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances, coastal distance/blending, finalized drainage and river extraction. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
+Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances, coastal distance/blending, finalized drainage, river extraction and lake selection. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
 
 One worker owns one runtime per document. Offline preparation may initialize it before an interactive request; record that startup/cache state separately. Display timing covers CPU setup and first submission, excludes texture/pause wait, and does not measure GPU completion. See [BENCHMARKING.md](BENCHMARKING.md).
 
@@ -1096,3 +1096,55 @@ browser regression passes maximum work, Local/Remote 3D and offline new seeds.
 Final Stage 2 PWA regression also passes offline reload/new tab/new seeds, Remote
 failure/recovery and busy-update deferral, followed by updated offline 3D with Bloom.
 The temporary deployment modifications are restored after the test.
+
+## Hydrology Stage 3 — lake basins
+
+See [LAKE_BASINS_V1.md](specs/LAKE_BASINS_V1.md) for candidate membership, ranking,
+area/count budgets, static spill-level semantics and complete connection ordering.
+`result.lakes` is required even when empty; `lakeIdByCell` always has N entries,
+using -1 outside selected lakes. Each descriptor has id, waterLevel, cellCount,
+primarySpillFrom and primarySpillTo. The two packed source arrays reference targets
+through existing hydrology receivers. River cells beneath lakes are preserved.
+
+The Core analyzer consumes the existing priority-flood surface through an internal
+overload. It does not rerun drainage, reconstruct lost float bits or alter inputs.
+Candidate labels reuse output storage; a fixed queue and bounded candidate struct
+array avoid per-cell objects/collections. Whole-call computeMs includes selection;
+serialization, transfer, normalization, comparison and display remain outside it.
+
+Tests include known bowls/spill exits and ties, exact surface equality, touching
+basins, inlet/outlet/lake transitions, eligibility, whole-candidate budget rejection,
+ranking, 64-lake cap, all-Ocean/flat/zero-height and rectangular/maximum inputs.
+Maximum-grid allocation has a conservative numeric-bound assertion. Client corruption
+tests cover contracts, IDs/counts/levels, connectedness, budgets and complete links;
+comparison covers all descriptor fields and vectors. API/native-WASM tests include
+empty and nonempty lake output.
+
+Pre-change complete v12-generation/v13-result fingerprints were captured before
+implementation under tests/reference/fixtures/lakes-prechange.json. They include all
+hydrology and river output. Verify preservation against a matching deployment:
+
+```bash
+PWG_BASE_URL=http://127.0.0.1:8080 python3 tests/reference/lake_preservation.py
+PWG_BASE_URL=http://127.0.0.1:8080 python3 tests/reference/river_preservation.py
+PWG_BASE_URL=http://127.0.0.1:8080 python3 tests/reference/hydrology_preservation.py
+PWG_BASE_URL=http://127.0.0.1:8080 node tests/browser/hydrology.cjs
+```
+
+Use the existing Playwright/Chromium overrides. The oldest helpers explicitly omit
+later-added fields to retain their original schemas; the new helper omits only lakes
+and changed identities. None regenerates expectations from current results. Browser
+hydrology now covers seven real WASM/API cases, including a nonempty lake fixture,
+levels/membership/connections and bounded-work 512x512. Lake surfaces are not rendered
+until the subsequent visualization stage. README stays empty; stock SSAO is deferred.
+
+Stage 3 verification passes: 267 Core tests, 46 API tests and 417 Angular tests,
+13 packaging/asset checks and worker RPC. Locked restore and Release build succeed
+without warnings/errors; production publication succeeds. Seven real browser WASM/
+API cases match, including nonempty lakes and 512x512. All six pre-lake complete
+fingerprints (including drainage/rivers), six pre-river and six pre-hydrology
+fingerprints remain exact. Existing landscape regression passes maximum work,
+Local/Remote 3D and offline new seeds. Evidence is under ignored artifacts/lakes-*.
+Final Stage 3 PWA regression passes offline reload/new tabs/new seeds, Remote
+failure/recovery, busy-update deferral and updated offline 3D with Bloom. Temporary
+deployment mutations are restored after the simulation.

@@ -1282,3 +1282,37 @@ and all six older pre-hydrology fingerprints remain exact. Existing landscape br
 regression passes maximum work, Local/Remote 3D and offline new seeds. Final PWA
 update/offline regression passes with Bloom enabled; simulated deployment files are
 restored. No physical-device timing or visible river/lake claim is made.
+
+### Hydrology Stage 3 — bounded static lake basins
+
+Implemented [Lake basins v1](specs/LAKE_BASINS_V1.md). Core groups positive-depth
+non-Ocean cells by D8 connectivity and exact authoritative spill level. It reuses
+priority-flood scratch rather than reconstructing the surface or rerunning drainage.
+Minimum area/depth and river membership filter candidates; stable ranking selects
+whole components within 8% of land and 64 lakes. No area trimming or lowered levels.
+
+Required dense membership, descriptors and packed source vectors preserve all exits
+and river crossings, including lake transitions. Representative primary spills do
+not reroute the existing graph. No dynamic lake water-balance claim is made. Labels
+reuse output storage; traversal/candidates and bounded selection are linear in N.
+Client validates membership/connectivity/levels and complete metadata; equivalence
+includes every field. Both hosts retain identical whole-call timing boundaries.
+
+Generation advances to v13 and result/workload/profile to v14. All previous fields,
+including drainage and rivers, remain unchanged. No new controls, dependencies,
+carving or water rendering is added. Stock SSAO remains deferred.
+
+Next: implement 3D river/lake surfaces, shore transitions and submerged-channel
+handling using both completed datasets. Keep detailed timing/progress/cancellation
+as an independent execution track. README remains empty.
+
+Stage 3 verification: 267 Core tests, 46 API tests and 417 Angular tests pass, plus
+13 packaging checks and worker RPC. Locked restore, zero-warning Release build and
+production publication pass. Seven real WASM/API lake/river/drainage cases match;
+all 18 historical preservation cases pass, including six captured before this stage.
+The maximum fixture selects 6 lakes with 20971 cells within8% land. Existing landscape
+browser regression passes maximum work, Local/Remote 3D and offline new seeds.
+No physical-device performance improvement is claimed.
+Final PWA update/offline regression also passes with Bloom enabled, including busy
+update deferral and updated-version offline terrain. Temporary deployment files are
+restored. README remains empty.

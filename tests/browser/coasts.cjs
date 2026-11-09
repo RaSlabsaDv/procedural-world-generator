@@ -21,7 +21,7 @@ const assert = require("node:assert/strict"),
       ? "diverse-landscape-v8"
       : baseline
         ? "diverse-landscape-v6"
-        : "diverse-landscape-v12";
+        : "diverse-landscape-v13";
   const browser = await launchBrowser();
   try {
     const context = await browser.newContext({

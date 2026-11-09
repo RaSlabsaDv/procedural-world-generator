@@ -5,6 +5,7 @@ import {
   SURFACE_CHANNELS,
   HYDROLOGY_VERSION,
   RIVER_NETWORK_VERSION,
+  LAKE_BASINS_VERSION,
 } from './terrain.models';
 import { sameObject } from './contract-utils';
 
@@ -21,6 +22,7 @@ export interface TerrainComparison {
   readonly rockMismatchCount: number;
   readonly hydrologyMismatchCount: number;
   readonly riverMismatchCount: number;
+  readonly lakeMismatchCount: number;
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
@@ -167,6 +169,34 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
   for (let i = 0; i < Math.min(ra.cellIndices.length, rb.cellIndices.length); i++)
     if (ra.cellIndices[i] !== rb.cellIndices[i] || !close(ra.widths[i], rb.widths[i]))
       riverMismatchCount++;
+  const la = a.result.lakes,
+    lb = b.result.lakes;
+  if (
+    la.algorithmVersion !== LAKE_BASINS_VERSION ||
+    lb.algorithmVersion !== LAKE_BASINS_VERSION ||
+    la.lakeIdByCell.length !== a.result.values.length ||
+    lb.lakeIdByCell.length !== b.result.values.length
+  )
+    throw new TerrainError('protocol', 'Incompatible lake contract.');
+  let lakeMismatchCount = 0;
+  for (const field of ['lakeIdByCell', 'spillFromCells', 'riverCrossingFromCells'] as const) {
+    lakeMismatchCount += Math.abs(la[field].length - lb[field].length);
+    for (let i = 0; i < Math.min(la[field].length, lb[field].length); i++)
+      if (la[field][i] !== lb[field][i]) lakeMismatchCount++;
+  }
+  lakeMismatchCount += Math.abs(la.basins.length - lb.basins.length);
+  for (let i = 0; i < Math.min(la.basins.length, lb.basins.length); i++) {
+    const left = la.basins[i],
+      right = lb.basins[i];
+    if (
+      left.id !== right.id ||
+      left.cellCount !== right.cellCount ||
+      left.primarySpillFrom !== right.primarySpillFrom ||
+      left.primarySpillTo !== right.primarySpillTo ||
+      !close(left.waterLevel, right.waterLevel)
+    )
+      lakeMismatchCount++;
+  }
   const verifiable = (id: string) =>
     id.trim().length > 0 && id.trim() !== 'unversioned' && !id.trim().endsWith('-dirty');
   const identity =
@@ -186,13 +216,15 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
       coverageMismatchCount === 0 &&
       rockMismatchCount === 0 &&
       hydrologyMismatchCount === 0 &&
-      riverMismatchCount === 0,
+      riverMismatchCount === 0 &&
+      lakeMismatchCount === 0,
     environmentMismatchCount,
     vegetationMismatchCount,
     coverageMismatchCount,
     rockMismatchCount,
     hydrologyMismatchCount,
     riverMismatchCount,
+    lakeMismatchCount,
     biomeMismatchCount,
     biomesMatch: biomeMismatchCount === 0,
     identity,

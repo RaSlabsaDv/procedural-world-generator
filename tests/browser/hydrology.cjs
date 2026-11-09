@@ -26,6 +26,7 @@ const { artifactPath } = require("./support/editor.cjs");
         [17, 9, -7, 0, 30],
         [65, 49, 42, 0.16, 30],
         [65, 49, 2026, 0.23, 30],
+        [129, 97, 42, 0.16, 30],
         [512, 512, -7, 0, 80],
       ]) {
         const request = {
@@ -40,7 +41,7 @@ const { artifactPath } = require("./support/editor.cjs");
           },
           mountainStrength: 0.55,
           warpStrength: 2,
-          iterations: 0,
+          iterations: width === 129 ? 8 : 0,
           rainfall: 0.05,
           evaporation: 0.1,
           plainsCoverage: 0.45,
@@ -50,7 +51,7 @@ const { artifactPath } = require("./support/editor.cjs");
           globalWarmth: 0.6,
           vegetationDensity: 1,
           landformRegionScale: 1,
-          algorithmVersion: "diverse-landscape-v12",
+          algorithmVersion: "diverse-landscape-v13",
         };
         const text = await runtime.generateTerrainJson(JSON.stringify(request));
         const local = JSON.parse(text);
@@ -63,7 +64,7 @@ const { artifactPath } = require("./support/editor.cjs");
         const remote = await response.json();
         if (
           local.coreBuildId !== remote.coreBuildId ||
-          local.workload !== "landscape-ecology-hydraulic-v13"
+          local.workload !== "landscape-ecology-hydraulic-v14"
         )
           throw Error("Identity");
         const n = width * height,
@@ -144,28 +145,166 @@ const { artifactPath } = require("./support/editor.cjs");
           }
         }
         if (head !== n || mass !== land) throw Error("Cycle/mass");
-        const rivers = local.result.rivers, remoteRivers = remote.result.rivers;
-        if (rivers.algorithmVersion !== "river-network-v1" || remoteRivers.algorithmVersion !== rivers.algorithmVersion ||
-            rivers.cellIndices.length !== rivers.widths.length || remoteRivers.cellIndices.length !== rivers.cellIndices.length ||
-            remoteRivers.widths.length !== rivers.widths.length) throw Error("River shape/identity");
+        const rivers = local.result.rivers,
+          remoteRivers = remote.result.rivers;
+        if (
+          rivers.algorithmVersion !== "river-network-v1" ||
+          remoteRivers.algorithmVersion !== rivers.algorithmVersion ||
+          rivers.cellIndices.length !== rivers.widths.length ||
+          remoteRivers.cellIndices.length !== rivers.cellIndices.length ||
+          remoteRivers.widths.length !== rivers.widths.length
+        )
+          throw Error("River shape/identity");
         const threshold = Math.max(32, Math.ceil(land / 512));
-        let cursor = 0, mouths = 0, boundaryOutlets = 0, depressionCrossings = 0;
+        let cursor = 0,
+          mouths = 0,
+          boundaryOutlets = 0,
+          depressionCrossings = 0;
         for (let i = 0; i < n; i++) {
-          if (local.result.biomes[i] === 0 || h.flowAccumulation[i] < threshold) continue;
-          if (rivers.cellIndices[cursor] !== i || remoteRivers.cellIndices[cursor] !== i) throw Error("River membership/parity");
-          const width = rivers.widths[cursor], otherWidth = remoteRivers.widths[cursor];
-          const expectedWidth = Math.fround(Math.min(3, Math.max(.6, .35 + .25 * Math.sqrt(h.flowAccumulation[i] / threshold))));
-          if (!Number.isFinite(width) || !Number.isFinite(otherWidth) || width < .6 || width > 3 ||
-              Math.abs(width - expectedWidth) > 1e-6 + 1e-5 * Math.max(width, expectedWidth) ||
-              Math.abs(width - otherWidth) > 1e-6 + 1e-5 * Math.max(width, otherWidth)) throw Error("River width/parity");
+          if (local.result.biomes[i] === 0 || h.flowAccumulation[i] < threshold)
+            continue;
+          if (
+            rivers.cellIndices[cursor] !== i ||
+            remoteRivers.cellIndices[cursor] !== i
+          )
+            throw Error("River membership/parity");
+          const width = rivers.widths[cursor],
+            otherWidth = remoteRivers.widths[cursor];
+          const expectedWidth = Math.fround(
+            Math.min(
+              3,
+              Math.max(
+                0.6,
+                0.35 + 0.25 * Math.sqrt(h.flowAccumulation[i] / threshold),
+              ),
+            ),
+          );
+          if (
+            !Number.isFinite(width) ||
+            !Number.isFinite(otherWidth) ||
+            width < 0.6 ||
+            width > 3 ||
+            Math.abs(width - expectedWidth) >
+              1e-6 + 1e-5 * Math.max(width, expectedWidth) ||
+            Math.abs(width - otherWidth) >
+              1e-6 + 1e-5 * Math.max(width, otherWidth)
+          )
+            throw Error("River width/parity");
           const next = h.receiverIndex[i];
           if (next < 0) boundaryOutlets++;
           else if (local.result.biomes[next] === 0) mouths++;
-          else if (h.flowAccumulation[next] < threshold) throw Error("Broken downstream channel");
+          else if (h.flowAccumulation[next] < threshold)
+            throw Error("Broken downstream channel");
           if (h.depressionDepth[i] > 0) depressionCrossings++;
           cursor++;
         }
-        if (cursor !== rivers.cellIndices.length) throw Error("Extra river cells");
+        if (cursor !== rivers.cellIndices.length)
+          throw Error("Extra river cells");
+        const lakes = local.result.lakes,
+          otherLakes = remote.result.lakes;
+        if (
+          lakes.algorithmVersion !== "lake-basins-v1" ||
+          otherLakes.algorithmVersion !== lakes.algorithmVersion ||
+          lakes.basins.length > 64 ||
+          lakes.basins.length !== otherLakes.basins.length
+        )
+          throw Error("Lake identity/count");
+        for (const field of [
+          "lakeIdByCell",
+          "spillFromCells",
+          "riverCrossingFromCells",
+        ]) {
+          if (
+            !Array.isArray(lakes[field]) ||
+            !Array.isArray(otherLakes[field]) ||
+            lakes[field].length !== otherLakes[field].length ||
+            (field === "lakeIdByCell"
+              ? lakes[field].length !== n
+              : lakes[field].length > n)
+          )
+            throw Error("Lake vector shape");
+          for (let i = 0; i < lakes[field].length; i++)
+            if (
+              !Number.isInteger(lakes[field][i]) ||
+              lakes[field][i] !== otherLakes[field][i]
+            )
+              throw Error("Lake vector parity");
+        }
+        const lakeCounts = new Int32Array(lakes.basins.length),
+          primary = new Int32Array(lakes.basins.length).fill(-1),
+          fed = new Uint8Array(lakes.basins.length);
+        let lakeArea = 0,
+          spillCursor = 0,
+          crossingCursor = 0;
+        for (let i = 0; i < n; i++) {
+          const id = lakes.lakeIdByCell[i];
+          if (id < -1 || id >= lakes.basins.length) throw Error("Lake id");
+          if (id < 0) continue;
+          lakeArea++;
+          lakeCounts[id]++;
+          const level = Math.fround(lakes.basins[id].waterLevel),
+            baseHeight = Math.fround(local.result.values[i]),
+            d = h.depressionDepth[i];
+          if (
+            local.result.biomes[i] === 0 ||
+            d <= 0 ||
+            level <= baseHeight ||
+            Math.abs(Math.fround(level - baseHeight) - d) >
+              1e-6 + 1e-5 * Math.max(d, level - baseHeight)
+          )
+            throw Error("Lake member/level");
+          const next = h.receiverIndex[i];
+          if (next >= 0 && lakes.lakeIdByCell[next] === id) continue;
+          if (lakes.spillFromCells[spillCursor++] !== i)
+            throw Error("Lake exit completeness");
+          const old = primary[id];
+          if (old < 0 || h.flowAccumulation[i] > h.flowAccumulation[old])
+            primary[id] = i;
+        }
+        for (const cell of rivers.cellIndices) {
+          const id = lakes.lakeIdByCell[cell],
+            next = h.receiverIndex[cell];
+          if (id >= 0) fed[id] = 1;
+          if (
+            next >= 0 &&
+            id !== lakes.lakeIdByCell[next] &&
+            (id >= 0 || lakes.lakeIdByCell[next] >= 0)
+          )
+            if (lakes.riverCrossingFromCells[crossingCursor++] !== cell)
+              throw Error("Lake crossing completeness");
+        }
+        if (
+          lakeArea > Math.floor((land * 8) / 100) ||
+          spillCursor !== lakes.spillFromCells.length ||
+          crossingCursor !== lakes.riverCrossingFromCells.length
+        )
+          throw Error("Lake area/connections");
+        for (let id = 0; id < lakes.basins.length; id++) {
+          const b = lakes.basins[id],
+            other = otherLakes.basins[id];
+          if (
+            b.id !== id ||
+            b.cellCount !== lakeCounts[id] ||
+            b.cellCount < 16 ||
+            !fed[id] ||
+            b.primarySpillFrom !== primary[id] ||
+            b.primarySpillTo !== h.receiverIndex[primary[id]]
+          )
+            throw Error("Lake descriptor");
+          for (const field of [
+            "id",
+            "cellCount",
+            "primarySpillFrom",
+            "primarySpillTo",
+          ])
+            if (b[field] !== other[field])
+              throw Error("Lake descriptor parity");
+          if (
+            Math.abs(b.waterLevel - other.waterLevel) >
+            1e-6 + 1e-5 * Math.max(b.waterLevel, other.waterLevel)
+          )
+            throw Error("Lake level parity");
+        }
         rows.push({
           width,
           height,
@@ -174,10 +313,23 @@ const { artifactPath } = require("./support/editor.cjs");
           terminalMass: mass,
           maxDepth,
           typedBytes: n * 12,
+          lakeCount: lakes.basins.length,
+          lakeArea,
+          lakeNumericBytes:
+            4 *
+              (n +
+                lakes.spillFromCells.length +
+                lakes.riverCrossingFromCells.length) +
+            20 * lakes.basins.length,
+          lakeJsonBytes: new TextEncoder().encode(JSON.stringify(lakes)).length,
           riverCount: rivers.cellIndices.length,
           riverTypedBytes: rivers.cellIndices.length * 8,
-          riverJsonBytes: new TextEncoder().encode(JSON.stringify(rivers)).length,
-          threshold, mouths, boundaryOutlets, depressionCrossings,
+          riverJsonBytes: new TextEncoder().encode(JSON.stringify(rivers))
+            .length,
+          threshold,
+          mouths,
+          boundaryOutlets,
+          depressionCrossings,
           jsonBytes: new TextEncoder().encode(text).length,
           hydrologyJsonBytes: new TextEncoder().encode(JSON.stringify(h))
             .length,
@@ -185,7 +337,8 @@ const { artifactPath } = require("./support/editor.cjs");
       }
       return rows;
     });
-    assert.equal(rows.length, 6);
+    assert.equal(rows.length, 7);
+    assert.ok(rows.some((row) => row.lakeCount > 0));
     assert.deepEqual(errors, []);
     await fs.writeFile(
       artifactPath("hydrology-browser.json"),

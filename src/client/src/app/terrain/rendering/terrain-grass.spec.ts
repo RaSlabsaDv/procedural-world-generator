@@ -1,3 +1,4 @@
+import { testEmptyLakes } from '../testing/terrain-test-fixture';
 import { testEmptyRivers } from '../testing/terrain-test-fixture';
 import { testHydrology } from '../testing/terrain-test-fixture';
 import { Matrix4, ShaderLib, Vector3 } from 'three';
@@ -19,6 +20,7 @@ function map(width = 33, height = 25): TerrainResponse['result'] {
   for (let i = 0; i < n; i++) weights[i * 5] = 1;
   return {
     ...testWire().result,
+    lakes: testEmptyLakes(n),
     rivers: testEmptyRivers(),
     hydrology: testHydrology({
       width,

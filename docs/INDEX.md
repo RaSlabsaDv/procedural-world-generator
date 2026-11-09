@@ -10,8 +10,9 @@
 
 ## Frozen policies and specifications
 
-Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v12, landscape-ecology-v13, landscape-ecology-hydraulic-v13 and landscape-worker-json-v13.
+Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v13, landscape-ecology-v14, landscape-ecology-hydraulic-v14 and landscape-worker-json-v14.
 
+- [Lake basins v1](specs/LAKE_BASINS_V1.md): bounded static inland lakes, authoritative levels, complete spill/crossing connections and v14 workload isolation.
 - [River network v1](specs/RIVER_NETWORK_V1.md): threshold-selected river cells, grid-unit widths, reused drainage connectivity and v13 workload isolation.
 - [Hydrology v1](specs/HYDROLOGY_V1.md): deterministic drainage foundation, graph/area/depression contracts and v12 workload isolation.
 - [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md): experiment protocol, readonly records and immutable configuration, sequential runner and editor UI, summary inclusion/count rules and versioned JSON/CSV export.

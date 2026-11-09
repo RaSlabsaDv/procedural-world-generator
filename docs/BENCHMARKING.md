@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v13`, algorithm `diverse-landscape-v12`, result `landscape-ecology-v13`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v13`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v14`, algorithm `diverse-landscape-v13`, result `landscape-ecology-v14`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v14`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -54,7 +54,7 @@ Before the campaign, run fixtures and verify the contract in both environments. 
 3. For **every** pair of values `a`, `b`, the proposed condition holds:
    `abs(a - b) <= 1e-6 + 1e-5 * max(abs(a), abs(b))`.
 4. Record maximum absolute error, mean absolute error, and the number of elements outside tolerance.
-5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Compare every hydrology receiver and accumulation exactly, depression depths with the same tolerance, river indices exactly and river widths with the same tolerance; sparse network lengths must match. Preserve the execution profile and never pool timings from different workload/profile versions, including v12 and v13.
+5. For the current workload, verify the ID array length, valid codes, and exact equality of every ID; floating-point tolerance does not apply to categories or tree kinds/variants/cell indices. Compare every moisture, temperature, slope, density and surfaceWeights element and every tree transform with the same documented tolerance; compare tree and rock counts, kinds, variants and indices exactly; compare every rock transform and groundY using the same tolerance. Compare every hydrology receiver and accumulation exactly, depression depths with the same tolerance, river indices exactly and river widths with the same tolerance; sparse network lengths must match. Compare every lake membership ID, descriptor integer, spill/crossing source and array length exactly; compare every lake water level with the established tolerance. Preserve the execution profile and never pool timings from different workload/profile versions, including v13 and v14.
 
 Validate this tolerance against fixtures before freezing the baseline. Do not increase it after the fact to conceal a discrepancy. A hash is useful for exact equality but does not replace element-by-element comparison with a tolerance.
 
@@ -548,3 +548,37 @@ Its reserialized nested JSON object used 115228 UTF-8 bytes; the complete Local
 response used 22057761 bytes. These observations are fixture-specific, not bounds
 or performance measurements. 5241 selected cells crossed potential analysis fill;
 they must not be rendered as exposed water before basin semantics are defined.
+
+## Lake-basin workload v14
+
+`diverse-landscape-v13` adds static `lake-basins-v1` analysis to existing whole-call
+Core timing. Result/workload/profile advance to v14; drainage, river, noise and
+hydraulic algorithm identities remain unchanged. Keep previous measurements and
+frozen request/build IDs separate; no old benchmark record is relabeled.
+
+Comparison includes every membership ID, descriptor integer, packed exit/crossing
+source and length exactly. Water levels use the established float tolerance.
+`lakeMismatchCount` participates in numeric equivalence and current JSON diagnostics;
+outer export containers remain unchanged. An added diagnostic cannot make different
+workload versions comparable. Static area and potential depression fill are not
+retained-water volume or a lake conservation metric.
+
+Conservative lake numeric output is 12N bytes (3 MiB at cap), plus at most 1280 bytes
+of descriptor numeric fields and object/array headers. Actual exits are bounded by
+selected area (<=8% of land). Core scratch is 4N+20*floor(N/16) bytes (1.3125 MiB at
+cap), plus bounded metadata. The already-computed surface remains live (4N, 1 MiB);
+it is neither reconstructed nor allocated a second time. Existing terrain/drainage/
+river allocations, JSON strings and parsed JS arrays are additional. Client retains
+the output vectors and uses a temporary N-byte seen array plus 4N queue to verify
+connected membership. No lake arrays enter GPU buffers.
+
+Selection/traversal is O(N) with at most 64 bounded selection scans; only the selected
+roots (<=64) are sorted. JSON, RPC/HTTP, client decoding/comparison and rendering stay
+outside computeMs. Browser smoke timings are not a controlled performance campaign.
+
+Observed real-browser fixture: seed -7, 512x512, zero erosion iterations, no Ocean,
+height 80. Six selected lakes cover 20971 cells (within the integer 8% budget), with
+1048828 numeric output bytes including descriptor fields and 766377 reserialized
+UTF-8 JSON bytes for the nested lake object. Complete Local response: 22824147 bytes.
+The 129x97 seed 42 fixture with 8 erosion iterations selects 3 lakes over 141 cells.
+These are payload/correctness observations, not memory-peak or performance claims.

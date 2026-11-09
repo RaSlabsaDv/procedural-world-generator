@@ -17,13 +17,13 @@ def main():
     cases = json.loads((Path(__file__).parent / "fixtures/rivers-prechange.json").read_text())
     for case in cases:
         request = case["request"]
-        request["algorithmVersion"] = "diverse-landscape-v12"
+        request["algorithmVersion"] = "diverse-landscape-v13"
         response = urlopen(Request(base + "/api/v1/terrains", data=json.dumps(request).encode(),
                                    headers={"Content-Type": "application/json"}), timeout=120)
         with response:
             current = json.load(response)
         result = current["result"]
-        for field in ("rivers", "algorithmVersion", "resultVersion"):
+        for field in ("lakes", "rivers", "algorithmVersion", "resultVersion"):
             del result[field]
         data = {"result": result, "simulation": current["simulation"]}
         digest = hashlib.sha256(json.dumps(data, sort_keys=True, separators=(",", ":")).encode()).hexdigest()

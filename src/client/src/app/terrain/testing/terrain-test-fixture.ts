@@ -6,6 +6,8 @@ import {
   RESULT_VERSION,
   HYDROLOGY_VERSION,
   RIVER_NETWORK_VERSION,
+  LAKE_BASINS_VERSION,
+  LakeMapResult,
   RiverNetworkResult,
   HydrologyResult,
   HeightMapRequest,
@@ -58,6 +60,13 @@ export function testWire(terrain = testTerrain()) {
         cellIndices: [] as number[],
         widths: [] as number[],
       },
+      lakes: {
+        algorithmVersion: LAKE_BASINS_VERSION,
+        lakeIdByCell: Array<number>(map.width * map.height).fill(-1),
+        basins: [],
+        spillFromCells: [],
+        riverCrossingFromCells: [],
+      },
       hydrology: testWireHydrology({
         width: map.width,
         height: map.height,
@@ -70,7 +79,7 @@ export function testWire(terrain = testTerrain()) {
     parameters: terrain,
     workload: TERRAIN_WORKLOAD as typeof TERRAIN_WORKLOAD,
     simulationVersion: SIMULATION_VERSION as typeof SIMULATION_VERSION,
-    executionProfile: 'landscape-worker-json-v13' as const,
+    executionProfile: 'landscape-worker-json-v14' as const,
     computeMs: 1,
     coreBuildId: 'git:123456789abc',
     simulation: {
@@ -133,5 +142,15 @@ export function testEmptyRivers(): RiverNetworkResult {
     algorithmVersion: RIVER_NETWORK_VERSION,
     cellIndices: new Int32Array(),
     widths: new Float32Array(),
+  };
+}
+
+export function testEmptyLakes(count: number): LakeMapResult {
+  return {
+    algorithmVersion: LAKE_BASINS_VERSION,
+    lakeIdByCell: new Int32Array(count).fill(-1),
+    basins: [],
+    spillFromCells: new Int32Array(),
+    riverCrossingFromCells: new Int32Array(),
   };
 }
