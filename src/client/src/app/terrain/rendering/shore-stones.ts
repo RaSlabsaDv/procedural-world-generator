@@ -74,6 +74,12 @@ export function shoreStones(
   water: readonly (BufferGeometry | undefined)[],
 ) {
   const selection = placeShoreStones(seed, result, terrain, water);
+  const footprints = new Float32Array((selection.records.length / SHORE_STONES.stride) * 3);
+  for (let o = 0, i = 0; o < selection.records.length; o += SHORE_STONES.stride, i += 3) {
+    footprints[i] = selection.records[o];
+    footprints[i + 1] = selection.records[o + 2];
+    footprints[i + 2] = selection.records[o + 3] * SHORE_STONES.footprintScale;
+  }
   const meshes: InstancedMesh<BufferGeometry, MeshLambertMaterial>[] = [];
   let pendingGeometry: BufferGeometry | undefined,
     pendingMaterial: MeshLambertMaterial | undefined,
@@ -95,6 +101,7 @@ export function shoreStones(
     large: selection.large,
     candidates: selection.candidates,
     scratchBytes: selection.scratchBytes,
+    footprintBytes: footprints.byteLength,
     instanceBytes: 0,
     geometryBytes: 0,
     checks: selection.checks,
@@ -150,7 +157,7 @@ export function shoreStones(
         stats.geometryBytes += a.array.byteLength;
       stats.geometryBytes += mesh.geometry.index?.array.byteLength ?? 0;
     }
-    return { meshes, stats, dispose };
+    return { meshes, stats, footprints, dispose };
   } catch (error) {
     dispose();
     throw error;

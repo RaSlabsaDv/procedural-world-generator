@@ -841,3 +841,12 @@ accepted stones share a bounded obstacle index. Two instanced Lambert batches re
 shared atmosphere and existing illumination; neither casts shadows. Camera-distance
 fade runs in the shader. Core rock placement, water geometry and versions stay fixed.
 Shared presentation hashing is extracted without changing existing grass results.
+
+### Inland shoreline reeds
+
+[Inland reeds v1](specs/INLAND_REEDS_V1.md) adds one static instanced Lambert tuft
+batch. Exact emitted-water contact, wet-bank cues and dry-bank witnesses restrict
+placement to gentle damp banks and shallow edges. Shared bounded obstacle queries
+read canonical rocks/trunks plus minimal decorative stone envelopes. Stone positions,
+Core output and water meshes remain unchanged. Reeds share scene illumination/fog,
+receive existing shadows, cast none and fade by camera distance in the shader.

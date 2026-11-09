@@ -1441,3 +1441,41 @@ geometry bytes per CPU/GPU copy and 2045116 numeric setup scratch bytes. The syn
 maximum-map test exercises the 4096 instance cap. These are bounded resource/correctness
 observations under SwiftShader, not physical-GPU performance measurements. Core and
 all canonical identities remain unchanged; no native source or fixtures were edited.
+
+### Hydrology Stage 6C — sparse shoreline reeds
+
+Implemented [Inland reeds v1](specs/INLAND_REEDS_V1.md): irregular upright tuft patches
+on gentle damp banks and shallow water with a nearby dry-bank witness. Excludes
+snow/Ocean, deep water, unsupported geometry, steep steps and obstacle envelopes.
+One static instanced Lambert batch receives existing light/fog/shadows and fades
+at distance; zero new shadow casters, textures, controls, dependencies or Core fields.
+The shared clearance index preserves existing stone placement. Only x,z,radius
+stone envelopes are shared with the reed layer. README remains empty.
+
+Inland shoreline detailing (wet materials, scattered stones and reeds) is complete.
+Further water-model changes or vegetation features require their own scope/policy.
+The independent execution track remains detailed timing, then progress/cancellation;
+no dynamic flow, new species or wind is included in this step.
+
+Stage 6C verification: 472 Angular tests, 13 packaging checks, worker RPC and locked
+production publication pass. Four actual published WASM/API cases preserve complete
+canonical fingerprints, immutable sources and prior stone counts/buffers. Fourteen
+reeds-disabled fixed screenshots match Stage 6B pixels exactly. Close views prove
+visible tufts; far maximum-map views have zero reed pixel contribution. One color
+submission, no reed shadow caster, Reference/HDR/Bloom, night, independent/narrow
+views and complete owned GPU cleanup pass. Coplanar stem/head overlap was removed
+before acceptance, and leaves attach to their stem centers.
+
+Observed tufts (shallow-rooted): mixed 170 (62), no-Ocean 304 (124), coastal 27 (7),
+512x512 fixture 617 (213). The maximum fixture adds 46892 matrix/color bytes per
+CPU/GPU copy, 2910 fixed geometry bytes per copy and 1835320 numeric reed-setup
+scratch bytes; stone clearance envelopes additionally retain 19992 CPU bytes.
+The synthetic maximum test reaches the 2048 cap. Wet-bank cues and discrete dry-bank
+witnesses intentionally leave some otherwise plausible shores empty. These are
+illustrative placement/resource observations under SwiftShader, not physical-GPU
+performance claims. Core source, fixtures and canonical identities are unchanged.
+
+Final PWA update/offline regression passes with Bloom, inland water, shoreline stones
+and reed-instancing checks enabled. Updated offline generation of seed 1001 submits
+the reed shader; worker initialization remains single and deployment test files are
+restored. Production remains available at the documented local startup address.

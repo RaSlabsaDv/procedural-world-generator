@@ -210,6 +210,51 @@ export async function createView(
       stoneCalls: onDraw.stoneCalls,
     };
   }
+  const reedMeshes = scene.children.filter(
+    (m) => m.name === "inland-reeds-v1",
+  ) as T.InstancedMesh[];
+  let reedCalls = 0;
+  for (const mesh of reedMeshes) {
+    mesh.onBeforeRender = () => {
+      reedCalls++;
+    };
+    for (const value of mesh.instanceMatrix.array)
+      if (!Number.isFinite(value)) throw Error("nonfinite reed transform");
+  }
+  function setReeds(enabled: boolean) {
+    for (const mesh of reedMeshes) mesh.visible = enabled;
+  }
+  function measureReeds(
+    options: { hour?: number; mode?: string; bloom?: boolean } = {},
+  ) {
+    setReeds(false);
+    const offDraw = draw(options),
+      off = pixels();
+    setReeds(true);
+    const onDraw = draw(options),
+      on = pixels();
+    let changed = 0,
+      difference = 0;
+    for (let i = 0; i < off.length; i += 4) {
+      const delta = Math.max(
+        Math.abs(off[i] - on[i]),
+        Math.abs(off[i + 1] - on[i + 1]),
+        Math.abs(off[i + 2] - on[i + 2]),
+      );
+      if (delta > 1) changed++;
+      difference +=
+        Math.abs(off[i] - on[i]) +
+        Math.abs(off[i + 1] - on[i + 1]) +
+        Math.abs(off[i + 2] - on[i + 2]);
+    }
+    return {
+      changed,
+      difference,
+      offCalls: offDraw.drawCalls,
+      onCalls: onDraw.drawCalls,
+      reedCalls: onDraw.reedCalls,
+    };
+  }
   const bankTerrain = scene.children.find((m) =>
     (m as T.Mesh).geometry?.getAttribute("bankWetness"),
   ) as T.Mesh;
@@ -305,7 +350,22 @@ export async function createView(
   function focus(kind: string) {
     let cell = -1;
     distance = span * 0.9;
-    if (kind === "stones" && stoneMeshes.length) {
+    if (kind === "reeds" && reedMeshes.length) {
+      const mesh = reedMeshes[0],
+        matrix = new T.Matrix4(),
+        p = new T.Vector3();
+      let best = Infinity;
+      for (let i = 0; i < mesh.count; i++) {
+        mesh.getMatrixAt(i, matrix);
+        p.setFromMatrixPosition(matrix);
+        const score = p.x * p.x + p.z * p.z;
+        if (score < best) {
+          best = score;
+          target.copy(p);
+        }
+      }
+      distance = 6;
+    } else if (kind === "stones" && stoneMeshes.length) {
       const mesh =
         stoneMeshes.find((m) => m.name.endsWith(":1")) ?? stoneMeshes[0];
       const matrix = new T.Matrix4(),
@@ -406,6 +466,7 @@ export async function createView(
     content.waterTime(options.phase ?? 7);
     waterCalls = 0;
     stoneCalls = 0;
+    reedCalls = 0;
     renderer.info.autoReset = false;
     renderer.info.reset();
     const warning = finish.render(scene, camera);
@@ -414,6 +475,9 @@ export async function createView(
     return {
       stats: content.inlandStats,
       shoreStones: content.shoreStoneStats,
+      reeds: content.reedStats,
+      reedCalls,
+      reedShadowCasters: reedMeshes.filter((m) => m.castShadow).length,
       stoneCalls,
       stoneShadowCasters: stoneMeshes.filter((m) => m.castShadow).length,
       drawCalls: renderer.info.render.calls,
@@ -470,6 +534,8 @@ export async function createView(
     setWetness,
     setStones,
     measureStones,
+    setReeds,
+    measureReeds,
     resize: (w: number, h: number) => {
       renderer.setSize(w, h, false);
       camera.aspect = w / h;

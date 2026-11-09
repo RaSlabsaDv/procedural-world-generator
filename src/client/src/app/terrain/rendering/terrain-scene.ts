@@ -1,3 +1,4 @@
+import { inlandReeds } from './inland-reeds';
 import { shoreStones } from './shore-stones';
 import { inlandBankWetness } from './inland-bank-wetness';
 import { inlandWaterGeometry } from './inland-water-geometry';
@@ -37,6 +38,7 @@ export function terrainScene(
   let grass: ReturnType<typeof terrainGrass> | undefined;
   let rocks: ReturnType<typeof terrainRocks> | undefined;
   let shore: ReturnType<typeof shoreStones> | undefined;
+  let reeds: ReturnType<typeof inlandReeds> | undefined;
   let lighting: ReturnType<typeof terrainLighting> | undefined;
   let ocean:
     | Mesh<NonNullable<ReturnType<typeof oceanGeometry>>, ReturnType<typeof oceanMaterial>>
@@ -68,6 +70,7 @@ export function terrainScene(
     forest?.dispose();
     rocks?.dispose();
     shore?.dispose();
+    reeds?.dispose();
     terrain?.geometry.dispose();
     terrain?.material.dispose();
   };
@@ -88,6 +91,14 @@ export function terrainScene(
     );
     shore = shoreStones(request.seed, result, terrain.geometry, [inland?.lake, inland?.river]);
     for (const mesh of shore.meshes) scene.add(mesh);
+    reeds = inlandReeds(
+      request.seed,
+      result,
+      terrain.geometry,
+      [inland?.lake, inland?.river],
+      shore.footprints,
+    );
+    if (reeds.mesh) scene.add(reeds.mesh);
     const decorations = water ? visibleDecorations(result, inland?.riverSurfaceAt) : result;
     forest = terrainForestLod(decorations, request.seed);
     for (const mesh of forest.casters) scene.add(mesh);
@@ -117,6 +128,7 @@ export function terrainScene(
     }
     for (const rock of rocks.meshes) bindAtmosphere(rock.material, atmosphere.uniforms);
     for (const mesh of shore.meshes) bindAtmosphere(mesh.material, atmosphere.uniforms);
+    if (reeds.mesh) bindAtmosphere(reeds.mesh.material, atmosphere.uniforms);
     grass = terrainGrass(request.seed, decorations, !!water, inland?.riverSurfaceAt);
     if (grass.mesh) {
       scene.add(grass.mesh);
@@ -168,6 +180,7 @@ export function terrainScene(
       hasWater: waters.length > 0,
       inlandStats: inland?.stats,
       shoreStoneStats: shore.stats,
+      reedStats: reeds.stats,
       updateWater: (settings: OceanSettings) => {
         if (disposed) return;
         for (const mesh of waters) {

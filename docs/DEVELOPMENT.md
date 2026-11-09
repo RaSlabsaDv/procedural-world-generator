@@ -1286,3 +1286,18 @@ assets with the documented PWG browser overrides. The shared inland harness capt
 fixed stones/off views, near/far contribution, bounds, night/Bloom, independent views
 and ownership. It is bundled in memory and adds no shipped application test switch.
 Run PWA update/offline checks last. Numeric sizes exclude JS object/driver overhead.
+
+### Inland reeds (Hydrology Stage 6C)
+
+[Inland reeds v1](specs/INLAND_REEDS_V1.md) freezes eligibility, geometry and budgets.
+`reed-placement.ts` owns decorative sampling, `inland-reeds.ts` owns its single mesh,
+and `shore-obstacles.ts` shares the previously existing stone clearance index.
+Shore stones expose only packed x,z,radius CPU envelopes for reed clearance.
+No new control, ecological species or generation parameter is introduced.
+
+Run `node tests/browser/inland-reeds.cjs` with the documented PWG overrides against
+matching published WASM/API. It reuses the inland production-factory matrix and
+records reeds/off pixel contributions, fixed close/distant views, actual counts,
+night/HDR/Bloom and disposal. Run the PWA update/offline regression last with
+`node tests/browser/pwa.cjs --bloom --inland --shore-stones --reeds`; optional reed
+instrumentation checks instanced shader submission after updated offline generation.

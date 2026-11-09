@@ -34,10 +34,12 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
     page.on("pageerror", (error) => errors.push(error.message));
   const inlandSmoke = process.argv.includes("--inland");
   const shoreSmoke = process.argv.includes("--shore-stones");
-  if (inlandSmoke || shoreSmoke)
+  const reedSmoke = process.argv.includes("--reeds");
+  if (inlandSmoke || shoreSmoke || reedSmoke)
     await context.addInitScript(() => {
       window.__inlandDraws = 0;
       window.__shoreStoneDraws = 0;
+      window.__reedDraws = 0;
       const get = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function (...args) {
         const gl = get.apply(this, args);
@@ -59,6 +61,11 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
               gl.getUniformLocation(program, "shoreFadeNear") !== null
             )
               window.__shoreStoneDraws++;
+            if (
+              program &&
+              gl.getUniformLocation(program, "reedFadeNear") !== null
+            )
+              window.__reedDraws++;
             return submit.apply(this, values);
           };
         }
@@ -248,6 +255,11 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
         await page.evaluate(() => window.__shoreStoneDraws > 0),
         "Updated offline renderer submits shoreline stone instances",
       );
+    if (reedSmoke)
+      assert.ok(
+        await page.evaluate(() => window.__reedDraws > 0),
+        "Updated offline renderer submits eligible shoreline reed instances",
+      );
     assert.deepEqual(errors, []);
     const result = {
       pass: true,
@@ -265,6 +277,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
       ...(bloomSmoke ? { updatedVersionBloom: true } : {}),
       ...(inlandSmoke ? { updatedVersionInlandWater: true } : {}),
       ...(shoreSmoke ? { updatedVersionShoreStones: true } : {}),
+      ...(reedSmoke ? { updatedVersionReeds: true } : {}),
       firstCatalog,
       secondCatalog,
       pageErrors: errors,

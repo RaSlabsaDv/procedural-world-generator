@@ -6,7 +6,14 @@ const { base, launchBrowser } = require("./support/browser.cjs");
 const { artifactPath } = require("./support/editor.cjs");
 const banks = process.argv.includes("--banks");
 const stones = process.argv.includes("--stones");
-const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
+const reeds = process.argv.includes("--reeds");
+const prefix = reeds
+  ? "reeds"
+  : stones
+    ? "shore-stones"
+    : banks
+      ? "banks"
+      : "channels";
 (async () => {
   const built = await build({
     entryPoints: [path.resolve(__dirname, "inland/entry.ts")],
@@ -126,7 +133,7 @@ const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
         };
       }, item.fields);
       assert.equal(data.hash, data.localHash);
-      if (banks || stones) {
+      if (banks || stones || reeds) {
         const before = baseline.find((r) => r.name === item.name);
         if (before)
           assert.equal(data.hash, before.hash, "canonical result changed");
@@ -140,6 +147,7 @@ const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
             "river",
             "confluence",
             ...(stones ? ["stones"] : []),
+            ...(reeds ? ["reeds"] : []),
           ]) {
         let result = await page.evaluate((focus) => {
           window.view.focus(focus);
@@ -153,6 +161,34 @@ const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
             window.view.pose(prior.camera, prior.target);
             return window.view.draw();
           }, prior);
+        }
+        let reedPixels;
+        if (reeds) {
+          reedPixels = await page.evaluate(() => window.view.measureReeds());
+          assert.ok(reedPixels.reedCalls <= 1);
+          assert.ok(reedPixels.onCalls - reedPixels.offCalls <= 1);
+          assert.equal(result.reedShadowCasters, 0);
+          assert.ok(result.reeds.count <= 2048);
+          assert.equal(result.reeds.instanceBytes, result.reeds.count * 76);
+          assert.ok(result.reeds.geometryBytes <= 8192);
+          if (prior) {
+            assert.equal(result.shoreStones.count, prior.shoreStones.count);
+            assert.equal(
+              result.shoreStones.instanceBytes,
+              prior.shoreStones.instanceBytes,
+            );
+          }
+          await page.evaluate(() => {
+            window.view.setReeds(false);
+            window.view.draw();
+          });
+          await page.locator("#view").screenshot({
+            path: artifactPath(`reeds-off-${item.name}-${focus}.png`),
+          });
+          await page.evaluate(() => {
+            window.view.setReeds(true);
+            window.view.draw();
+          });
         }
         let stonePixels;
         if (stones) {
@@ -208,6 +244,7 @@ const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
           visiblePixels,
           bankPixels,
           stonePixels,
+          reedPixels,
           pairedCamera: !!prior,
         });
         assert.ok(result.waterCalls <= 2);
@@ -215,6 +252,18 @@ const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
         await page.locator("#view").screenshot({
           path: artifactPath(`${prefix}-after-${item.name}-${focus}.png`),
         });
+      }
+      if (reeds && item.name === "mixed") {
+        await page.evaluate(() => window.view.focus("reeds"));
+        const night = await page.evaluate(() =>
+          window.view.measureReeds({ hour: 0, mode: "reference" }),
+        );
+        const day = await page.evaluate(() =>
+          window.view.measureReeds({ hour: 12, mode: "reference" }),
+        );
+        assert.ok(night.difference < day.difference * 0.6);
+        row.nightReeds = night;
+        row.dayReeds = day;
       }
       if (stones && item.name === "mixed") {
         await page.evaluate(() => window.view.focus("stones"));
@@ -272,6 +321,21 @@ const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
       assert.equal(remaining.geometries, 0);
       assert.equal(remaining.textures, 0);
       rows.push(row);
+    }
+    if (reeds) {
+      assert.ok(
+        rows.some((r) =>
+          r.views.some(
+            (v) => v.focus === "reeds" && v.reedPixels.changed > 100,
+          ),
+        ),
+      );
+      assert.equal(
+        rows
+          .find((r) => r.name === "maximum")
+          .views.find((v) => v.focus === "map").reedPixels.changed,
+        0,
+      );
     }
     if (stones) {
       assert.ok(

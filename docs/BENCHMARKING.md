@@ -658,3 +658,11 @@ and 16 KiB fixed geometry. Shader distance fading avoids far fragments; it still
 submits the static instance buffers. There are no extra shadow passes or frame-loop
 allocations. Record actual counts separately from caps; software-rendered pixel
 checks are correctness/resource evidence, not physical-GPU speed measurements.
+
+Reed placement (Hydrology Stage 6C) is display setup, excluded from computeMs and
+canonical equivalence. At most one additional color draw, no shadow pass or frame
+loop. Matrix/color buffers cost at most 155648 bytes per CPU/GPU copy, tuft geometry
+at most 8 KiB. Stone-to-reed clearance adds 12 bytes per stone of CPU-only envelopes.
+Per-layer setup scratch and actual counts are recorded separately; shader fading
+still submits static buffers. Pixel/instrumentation checks are test-only and do
+not establish physical-GPU frame rates or a controlled Local/Remote speed claim.

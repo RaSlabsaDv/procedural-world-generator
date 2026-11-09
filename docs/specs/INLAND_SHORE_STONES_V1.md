@@ -51,6 +51,8 @@ Scratch bounds: water index 4*N+4*T bytes, obstacle index
 and up to two capped placement buffers while trimming (425984 bytes). T is emitted
 water triangle count; geometry/lookup arrays are not duplicated into Core data.
 Scalar query scratch is reused, no per-candidate object allocation.
+Stage 6C integration additionally retains x,z,radius envelopes (12 bytes/stone,
+maximum 49152 CPU-only bytes) for reed clearance; stone placements stay identical.
 
 Each preview owns meshes, geometries, materials and instance buffers. Release on
 replacement, destruction and failed setup. Empty eligible shores create no meshes.

@@ -77,4 +77,9 @@ preserved. This does not change canonical moisture, generation or water profiles
 
 [Shore stones v1](specs/INLAND_SHORE_STONES_V1.md) adds sparse decorative gravel and
 occasional larger stones beside visible inland water, preserving canonical terrain,
-Core rock instances and water profiles. Reeds remain a separate later substep.
+Core rock instances and water profiles. Reeds use a separate presentation policy below.
+
+[Inland reeds v1](specs/INLAND_REEDS_V1.md) adds sparse upright decorative tufts on
+suitable damp banks and shallow edges, using actual visible water and a nearby dry
+shore witness. This illustrative layer does not change ecological species, terrain,
+water profiles or the measured generation workload.
