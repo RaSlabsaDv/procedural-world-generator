@@ -399,3 +399,20 @@ Actual texture-array dimensions/mips, sampler limits and draw/resource checks ar
 correctness evidence; software WebGL smoke timings do not establish GPU performance
 or optimization gains. The new asset changes application/offline packaging identity,
 not the shared C# computation. No native suites rerun for unchanged native sources.
+
+
+## Decorative grass presentation
+
+Grass-presentation-v1 adds seeded visual placement, bounded obstacle indexing,
+selection, instance/color construction and one color draw as display work only.
+No grass records enter Core results, host transport or numerical comparison, and
+no workload/profile identity changes. Its setup/submission respects OperationLock;
+static tufts add no animation loop. Do not bill placement or upload to computeMs/
+requestMs, and keep first submission distinct from GPU completion.
+
+Freeze presentation revision, camera, sun, atmosphere, water and wave phase for
+controlled images/campaigns. Identical Core results produce identical Local/Remote
+visual buffers. Distance cutout does not remove vertex processing and is not a
+measured LOD speedup. The 32768 cap and world-distance fade affect visible cover on
+large maps; record them alongside application revision. Software WebGL instance/
+buffer/pixel assertions establish correctness, not a controlled performance finding.

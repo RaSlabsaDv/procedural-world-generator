@@ -1,3 +1,4 @@
+import { terrainGrass } from './terrain-grass';
 import type { DataArrayTexture } from 'three';
 import { AtmosphereSettings, DEFAULT_ATMOSPHERE_SETTINGS } from './atmosphere-settings.service';
 import { bindAtmosphere, terrainAtmosphere } from './terrain-atmosphere';
@@ -29,6 +30,7 @@ export function terrainScene(
   let terrain:
     Mesh<ReturnType<typeof terrainGeometry>, ReturnType<typeof terrainSurfaceMaterial>> | undefined;
   let forest: ReturnType<typeof terrainForest> | undefined;
+  let grass: ReturnType<typeof terrainGrass> | undefined;
   let rocks: ReturnType<typeof terrainRocks> | undefined;
   let lighting: ReturnType<typeof terrainLighting> | undefined;
   let ocean:
@@ -47,6 +49,7 @@ export function terrainScene(
     atmosphere?.dispose();
     pendingGeometry?.dispose();
     lighting?.dispose();
+    grass?.dispose();
     forest?.dispose();
     rocks?.dispose();
     terrain?.geometry.dispose();
@@ -85,6 +88,11 @@ export function terrainScene(
       bindAtmosphere(group.crowns.material, atmosphere.uniforms);
     }
     for (const rock of rocks.meshes) bindAtmosphere(rock.material, atmosphere.uniforms);
+    grass = terrainGrass(request.seed, result);
+    if (grass.mesh) {
+      scene.add(grass.mesh);
+      bindAtmosphere(grass.mesh.material, atmosphere.uniforms);
+    }
     if (water) {
       pendingGeometry = oceanGeometry(
         result,

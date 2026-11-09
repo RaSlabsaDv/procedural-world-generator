@@ -663,4 +663,70 @@ describe('terrain preview lifecycle', () => {
     fixture.destroy();
     expect(ready.dispose).toHaveBeenCalledTimes(1);
   });
+  function grassRun(): TerrainRun {
+    const current = run();
+    const surfaceWeights = new Float32Array(20);
+    for (let i = 0; i < 4; i++) surfaceWeights[i * 5] = 1;
+    return {
+      ...current,
+      request: { ...current.request, seed: 9 },
+      response: {
+        ...current.response,
+        result: {
+          ...current.response.result,
+          values: new Float32Array(4).fill(5),
+          biomes: new Uint8Array(4).fill(1),
+          surfaceWeights,
+        },
+      },
+    };
+  }
+  it('defers grass setup under the operation lock and preserves buffers on environment edits', async () => {
+    const bounds = vi.spyOn(InstancedMesh.prototype, 'computeBoundingSphere'),
+      release = TestBed.inject(OperationLock).tryAcquire()!;
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', grassRun());
+    const measured = vi.fn();
+    fixture.componentInstance.displayMeasured.subscribe(measured);
+    await settlePreview(fixture);
+    expect(bounds).not.toHaveBeenCalled();
+    release();
+    await settlePreview(fixture);
+    const scene = state.render.mock.calls.at(-1)![0] as Scene,
+      grass = scene.getObjectByName('grass-presentation-v1') as InstancedMesh;
+    expect(grass).toBeDefined();
+    const data = grass.instanceMatrix.array,
+      geometry = vi.spyOn(grass.geometry, 'dispose'),
+      material = vi.spyOn(grass.material as MeshLambertMaterial, 'dispose');
+    TestBed.inject(SceneEnvironmentService).set({
+      ...DEFAULT_ENVIRONMENT_SETTINGS,
+      timeOfDayHours: 9,
+    });
+    await settlePreview(fixture);
+    expect(scene.getObjectByName('grass-presentation-v1')).toBe(grass);
+    expect(grass.instanceMatrix.array).toBe(data);
+    expect(geometry).not.toHaveBeenCalled();
+    expect(measured).toHaveBeenCalledTimes(1);
+    fixture.componentRef.setInput('run', grassRun());
+    await settlePreview(fixture);
+    expect(geometry).toHaveBeenCalledTimes(1);
+    expect(material).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+  });
+  it('releases partially constructed grass after a transform failure', async () => {
+    const matrix = vi.spyOn(InstancedMesh.prototype, 'setMatrixAt').mockImplementationOnce(() => {
+      throw Error('Grass matrix failure');
+    });
+    const geometry = vi.spyOn(BufferGeometry.prototype, 'dispose'),
+      material = vi.spyOn(MeshLambertMaterial.prototype, 'dispose');
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', grassRun());
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Grass matrix failure');
+    expect(geometry).toHaveBeenCalledTimes(3);
+    expect(material).toHaveBeenCalledTimes(2);
+    fixture.destroy();
+    expect(geometry).toHaveBeenCalledTimes(3);
+    matrix.mockRestore();
+  });
 });

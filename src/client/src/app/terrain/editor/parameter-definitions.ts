@@ -61,7 +61,7 @@ export const SIMULATION_PARAMETERS = {
     defaultValue: DEFAULT_SIMULATION_PARAMETERS.vegetationDensity,
     step: '0.05',
     description:
-      'Desired abundance in suitable biomes. Zero removes trees; the 16,384 cap stays separate.',
+      'Core tree abundance. Zero removes trees; the 16,384 cap stays separate. Decorative grass follows surface coverage.',
   },
   landformRegionScale: {
     label: 'Landform region scale',

@@ -506,3 +506,37 @@ and reuse across scenes/light edits. Setup defers under OperationLock, load/deco
 wait enters textureWaitMs, and upload/setup remain display work outside computeMs/
 requestMs. PWA catalog now includes 41 required assets. Existing five scalar maps,
 water normal and 2048 shadow attachments remain; color/caster ceilings 21/19 remain.
+
+
+## Decorative 3D grass
+
+[Grass presentation v1](specs/GRASS_PRESENTATION_V1.md) derives bounded tuft instances
+from existing Core Grass coverage, biome IDs, slope and terrain triangles. It does
+not reuse Core tree density or recreate ecological fields. The generation contract
+and numerical comparisons remain unchanged; the tree-density hint now makes its
+scope explicit. Both views produce identical independent transforms/colors.
+
+A capped stratified candidate grid (<=131072) uses seeded integer hashes, conservative
+coverage/slope eligibility and exact triangle grounding. Two bounded 2-unit center
+grids exclude tree trunks/rocks; per-candidate obstacle work is limited 64 checks,
+with conservative rejection in crowded queries. Lowest-hash priority selection
+retains at most 32768 tufts without a first-N spatial bias. No per-candidate objects
+or full-map field copies. Candidate IDs are sorted and positions regenerated after
+selection; geometry alignment is capped 15 degrees with.01 root embedding.
+
+One instanced three-blade geometry/material supplies15 vertices/9 triangles per
+tuft, deterministic size/yaw/biome-palette tint and vertex root/tip modulation.
+Opaque4x4 Bayer distance cutout fades over 20..55 world units; fully faded vertices
+clip out, but vertex processing/draw cost remains. No wind or recurring loop.
+Grass receives the existing shadow and shared atmosphere, casts none, and does
+not enter shadow fitting. Instanced buffers/matrices/material/geometry are owned
+by scene content and disposed on failure/replacement/destruction; environment edits
+reuse them. Setup/submission defers under OperationLock and remains display work.
+
+One extra color call raises the structural ceiling to 22; caster ceiling stays 19.
+No texture/sampler/target or dependency is added. Maximum matrices 2 MiB and colors
+384KiB per view, plus 594-byte shared geometry; bounded placement scratch<1MiB.
+Raw typed storage about3.22MiB; CPU preparation budget 8 MiB excludes engine internals.
+GPU occupied attribute locations8 (nine-slot index span observed), below minimum16.
+Existing41-asset PWA catalog remains complete with changed JS. Thin distant trunks,
+low-poly terrain and dither/rigid-grass limitations remain separately scoped.

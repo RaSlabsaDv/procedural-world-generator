@@ -452,8 +452,8 @@ configuration and workload identities are frozen. README remains empty.
 
 ## Next roadmap: visual realism and execution feedback
 
-Status: shared environment foundation, Visual Stages 1–4 complete; remaining stages are planned.
-Sun controls, shadow-quality assessment and terrain microdetail are complete; vegetation variation/LOD is next.
+Status: shared environment foundation, Visual Stages 1–4 and Stage 5A decorative grass complete; tree variation/LOD and later stages remain planned.
+Sun controls, shadow assessment, microdetail and decorative grass are complete; tree foliage variation/LOD is next.
 Implement incremental, independently reviewable stages, freezing each stage's
 policy, resource budget, acceptance scenes and verification before changing code.
 
@@ -645,7 +645,7 @@ Specify assets/provenance, repetition scale, sampler/attribute/pass/memory budge
 and compatibility with sun/shadows. Check steep faces, transitions and grazing
 views; preserve exact generation hashes and biome distinctions.
 
-### Visual Stage 5 — vegetation variation and LOD
+### Visual Stage 5 — decorative grass complete; tree variation and LOD pending
 
 Build on existing Core species, size/yaw, variants and clustered placement.
 
@@ -688,7 +688,7 @@ collection. CPU first submission is not GPU completion or an FPS measurement.
 
 ### Execution track 1 — detailed timing diagnostics
 
-The shared foundation, water, atmosphere, sun controls, shadow assessment and microdetail are complete; vegetation variation/LOD is next. Timing diagnostics precede WASM
+The shared foundation, water, atmosphere, sun controls, shadow assessment, microdetail and decorative grass are complete; tree variation/LOD is next. Timing diagnostics precede WASM
 optimization decisions and the next controlled performance campaign.
 
 Break down height composition, erosion, final conversion/ocean/environment/biome
@@ -783,7 +783,7 @@ Implementation sequence:
 1. Shared sun/fog/visual-time foundation — complete.
 2. Water and sun-dependent sky/fog integration — complete.
 3. Sun controls and shadow assessment — complete; CSM/AO require a separate policy if justified.
-4. Material normals — complete; vegetation variation/LOD next, then postprocessing.
+4. Material normals and decorative grass — complete; tree variation/LOD next, then postprocessing.
 5. Shared Core river/lake hydrology, after the water system is established.
 
 Timing, worker progress/cancellation and optimization diagnostics form an independent
@@ -1005,3 +1005,43 @@ README stays empty.
 Microdetail PWA regression passes: cached reload/new tabs and new seeds, Remote
 recovery, deferred update while busy and updated-version offline 3D terrain with
 the new normal atlas. Deployment assets were restored after the update simulation.
+
+
+### Visual Stage 5A — decorative 3D grass (complete)
+
+Implemented [Grass presentation v1](specs/GRASS_PRESENTATION_V1.md): deterministic
+bounded tufts from existing Grass coverage/biomes/slope, exact renderer-triangle
+height with small root embedding, capped alignment, size/yaw/tint variation and
+conservative trunk/rock exclusions. Tree-density semantics and every Core result/
+workload identity remain unchanged; the parameter hint now states this explicitly.
+
+At most 131072 stratified candidates, 64 obstacle checks each and 32768 lowest-priority
+hash instances avoid unbounded work and first-N cap bias. One 15-vertex/9-triangle
+instanced mesh receives existing shadows and shared atmosphere but casts none.
+Opaque Bayer fade over 20..55 world units adds no animation or texture; fully faded
+vertices clip out without claiming vertex-processing savings. Environment edits
+reuse geometry/buffers. Scene setup/submission respects OperationLock and remains
+display work outside computeMs/requestMs, including placement/index/matrix costs.
+
+364 Angular tests, 12 packaging/asset checks, worker RPC and production publication
+pass. 24 paired camera/full Core views and all 8 far overview PNGs remain exact.
+Real Grass/materials/Sun/night browser checks pass: hero 30591 tufts and maximum 32768,
+identical Local/Remote GPU matrix/color hashes, six live grass buffers after
+replacement, finite conservative bounds, capped tilt, independent ownership,
+failure cleanup, paused work, narrow/offline new seeds and existing moon/foam.
+Actual instance matrices/colors use 64/12 bytes per tuft; max 2.375 MiB GPU per view.
+Five active shader declarations consume eight locations (nine-slot span observed,
+within 16). Materials matrix observed 20 color calls; structural ceiling 22 and caster
+ceiling 19 remain bounded. No new asset/dependency; offline catalog remains 41 assets.
+Native sources are unchanged, so native suites were not rerun. Software WebGL runs
+are correctness evidence, not controlled performance findings.
+
+Known limits: rigid tufts, dither stipple in the fade band, capped sparse cover on
+large maps, and unchanged low-poly/global shadow-resolution constraints. No wind,
+grass editing controls or ecological Core extension was added. Remaining Stage 5
+substeps are tree foliage variation and tree LOD; execution diagnostics/cancellation
+stay separate. README remains empty. Raw evidence is under ignored artifacts/grass-*.
+
+Grass PWA regression passes: cached reload/new tabs and new seeds, Remote recovery,
+deferred update while busy and updated-version offline 3D terrain. Generated
+deployment assets were restored after the update simulation.

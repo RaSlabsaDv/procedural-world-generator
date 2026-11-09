@@ -40,6 +40,8 @@ const artifact = artifactPath;
           microArrays: new Map(),
           waterCalls: 0,
           skyCalls: 0,
+          grassCalls: 0,
+          grassInstances: 0,
           sources: new Set(),
           calls: 0,
           instances: 0,
@@ -102,6 +104,8 @@ const artifact = artifactPath;
           record.terrainCalls = 0;
           record.waterCalls = 0;
           record.skyCalls = 0;
+          record.grassCalls = 0;
+          record.grassInstances = 0;
           return clear.apply(this, args);
         };
         for (const name of [
@@ -121,6 +125,13 @@ const artifact = artifactPath;
               gl.getUniformLocation(program, "skyProjectionInverse") !== null
             )
               record.skyCalls++;
+            if (
+              program &&
+              gl.getUniformLocation(program, "grassFadeNear") !== null
+            ) {
+              record.grassCalls++;
+              record.grassInstances += args.at(-1);
+            }
             const location = program
               ? gl.getAttribLocation(program, "biomeId")
               : -1;
@@ -269,6 +280,8 @@ const artifact = artifactPath;
             microArrays,
             waterCalls,
             skyCalls,
+            grassCalls,
+            grassInstances,
             sources,
             calls,
             terrainCalls,
@@ -288,6 +301,8 @@ const artifact = artifactPath;
               .map(([, info]) => info),
             waterCalls,
             skyCalls,
+            grassCalls,
+            grassInstances,
             sources: [...sources].sort(),
             calls,
             terrainCalls,
@@ -331,11 +346,13 @@ const artifact = artifactPath;
         ]);
         assert.equal(row.terrainCalls, 1 + row.waterCalls + row.skyCalls);
         assert.equal(row.skyCalls, 1);
+        assert.ok(row.grassCalls <= 1);
+        assert.ok(row.grassInstances <= 32768);
         assert.ok(row.waterCalls <= 1);
         assert.ok(row.waterTextures <= 1);
         assert.ok(
-          row.calls <= 19 + row.waterCalls + row.skyCalls,
-          "Color pass: terrain, twelve tree, six rock meshes, plus one Ocean and one sky draw",
+          row.calls <= 19 + row.waterCalls + row.skyCalls + row.grassCalls,
+          "Color pass: terrain, twelve tree, six rock meshes, plus Ocean, sky and decorative grass draws",
         );
       }
       for (const row of rows.filter((row) => row.lost)) {
@@ -361,7 +378,7 @@ const artifact = artifactPath;
         );
         assert.equal(row.activeShadowUpdates, 1);
         for (const pass of row.passes.filter((pass) => pass.calls > 0))
-          assert.ok(pass.calls <= 19);
+          assert.ok(pass.calls <= (pass.target === "shadow" ? 19 : 22));
       }
       for (const row of lighting.filter(
         (row) => row.lost || row.detailTextures === 0,
@@ -432,11 +449,14 @@ const artifact = artifactPath;
           diagnostic.vegetationGroups * 2 +
           diagnostic.rockGroups +
           actual.find((row) => !row.lost && row.textures > 0).waterCalls +
-          actual.find((row) => !row.lost && row.textures > 0).skyCalls,
+          actual.find((row) => !row.lost && row.textures > 0).skyCalls +
+          actual.find((row) => !row.lost && row.textures > 0).grassCalls,
       );
       assert.equal(
         actual.find((row) => !row.lost && row.textures > 0).instances,
-        diagnostic.treeCount * 2 + diagnostic.rockCount,
+        diagnostic.treeCount * 2 +
+          diagnostic.rockCount +
+          actual.find((row) => !row.lost && row.textures > 0).grassInstances,
       );
       captures.push({
         label,
@@ -510,7 +530,9 @@ const artifact = artifactPath;
     );
     assert.equal(
       maximum.find((row) => !row.lost && row.textures > 0).instances,
-      maxDiagnostic.treeCount * 2 + maxDiagnostic.rockCount,
+      maxDiagnostic.treeCount * 2 +
+        maxDiagnostic.rockCount +
+        maximum.find((row) => !row.lost && row.textures > 0).grassInstances,
     );
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(

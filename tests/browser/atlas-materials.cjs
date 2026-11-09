@@ -14,7 +14,8 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
-const microStudy = process.argv.includes("--micro");
+const grassStudy = process.argv.includes("--grass");
+const microStudy = process.argv.includes("--micro") || grassStudy;
 const sunStudy = process.argv.includes("--sun");
 const reference = process.argv.includes("--reference");
 const atmosphereStudy = process.argv.includes("--atmosphere");
@@ -23,25 +24,27 @@ const environmentStudy = process.argv.includes("--environment");
 const rockStudy = process.argv.includes("--rocks");
 const climateStudy = process.argv.includes("--climate");
 const biomeStudy = process.argv.includes("--biomes") || climateStudy;
-const study = microStudy
-  ? "terrain-microdetail"
-  : sunStudy
-    ? "sun-controls"
-    : atmosphereStudy
-      ? reference
-        ? "atmosphere-reference"
-        : "atmosphere"
-      : waterStudy
-        ? "ocean-presentation"
-        : environmentStudy
-          ? "scene-environment"
-          : rockStudy
-            ? "rocks-v2"
-            : climateStudy
-              ? "regional-climate"
-              : biomeStudy
-                ? "biome-readability"
-                : "atlas-materials";
+const study = grassStudy
+  ? "grass-presentation"
+  : microStudy
+    ? "terrain-microdetail"
+    : sunStudy
+      ? "sun-controls"
+      : atmosphereStudy
+        ? reference
+          ? "atmosphere-reference"
+          : "atmosphere"
+        : waterStudy
+          ? "ocean-presentation"
+          : environmentStudy
+            ? "scene-environment"
+            : rockStudy
+              ? "rocks-v2"
+              : climateStudy
+                ? "regional-climate"
+                : biomeStudy
+                  ? "biome-readability"
+                  : "atlas-materials";
 const cases = microStudy
   ? [
       [
@@ -51,7 +54,8 @@ const cases = microStudy
           plainsCoverage: 1,
           mountainCoverage: 0,
           seaLevel: 0,
-          globalMoisture: 0.4,
+          globalMoisture: grassStudy ? 0.85 : 0.4,
+          ...(grassStudy ? { vegetationDensity: 0 } : {}),
         },
       ],
       ["forest", { seed: 42, globalMoisture: 1 }],

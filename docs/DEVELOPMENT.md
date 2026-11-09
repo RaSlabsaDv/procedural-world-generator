@@ -737,3 +737,47 @@ optional WASM optimization notice persists.
 Microdetail PWA regression passes: cached reload/new tabs and new seeds, Remote
 recovery, deferred update while busy and updated-version offline 3D terrain with
 the new normal atlas. Deployment assets were restored after the update simulation.
+
+
+## Visible 3D grass
+
+Close terrain views now show actual three-blade grass tufts, up to32768 per viewport.
+Placement uses authoritative Grass surface coverage and existing biome/slope data,
+exact terrain triangle height and conservative exclusions around rocks/tree trunks.
+Decorative grass is independent of the Core tree-density parameter; the parameter
+hint explains this. No grass density/editor/wind control is added in this step.
+
+Grass is fully visible within 20 world units, fades by opaque screen Bayer cutout
+through 55 and clips out beyond that. Zoom near the ground to inspect blades; at
+map overview the preceding appearance remains exact. Grass follows shared sun/fill
+and atmosphere, including night. It receives existing shadows and casts none.
+Dither stipple in the transition, rigid geometry and capped sparse cover on very
+large maps are explicit v1 limits, not a complete vegetation LOD system.
+
+Using documented PWG_* production-browser setup, run:
+
+- node tests/browser/atlas-materials.cjs --grass --before (prior publication)
+- node tests/browser/atlas-materials.cjs --grass (new publication)
+- node tests/browser/grass.cjs
+- node tests/browser/materials.cjs
+
+The atlas covers eight fixed scenes at overview/close/grazing. Its open-grass hero
+uses moisture.85 and zero tree density to inspect tufts without a canopy; full
+Core/camera hashes remain equal and all 8 overview PNGs remain byte-exact. The grass
+harness records actual GPU counts, matrix/color hashes, draw/buffer limits, far
+on/off reference, near/grazing/light states, independent views, no upload or draw
+while busy, replacement cleanup and offline first use/new seeds. Test-only hide
+hooks are injected into draw instrumentation, not exposed by the application.
+
+[Grass presentation v1](specs/GRASS_PRESENTATION_V1.md) freezes caps, exact triangle
+grounding, hash streams, conservative eligibility and finite resource budgets.
+Maximum GPU instance storage is 2.375 MiB/view, 4.75 MiB for comparison, plus geometry.
+Raw selection/index scratch is <1 MiB; transient Three/engine memory is not an RSS
+measurement. Scene setup/placement/upload remain outside computeMs/requestMs and
+inside display preparation. Geometry/materials release even on failed construction;
+Sun/Water/Atmosphere edits do not rebuild grass. No texture/PWA asset is added;
+the existing 41-entry catalog includes the updated lazy JS. README stays empty.
+
+Grass PWA regression passes: cached reload/new tabs and new seeds, Remote recovery,
+deferred update while busy and updated-version offline 3D terrain. Generated
+deployment assets were restored after the update simulation.
