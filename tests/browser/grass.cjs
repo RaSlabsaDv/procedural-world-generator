@@ -209,7 +209,8 @@ const {
     assert.equal(first[0].liveGrassBuffers, 6);
     assert.equal(first[0].grass.matrix.bytes, first[0].grass.count * 64);
     assert.equal(first[0].grass.colors.bytes, first[0].grass.count * 12);
-    assert.ok(first[0].colorCalls <= 22);
+    // Six tree groups can split into24 near/far draws; other scene draws add10.
+    assert.ok(first[0].colorCalls <= 34);
     await page.locator("#water-settings summary").click();
     const canvas = page.locator("app-terrain-preview canvas").first();
     const snapshot = async (hide, value) => {
@@ -310,7 +311,7 @@ const {
       "Replaced grass buffers are released",
     );
     assert.ok(maximum[0].grass.count <= 32768);
-    assert.ok(maximum[0].colorCalls <= 22);
+    assert.ok(maximum[0].colorCalls <= 34);
     await context.setOffline(true);
     await page.reload();
     await waitForOfflineReady(page);

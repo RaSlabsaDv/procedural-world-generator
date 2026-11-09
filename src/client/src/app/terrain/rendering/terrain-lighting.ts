@@ -16,6 +16,7 @@ import {
   DEFAULT_SCENE_ENVIRONMENT,
   SceneEnvironmentSnapshot,
 } from './scene-environment';
+import { TREE_LOD } from './tree-lod';
 import { HeightMapRequest } from '../data/terrain.models';
 
 export const TERRAIN_LIGHTING = Object.freeze({
@@ -161,6 +162,7 @@ export function terrainLighting(
   };
   try {
     sun.castShadow = true;
+    sun.shadow.camera.layers.enable(TREE_LOD.shadowLayer);
     sun.shadow.mapSize.set(config.shadowSize, config.shadowSize);
     sun.shadow.bias = config.shadowBias;
     sun.shadow.normalBias = config.normalBias;

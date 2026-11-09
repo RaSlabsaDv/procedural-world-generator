@@ -428,3 +428,20 @@ revision together with camera/lighting/atmosphere/wave phase for image compariso
 The additional 12 bytes/tree and one crown attribute location are resource bounds,
 not measured performance gains. Tree counts, draw calls and caster counts are
 unchanged; no LOD or frame-rate improvement is claimed.
+
+## Tree geometry LOD
+
+Tree-lod-v1 changes presentation only. Initial classification, fixed buffer setup,
+repacking/upload and subsequent camera-driven updates remain outside computeMs/
+requestMs. OperationLock prevents this work during generation or controlled series.
+Initial display timing includes the first classification/submission and remains
+unchanged by later camera edits. Submission is still not GPU completion.
+
+Record application revision, viewport, camera pose AND approach history for image/
+render comparisons: hysteresis can retain either level within48..64 scaled distance.
+No presentation history enters numerical Local/Remote equivalence. Color geometry
+reduces32/40→18/20 triangles per far tree, while full-detail shadows remain static.
+This does not establish faster generation, lower frame time or improved FPS. Extra
+buffer capacity (3.375 MiB/view) and mixed-LOD color batches (whole-scene ceiling34)
+may offset savings on some hardware. Software WebGL checks establish correctness,
+not optimization benefits. No controlled hardware performance campaign was run.

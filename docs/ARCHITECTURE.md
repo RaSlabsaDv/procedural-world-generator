@@ -541,7 +541,7 @@ GPU occupied attribute locations8 (nine-slot index span observed), below minimum
 Existing41-asset PWA catalog remains complete with changed JS. Thin distant trunks,
 low-poly terrain and dither/rigid-grass limitations remain separately scoped.
 
-## Individual foliage colors
+## Individual foliage colors — Stage 5B reference
 
 [Foliage variation v1](specs/FOLIAGE_VARIATION_V1.md) adds restrained per-tree
 brightness, warmth and saturation to the existing species/variant crown palette.
@@ -558,4 +558,42 @@ remain unchanged. Each crown program adds one occupied attribute location; stora
 is 12 bytes/tree, at most 196608 bytes/view or 393216 bytes for comparison views.
 Preparation/upload are display work outside computeMs/requestMs and retain the
 existing OperationLock setup boundary. No new texture, dependency, UI or animation.
-Tree LOD remains a separate next stage.
+The subsequent tree LOD stage below changes representation ownership and storage,
+while retaining this exact color policy.
+
+## Two-level tree geometry
+
+[Tree LOD v1](specs/TREE_LOD_V1.md) wraps the existing full-detail forest rather than
+changing Core trees or the foliage hash. Near retains its geometry. Far uses
+three-sided trunks/conifers and scaled octahedral broadleaf/savanna crowns. Trees
+remain opaque 3D objects with original transforms, palettes, lighting and atmosphere.
+No billboard, texture or intermediate level is introduced: existing models are
+already small. Color triangles fall from32/40 to18/20 per distant tree; the shadow
+pass deliberately retains full geometry, so this is not an overall frame-rate claim.
+
+The canonical full-detail instances live only on reserved layer1. The preview camera
+uses layer0; the directional shadow camera explicitly sees layers0+1. Only sources
+cast tree shadows. They preserve original bounds, matrices and static invalidation.
+Near/far color instances compact independently into reusable fixed-capacity arrays.
+Groups share their original materials; near shares source geometry, and each pair
+of trunks/crowns shares its matrix attribute. Source colors remain CPU reference
+storage. Disposal releases each mesh attribute, far geometry and shared source
+ownership once, including setup rollback.
+
+`content.updateTreeLod(camera.position)` runs before color submission, behind the
+preview's direct OperationLock guard. Initial normalized root distance threshold56,
+far→near below48 and near→far above64 are multiplied by Core scale. Evaluation waits
+for .25 world units of camera translation; only changed groups repack. Rotation,
+resize, environment edits and water animation alone reuse buffers. No per-tree
+update objects, timer or recurring loop. Camera history inside hysteresis is visual
+state; matching views need identical history for exact packed-buffer comparison.
+
+There are at most36 tree meshes,24 geometries and12 materials across six groups.
+At most24 tree color calls raise the whole-scene ceiling to34 when both levels occur;
+at a single level it remains22. The caster ceiling stays19. GPU instance storage
+is at most3538944 bytes/view (3.375 MiB), twice that for comparison. Numeric CPU
+storage is3751936 bytes/view plus construction transients and bounded metadata,
+as detailed in the specification. These explicit costs buy fewer color triangles;
+controlled hardware measurements are still needed to assess the net performance.
+All LOD preparation, camera classification, uploads and submission are display work,
+outside computeMs/requestMs. No Core/request/workload/PWA-asset identity changes.

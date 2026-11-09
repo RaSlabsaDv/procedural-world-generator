@@ -349,6 +349,60 @@ describe('terrain preview lifecycle', () => {
     }
   });
 
+  it('defers LOD uploads under the lock and resumes from the latest camera without changing shadows', async () => {
+    const fixture = TestBed.createComponent(TerrainPreview),
+      value = run();
+    fixture.componentRef.setInput('run', {
+      ...value,
+      response: {
+        ...value.response,
+        result: {
+          ...value.response.result,
+          trees: [
+            { kind: 0, variant: 0, cellIndex: 0, x: 0.5, y: 0, z: 0.5, scale: 1, rotation: 0 },
+          ],
+        },
+      },
+    });
+    await settlePreview(fixture);
+    const [scene, camera] = state.render.mock.calls.at(-1)! as [
+      Scene,
+      { position: { set: (x: number, y: number, z: number) => void } },
+    ];
+    camera.position.set(0, 0, 0);
+    (fixture.componentInstance as unknown as { draw: () => void }).draw();
+    const near = scene.getObjectByName('tree-lod-near-crown') as InstancedMesh;
+    const far = scene.getObjectByName('tree-lod-far-crown') as InstancedMesh;
+    const source = scene.getObjectByName('tree-lod-source-crown') as InstancedMesh;
+    const sun = scene.children.find((o) => o instanceof DirectionalLight) as DirectionalLight;
+    expect(near.count).toBe(1);
+    expect(far.count).toBe(0);
+    expect(source.castShadow).toBe(true);
+    expect(near.castShadow || far.castShadow).toBe(false);
+    expect(sun.shadow.camera.layers.test(source.layers)).toBe(true);
+    sun.shadow.needsUpdate = false;
+    const nearVersion = near.instanceMatrix.version,
+      farVersion = far.instanceMatrix.version;
+    const display = fixture.nativeElement.querySelector('.display-time').textContent;
+    const release = TestBed.inject(OperationLock).tryAcquire()!;
+    try {
+      camera.position.set(0, 0, 500);
+      (fixture.componentInstance as unknown as { draw: () => void }).draw();
+      expect(near.instanceMatrix.version).toBe(nearVersion);
+      expect(far.instanceMatrix.version).toBe(farVersion);
+      camera.position.set(0, 0, 300);
+      release();
+      await settlePreview(fixture);
+      expect(near.count).toBe(0);
+      expect(far.count).toBe(1);
+      expect(far.instanceMatrix.version).toBeGreaterThan(farVersion);
+      expect(sun.shadow.needsUpdate).toBe(false);
+      expect(fixture.nativeElement.querySelector('.display-time').textContent).toBe(display);
+    } finally {
+      release();
+    }
+  });
+
   it('defers scene preparation while paused and excludes texture/pause wait from CPU timing', async () => {
     let clock = 0;
     vi.spyOn(performance, 'now').mockImplementation(() => clock);

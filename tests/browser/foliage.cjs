@@ -109,7 +109,8 @@ const {
           for (const f of r.frame) {
             const prev = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
             gl.bindBuffer(gl.ARRAY_BUFFER, f.buffer);
-            const data = new Float32Array(f.bytes / 4);
+            // LOD compacts active prefixes into fixed-capacity buffers.
+            const data = new Float32Array(f.count * 3);
             gl.getBufferSubData(gl.ARRAY_BUFFER, 0, data);
             gl.bindBuffer(gl.ARRAY_BUFFER, prev);
             const hash = [
@@ -154,10 +155,10 @@ const {
     assert.ok(first[0].groups.length > 0);
     function check(rows) {
       for (const r of rows) {
-        assert.ok(r.calls <= 22);
-        assert.equal(r.live, r.groups.length);
+        assert.ok(r.calls <= 34);
+        assert.ok(r.live >= r.groups.length && r.live <= 12);
         for (const g of r.groups) {
-          assert.equal(g.bytes, g.count * 12);
+          assert.ok(g.bytes >= g.count * 12 && g.bytes <= 196608);
           assert.deepEqual(g.diffuse, [1, 1, 1]);
           assert.ok(g.finite && g.varied);
           assert.equal(g.occupied, 7);
@@ -248,7 +249,7 @@ const {
       JSON.stringify({
         pass: true,
         groups: first[0].groups.length,
-        maximumBytes: 196608,
+        maximumOverviewColorBytes: 196608,
         offline: true,
         errors,
       }),

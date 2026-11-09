@@ -1075,3 +1075,40 @@ suite rerun or controlled performance campaign was needed for this presentation 
 
 Final PWA regression also passes, including busy-update deferral, offline new tabs/
 seeds and updated-version offline terrain. Simulated deployment changes were restored.
+
+### Visual Stage 5C — tree geometry LOD (complete)
+
+Implemented [Tree LOD v1](specs/TREE_LOD_V1.md): two opaque 3D levels, existing near
+models and cheaper three-sided trunks/conifers plus octahedral broadleaf/savanna.
+The assessment rejected an intermediate level because existing models already use
+only32/40 triangles per tree. Far uses18/20, preserving every Core record, transform,
+individual color, species/variant grouping and workload identity. No new asset,
+dependency, UI, billboard, wind or species extension.
+
+Normalized root distance uses initial56 and hysteresis48..64, with .25-unit camera
+translation gating. Only changed groups compact into reusable buffers; no per-tree
+update allocations. Dedicated layer1 full-detail sources keep shadow geometry,
+fit and invalidation camera-independent. Color meshes cast none. Bounds cover all
+source trees, and shared resources release exactly once on replacement/failure.
+Setup and camera uploads remain display work behind OperationLock, outside measured
+Core/request times. Camera edits preserve the initial display metric.
+
+The explicit tradeoff is extra buffers/meshes: up to3.375 MiB GPU instance data/view,
+36 tree meshes and34 whole-scene color calls when all groups split, versus prior22.
+Caster ceiling19, original materials, crown attribute count and41-asset catalog
+remain. This is verified geometry reduction, not a measured frame-rate improvement.
+LOD covers near/far geometry only; hard transitions, coarse distant silhouettes and
+full-detail shadow mismatch remain documented limits. Timing diagnostics/progress/
+cancellation and later rendering/hydrology improvements remain separately scoped.
+README stays empty.
+
+Verification: 385 Angular tests, 12 packaging/asset checks, worker RPC and production
+publication pass. All 18 paired camera/full Core hashes stay exact. Actual GPU draws
+show both levels, all 16384 trees in maximum overview, 131054 crown triangles there,
+unchanged caster hashes/uploads on camera movement and deleted buffers after
+replacement. Local/Remote buffers match at matching camera history. Materials,
+foliage, grass, Sun/night, narrow layout and offline new-seed regressions pass.
+Native sources are unchanged, so native suites were not rerun; no FPS claim is made.
+
+Final PWA regression passes as well, including busy-update deferral and updated-version
+offline 3D terrain. Deployment assets were restored after the update simulation.

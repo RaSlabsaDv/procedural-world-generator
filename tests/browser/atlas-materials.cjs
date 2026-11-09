@@ -14,7 +14,8 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
-const foliageStudy = process.argv.includes("--foliage");
+const lodStudy = process.argv.includes("--lod");
+const foliageStudy = process.argv.includes("--foliage") || lodStudy;
 const grassStudy = process.argv.includes("--grass");
 const microStudy = process.argv.includes("--micro") || grassStudy;
 const sunStudy = process.argv.includes("--sun");
@@ -46,7 +47,11 @@ const defaultStudy = grassStudy
                 : biomeStudy
                   ? "biome-readability"
                   : "atlas-materials";
-const study = foliageStudy ? "foliage-variation" : defaultStudy;
+const study = lodStudy
+  ? "tree-lod"
+  : foliageStudy
+    ? "foliage-variation"
+    : defaultStudy;
 const foliageCases = [
   ["broadleaf", { seed: 42, globalMoisture: 1 }],
   ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],

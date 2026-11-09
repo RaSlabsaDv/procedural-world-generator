@@ -807,7 +807,8 @@ ignored `artifacts/foliage-*`. Browser software WebGL checks are correctness evi
 Maximum added color storage is 192 KiB/view (384 KiB for comparison). Up to six
 occupied crown groups still share twelve tree meshes; draw/caster ceilings stay
 22/19 for the whole scene. No new dependency or asset: offline catalog remains
-41 required assets. Native code is unchanged. Tree LOD remains a separate task.
+41 required assets. Native code is unchanged. These are Stage 5B resource bounds;
+the subsequent tree LOD section records the current representation/storage policy.
 
 Verification: 376 Angular tests, 12 packaging/asset checks and worker RPC pass;
 production publication succeeds. All 18 paired camera/full Core hashes are exact.
@@ -821,3 +822,60 @@ was run. Known limits remain low-poly silhouettes and global shadow resolution.
 Final PWA regression passes: offline reload/new tabs/new seeds, Remote failure and
 online recovery, deferred update under a busy operation and updated-version offline
 3D terrain. Deployment files were restored after the update simulation.
+
+## Tree geometry LOD
+
+Generate terrain and zoom: near trees retain full models, while distant trees use
+coarser opaque 3D shapes. No new UI is needed. Thresholds use camera-to-root distance
+scaled by tree size, with initial56 and hysteresis48..64. Small camera motion below
+.25 world units defers evaluation; stationary views do no LOD repacking. Far trees
+keep their individual colors and species silhouette, with visibly coarser facets.
+There is a hard geometry switch, not a smooth morph. Full-detail static shadows
+may differ slightly from far silhouettes. This is separate from grass distance fade.
+
+The implementation and finite budgets are frozen in
+[Tree LOD v1](specs/TREE_LOD_V1.md). `terrainForest` remains the canonical full-detail
+builder; `terrainForestLod` owns its shadow sources and visible near/far instances.
+`tree-appearance.ts` centralizes unchanged species/variant presentation dimensions.
+The preview evaluates LOD only after checking OperationLock and before rendering.
+Initial classification enters the existing display preparation/submission metric;
+later camera updates do not overwrite that initial value.
+
+Production-browser commands with the documented PWG_* environment:
+
+- `node tests/browser/atlas-materials.cjs --lod --before` against the preceding publication.
+- `node tests/browser/atlas-materials.cjs --lod` against the LOD publication.
+- `node tests/browser/tree-lod.cjs` for real GPU near/far geometry, buffer and shadow checks.
+- `node tests/browser/foliage.cjs` and `node tests/browser/materials.cjs` for color/resource regressions.
+- Run `node tests/browser/pwa.cjs` last; it temporarily changes deployment assets and restores them.
+
+The six paired forest scenes produce18 exact camera/full Core hashes. Screenshots
+intentionally change, principally on distant silhouettes. Real GPU checks distinguish
+indexed cones from nonindexed polyhedron draws, read active matrix/color prefixes,
+verify identical Local/Remote packed buffers at matching overview state, and verify
+static caster bytes/uploads through camera movement. Maximum overview submits all
+16384 trees: 131054 crown triangles in the accepted fixture, versus327608 full-detail
+crown triangles for the same species counts. Including trunks gives327662 versus
+655288 color triangles. These are structural draw counts, not GPU timing findings.
+
+Up to two active LOD batches per occupied kind/variant mean at most34 whole-scene
+color calls, previously22; the19 caster ceiling and seven crown attribute locations
+are unchanged. GPU instance storage ceiling is3.375 MiB/view,6.75 MiB for two views,
+versus2.1875 MiB/view for preceding full-detail tree instances. Repacking/upload work
+and extra buffer capacity are explicit tradeoffs. No assets/dependencies are added:
+the lazy-JS publication changes, but offline catalog remains41 required assets.
+Native sources and workload identities remain unchanged; README stays empty.
+
+Verification: 385 Angular tests (including all six groups split simultaneously),
+12 packaging/asset checks, worker RPC and production publication pass. All 18 paired
+camera/full Core hashes remain exact. Real GPU checks confirm 570 overview trees,
+228 near trees in the close fixture, 131054 maximum overview crown triangles and
+mixed LOD at maximum close range. Every previously observed tree/caster buffer is
+deleted on replacement; camera motion causes no caster upload or shadow-map refresh.
+Materials/foliage/grass/Sun/night regressions and narrow/offline new seeds pass.
+Native suites were not rerun because native sources are unchanged. Evidence lives
+under ignored `artifacts/tree-lod-*`; no controlled performance campaign was run.
+
+Final PWA regression passes: cached offline reload/new tabs/new seeds, Remote failure
+and online recovery, deferred update during an active operation and updated-version
+offline 3D terrain. Temporary deployment changes were restored after the simulation.

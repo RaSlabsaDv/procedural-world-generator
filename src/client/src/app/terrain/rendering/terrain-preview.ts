@@ -257,6 +257,7 @@ export class TerrainPreview {
                     return;
                   const submissionStarted = performance.now();
                   try {
+                    content!.updateTreeLod(camera!.position);
                     content!.waterTime(this.animation.time);
                     renderer!.render(scene, camera!);
                     if (shaderFailed) throw new Error('Surface shader compilation failed.');

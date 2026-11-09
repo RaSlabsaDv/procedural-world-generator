@@ -42,6 +42,7 @@ const artifact = artifactPath;
           skyCalls: 0,
           grassCalls: 0,
           grassInstances: 0,
+          crownCalls: 0,
           sources: new Set(),
           calls: 0,
           instances: 0,
@@ -106,6 +107,7 @@ const artifact = artifactPath;
           record.skyCalls = 0;
           record.grassCalls = 0;
           record.grassInstances = 0;
+          record.crownCalls = 0;
           return clear.apply(this, args);
         };
         for (const name of [
@@ -132,6 +134,12 @@ const artifact = artifactPath;
               record.grassCalls++;
               record.grassInstances += args.at(-1);
             }
+            if (
+              program &&
+              gl.getAttribLocation(program, "instanceColor") >= 0 &&
+              gl.getUniformLocation(program, "grassFadeNear") === null
+            )
+              record.crownCalls++;
             const location = program
               ? gl.getAttribLocation(program, "biomeId")
               : -1;
@@ -282,6 +290,7 @@ const artifact = artifactPath;
             skyCalls,
             grassCalls,
             grassInstances,
+            crownCalls,
             sources,
             calls,
             terrainCalls,
@@ -303,6 +312,7 @@ const artifact = artifactPath;
             skyCalls,
             grassCalls,
             grassInstances,
+            crownCalls,
             sources: [...sources].sort(),
             calls,
             terrainCalls,
@@ -351,8 +361,8 @@ const artifact = artifactPath;
         assert.ok(row.waterCalls <= 1);
         assert.ok(row.waterTextures <= 1);
         assert.ok(
-          row.calls <= 19 + row.waterCalls + row.skyCalls + row.grassCalls,
-          "Color pass: terrain, twelve tree, six rock meshes, plus Ocean, sky and decorative grass draws",
+          row.calls <= 31 + row.waterCalls + row.skyCalls + row.grassCalls,
+          "Color pass: terrain, up to 24 near/far tree and six rock meshes, plus Ocean, sky and grass",
         );
       }
       for (const row of rows.filter((row) => row.lost)) {
@@ -378,7 +388,7 @@ const artifact = artifactPath;
         );
         assert.equal(row.activeShadowUpdates, 1);
         for (const pass of row.passes.filter((pass) => pass.calls > 0))
-          assert.ok(pass.calls <= (pass.target === "shadow" ? 19 : 22));
+          assert.ok(pass.calls <= (pass.target === "shadow" ? 19 : 34));
       }
       for (const row of lighting.filter(
         (row) => row.lost || row.detailTextures === 0,
@@ -446,7 +456,7 @@ const artifact = artifactPath;
       assert.equal(
         actual.find((row) => !row.lost && row.textures > 0).calls,
         1 +
-          diagnostic.vegetationGroups * 2 +
+          actual.find((row) => !row.lost && row.textures > 0).crownCalls * 2 +
           diagnostic.rockGroups +
           actual.find((row) => !row.lost && row.textures > 0).waterCalls +
           actual.find((row) => !row.lost && row.textures > 0).skyCalls +
@@ -457,6 +467,14 @@ const artifact = artifactPath;
         diagnostic.treeCount * 2 +
           diagnostic.rockCount +
           actual.find((row) => !row.lost && row.textures > 0).grassInstances,
+      );
+      const crowns = actual.find(
+        (row) => !row.lost && row.textures > 0,
+      ).crownCalls;
+      assert.ok(
+        crowns >= diagnostic.vegetationGroups &&
+          crowns <= diagnostic.vegetationGroups * 2,
+        "Each occupied kind/variant has one or two active LOD batches",
       );
       captures.push({
         label,

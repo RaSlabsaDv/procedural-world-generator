@@ -10,7 +10,7 @@ import { Mesh, Scene, WebGLRenderer } from 'three';
 import { DEFAULT_SCENE_ENVIRONMENT, SceneEnvironmentSnapshot } from './scene-environment';
 import { HeightMapRequest, TerrainResponse } from '../data/terrain.models';
 import { terrainGeometry } from './terrain-geometry';
-import { terrainForest } from './terrain-forest';
+import { terrainForestLod } from './tree-lod';
 import { terrainRocks } from './terrain-rocks';
 import { terrainLighting } from './terrain-lighting';
 import { terrainSurfaceMaterial, SurfaceTextures } from './terrain-surfaces';
@@ -29,7 +29,7 @@ export function terrainScene(
 ) {
   let terrain:
     Mesh<ReturnType<typeof terrainGeometry>, ReturnType<typeof terrainSurfaceMaterial>> | undefined;
-  let forest: ReturnType<typeof terrainForest> | undefined;
+  let forest: ReturnType<typeof terrainForestLod> | undefined;
   let grass: ReturnType<typeof terrainGrass> | undefined;
   let rocks: ReturnType<typeof terrainRocks> | undefined;
   let lighting: ReturnType<typeof terrainLighting> | undefined;
@@ -61,8 +61,9 @@ export function terrainScene(
       terrainSurfaceMaterial(textures, result.width, result.height, microNormals),
     );
     scene.add(terrain);
-    forest = terrainForest(result, request.seed);
-    for (const group of forest.groups) scene.add(group.trunks, group.crowns);
+    forest = terrainForestLod(result, request.seed);
+    for (const mesh of forest.casters) scene.add(mesh);
+    for (const mesh of forest.meshes) scene.add(mesh);
     rocks = terrainRocks(result);
     for (const rock of rocks.meshes) scene.add(rock);
     lighting = terrainLighting(
@@ -70,7 +71,7 @@ export function terrainScene(
       renderer,
       request,
       terrain,
-      [...forest.groups.flatMap((group) => [group.trunks, group.crowns]), ...rocks.meshes],
+      [...forest.casters, ...rocks.meshes],
       environment,
     );
     const sea = water ? water.seaLevel * Math.fround(request.heightMultiplier) : 0;
@@ -111,6 +112,7 @@ export function terrainScene(
     }
     return {
       dispose,
+      updateTreeLod: forest.update,
       updateAtmosphere: atmosphere.update,
       updateEnvironment: lighting.update,
       environmentUniforms: lighting.uniforms,

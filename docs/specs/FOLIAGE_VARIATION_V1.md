@@ -2,6 +2,10 @@
 
 Policy frozen before implementation. Visual Stage 5B; presentation only.
 
+Stage 5B resource/grouping bounds below describe the full-detail baseline.
+[Tree LOD v1](TREE_LOD_V1.md) subsequently extends representation and storage;
+these exact color equations remain current.
+
 ## Stable identity and color
 
 Identity is unsigned generation seed, Core tree cellIndex, kind and variant. Neither
