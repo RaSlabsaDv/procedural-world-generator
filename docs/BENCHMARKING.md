@@ -644,3 +644,17 @@ units; this is not physical sediment mass. States: 1486 unsupported, 4025 expose
 submerged, 30 boundary. Display geometry uses 6731116 numeric bytes in this fixture,
 with two water color draws and zero water shadow casters. These are actual fixture
 observations rather than global memory bounds or performance claims.
+
+Inland-bank material setup (Hydrology Stage 6A) is display work, excluded from Core
+computeMs and Local/Remote numeric equivalence. The extra float attribute is 4*N
+bytes in CPU storage and GPU upload (1 MiB each at 512x512). Triangle-local setup
+has bounded stencil work, no per-frame work or additional draws. Browser readback,
+mask passes and wet/off toggles belong only to the verification harness. They are
+not application render costs or controlled physical-GPU performance measurements.
+
+Shore-stone scatter (Hydrology Stage 6B) is CPU display setup, not Core work. Its two
+color batches add at most 4096 instances, 311296 matrix/color bytes per CPU/GPU copy
+and 16 KiB fixed geometry. Shader distance fading avoids far fragments; it still
+submits the static instance buffers. There are no extra shadow passes or frame-loop
+allocations. Record actual counts separately from caps; software-rendered pixel
+checks are correctness/resource evidence, not physical-GPU speed measurements.

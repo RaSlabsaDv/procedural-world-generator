@@ -1,3 +1,7 @@
+import {
+  presentationHash as grassHash,
+  presentationRandom as grassRandom,
+} from './presentation-random';
 import { LANDSCAPE_BIOME as B, TerrainResponse } from '../data/terrain.models';
 
 export const GRASS = Object.freeze({
@@ -41,18 +45,11 @@ export const newGrassSample = (): GrassSample => ({
   biome: B.Grassland,
 });
 
-/** Stable presentation randomness, independent of Core and the camera. */
-export function grassHash(seed: number, id: number, stream: number): number {
-  let h = (seed ^ Math.imul(id + 1, 0x9e3779b1) ^ stream) >>> 0;
-  h ^= h >>> 16;
-  h = Math.imul(h, 0x7feb352d);
-  h ^= h >>> 15;
-  h = Math.imul(h, 0x846ca68b);
-  h ^= h >>> 16;
-  return h >>> 0;
-}
-export const grassRandom = (seed: number, id: number, stream: number) =>
-  (grassHash(seed, id, stream) + 0.5) / 4294967296;
+// Compatibility names preserve existing grass placement and fixtures.
+export {
+  presentationHash as grassHash,
+  presentationRandom as grassRandom,
+} from './presentation-random';
 export function grassGrid(width: number, height: number) {
   const dx = Math.ceil((width - 1) * GRASS.samplesPerUnit),
     dz = Math.ceil((height - 1) * GRASS.samplesPerUnit);

@@ -70,3 +70,11 @@ Pure network latency cannot be obtained by simply subtracting core execution tim
 - The report includes methodology, charts/tables, limitations, and conclusions supported by measurements.
 
 Authentication, databases, multiplayer, microservices, and automatic mode selection are outside the required scope. The implementation sequence is defined in the [roadmap](IMPLEMENTATION_PLAN.md).
+
+[Inland bank materials v1](specs/INLAND_BANK_MATERIALS_V1.md) adds narrow visual damp
+soil/sand/rock transitions beside actually rendered lakes and rivers. Snow is
+preserved. This does not change canonical moisture, generation or water profiles.
+
+[Shore stones v1](specs/INLAND_SHORE_STONES_V1.md) adds sparse decorative gravel and
+occasional larger stones beside visible inland water, preserving canonical terrain,
+Core rock instances and water profiles. Reeds remain a separate later substep.

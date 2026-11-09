@@ -165,10 +165,163 @@ export async function createView(
       for (const index of g.index.array)
         if (index >= p.count) throw Error("Water index overflow");
   }
+  const stoneMeshes = scene.children.filter((m) =>
+    m.name.startsWith("inland-shore-stones-v1:"),
+  ) as T.InstancedMesh[];
+  let stoneCalls = 0;
+  for (const mesh of stoneMeshes) {
+    mesh.onBeforeRender = () => {
+      stoneCalls++;
+    };
+    for (const value of mesh.instanceMatrix.array)
+      if (!Number.isFinite(value)) throw Error("nonfinite stone matrix");
+  }
+  function setStones(enabled: boolean) {
+    for (const mesh of stoneMeshes) mesh.visible = enabled;
+  }
+  function measureStones(
+    options: { hour?: number; mode?: string; bloom?: boolean } = {},
+  ) {
+    setStones(false);
+    const offDraw = draw(options),
+      off = pixels();
+    setStones(true);
+    const onDraw = draw(options),
+      on = pixels();
+    let changed = 0,
+      difference = 0;
+    for (let i = 0; i < off.length; i += 4) {
+      const delta = Math.max(
+        Math.abs(off[i] - on[i]),
+        Math.abs(off[i + 1] - on[i + 1]),
+        Math.abs(off[i + 2] - on[i + 2]),
+      );
+      if (delta > 1) changed++;
+      difference +=
+        Math.abs(off[i] - on[i]) +
+        Math.abs(off[i + 1] - on[i + 1]) +
+        Math.abs(off[i + 2] - on[i + 2]);
+    }
+    return {
+      changed,
+      difference,
+      offCalls: offDraw.drawCalls,
+      onCalls: onDraw.drawCalls,
+      stoneCalls: onDraw.stoneCalls,
+    };
+  }
+  const bankTerrain = scene.children.find((m) =>
+    (m as T.Mesh).geometry?.getAttribute("bankWetness"),
+  ) as T.Mesh;
+  const wetAttribute = bankTerrain.geometry.getAttribute("bankWetness");
+  const originalWet = wetAttribute.array.slice();
+  function setWetness(enabled: boolean) {
+    if (enabled) wetAttribute.array.set(originalWet);
+    else wetAttribute.array.fill(0);
+    wetAttribute.needsUpdate = true;
+  }
+  function pixels() {
+    const gl = renderer.getContext(),
+      size = renderer.getDrawingBufferSize(new T.Vector2());
+    const bytes = new Uint8Array(size.x * size.y * 4);
+    gl.readPixels(0, 0, size.x, size.y, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
+    return bytes;
+  }
+  function measureBanks() {
+    setWetness(false);
+    const offDraw = draw({ mode: "reference" }),
+      off = pixels();
+    setWetness(true);
+    const onDraw = draw({ mode: "reference" }),
+      on = pixels();
+    const previousMaterial = bankTerrain.material,
+      background = scene.background;
+    const visible = scene.children.map((m) => m.visible);
+    const mask = new T.ShaderMaterial({
+      vertexShader:
+        "attribute float bankWetness; varying float wet; void main(){wet=bankWetness; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
+      fragmentShader:
+        "varying float wet; void main(){if(wet<=0.0) discard; gl_FragColor=vec4(1.0,0.0,0.0,1.0);}",
+    });
+    let support: Uint8Array;
+    try {
+      for (const child of scene.children) child.visible = child === bankTerrain;
+      scene.background = new T.Color(0);
+      bankTerrain.material = mask;
+      renderer.render(scene, camera);
+      support = pixels();
+    } finally {
+      bankTerrain.material = previousMaterial;
+      scene.background = background;
+      scene.children.forEach((m, i) => (m.visible = visible[i]));
+      mask.dispose();
+    }
+    const size = renderer.getDrawingBufferSize(new T.Vector2());
+    let changed = 0,
+      outsideChanged = 0,
+      farPixels = 0;
+    for (let y = 0; y < size.y; y++)
+      for (let x = 0; x < size.x; x++) {
+        const i = (y * size.x + x) * 4;
+        let near = false;
+        for (let dz = -2; dz <= 2 && !near; dz++)
+          for (let dx = -2; dx <= 2; dx++) {
+            const sx = x + dx,
+              sy = y + dz;
+            if (
+              sx >= 0 &&
+              sx < size.x &&
+              sy >= 0 &&
+              sy < size.y &&
+              support[(sy * size.x + sx) * 4] > 0
+            ) {
+              near = true;
+              break;
+            }
+          }
+        const delta = Math.max(
+          Math.abs(off[i] - on[i]),
+          Math.abs(off[i + 1] - on[i + 1]),
+          Math.abs(off[i + 2] - on[i + 2]),
+        );
+        if (delta > 1) {
+          changed++;
+          if (!near) outsideChanged++;
+        }
+        if (!near) farPixels++;
+      }
+    draw();
+    return {
+      changed,
+      outsideChanged,
+      farPixels,
+      offCalls: offDraw.drawCalls,
+      onCalls: onDraw.drawCalls,
+      bytes: originalWet.byteLength,
+      vertices: originalWet.length,
+      wetVertices: Array.from(originalWet).filter((v) => v > 0).length,
+    };
+  }
   function focus(kind: string) {
     let cell = -1;
     distance = span * 0.9;
-    if (kind === "lake" && data.result.lakes.basins.length) {
+    if (kind === "stones" && stoneMeshes.length) {
+      const mesh =
+        stoneMeshes.find((m) => m.name.endsWith(":1")) ?? stoneMeshes[0];
+      const matrix = new T.Matrix4(),
+        p = new T.Vector3();
+      let best = Infinity;
+      for (let i = 0; i < mesh.count; i++) {
+        mesh.getMatrixAt(i, matrix);
+        p.setFromMatrixPosition(matrix);
+        const score = p.x * p.x + p.z * p.z;
+        if (score < best) {
+          best = score;
+          target.copy(p);
+        }
+      }
+      distance = 5;
+    } else if (kind === "lake" && data.result.lakes.basins.length) {
       let count = 0,
         x = 0,
         z = 0;
@@ -252,6 +405,7 @@ export async function createView(
     content.updateTreeLod(camera.position);
     content.waterTime(options.phase ?? 7);
     waterCalls = 0;
+    stoneCalls = 0;
     renderer.info.autoReset = false;
     renderer.info.reset();
     const warning = finish.render(scene, camera);
@@ -259,6 +413,9 @@ export async function createView(
     if (errors.length) throw Error(errors.join(","));
     return {
       stats: content.inlandStats,
+      shoreStones: content.shoreStoneStats,
+      stoneCalls,
+      stoneShadowCasters: stoneMeshes.filter((m) => m.castShadow).length,
       drawCalls: renderer.info.render.calls,
       geometries: renderer.info.memory.geometries,
       hasWater: content.hasWater,
@@ -309,6 +466,10 @@ export async function createView(
       camera.updateMatrixWorld();
     },
     measure,
+    measureBanks,
+    setWetness,
+    setStones,
+    measureStones,
     resize: (w: number, h: number) => {
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
@@ -321,9 +482,89 @@ export async function createView(
       surfaces.dispose();
       micro.dispose();
       normal.dispose();
+      const remaining = {
+        geometries: renderer.info.memory.geometries,
+        textures: renderer.info.memory.textures,
+      };
       renderer.dispose();
       renderer.forceContextLoss();
       canvas.remove();
+      return remaining;
     },
   };
+}
+
+/** Isolated real Lambert shader checks; no production test switches. */
+export async function verifyBankMaterials() {
+  const { terrainGeometry } =
+    await import("../../../src/client/src/app/terrain/rendering/terrain-geometry");
+  const { terrainSurfaceMaterial } =
+    await import("../../../src/client/src/app/terrain/rendering/terrain-surfaces");
+  const renderer = new T.WebGLRenderer({
+    antialias: false,
+    preserveDrawingBuffer: true,
+  });
+  renderer.setSize(32, 32);
+  renderer.toneMapping = T.NoToneMapping;
+  const owner = loadTerrainSurfaces(),
+    textures = await owner.ready;
+  const scene = new T.Scene(),
+    light = new T.AmbientLight(0xffffff, 1);
+  scene.add(light);
+  const camera = new T.PerspectiveCamera(45, 1, 0.01, 20);
+  camera.position.set(0, 2, 0);
+  camera.lookAt(0, 0, 0);
+  const colors = [];
+  try {
+    for (let channel = 0; channel < 6; channel++) {
+      const surfaceWeights = new Float32Array(20);
+      for (let i = 0; i < 4; i++) {
+        if (channel === 5) {
+          surfaceWeights[i * 5 + 1] = 0.5;
+          surfaceWeights[i * 5 + 4] = 0.5;
+        } else surfaceWeights[i * 5 + channel] = 1;
+      }
+      const geometry = terrainGeometry({
+        width: 2,
+        height: 2,
+        values: new Float32Array(4),
+        biomes: new Uint8Array(4).fill(1),
+        surfaceWeights,
+      });
+      const wet = new T.BufferAttribute(new Float32Array(4), 1);
+      geometry.setAttribute("bankWetness", wet);
+      const material = terrainSurfaceMaterial(textures, 2, 2),
+        mesh = new T.Mesh(geometry, material);
+      scene.add(mesh);
+      const sample = () => {
+        renderer.render(scene, camera);
+        const gl = renderer.getContext(),
+          p = new Uint8Array(4);
+        gl.readPixels(16, 16, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, p);
+        return Array.from(p).slice(0, 3);
+      };
+      try {
+        const dry = sample();
+        wet.array.fill(1);
+        wet.needsUpdate = true;
+        const damp = sample();
+        light.intensity = 0;
+        const dark = sample();
+        light.intensity = 1;
+        wet.array.fill(0);
+        wet.needsUpdate = true;
+        const reset = sample();
+        colors.push({ channel, dry, damp, dark, reset });
+      } finally {
+        mesh.removeFromParent();
+        geometry.dispose();
+        material.dispose();
+      }
+    }
+    return colors;
+  } finally {
+    owner.dispose();
+    renderer.dispose();
+    renderer.forceContextLoss();
+  }
 }

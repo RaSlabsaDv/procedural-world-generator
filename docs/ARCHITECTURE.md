@@ -823,3 +823,21 @@ heights, interpolates into its existing union mesh and clips banks against carve
 A bounded edge/shore taper meets the bed without hanging ribbon edges; centerline
 profiles stay authoritative. Existing water ownership, clock, vegetation filtering,
 lighting, fog and finishing remain. No new controls, dependencies or waterfalls.
+
+### Inland bank materials
+
+[Inland bank materials v1](specs/INLAND_BANK_MATERIALS_V1.md) consumes emitted inland
+water geometry at scene setup. A narrow distance/height/slope-gated Float32 attribute
+modulates non-snow land albedo before Lambert lighting, microdetail and shared fog.
+No water surfaces, Core arrays, routes, ecology, instances or identities change.
+One owned attribute costs 4*N bytes per CPU/GPU copy; no additional draw or texture.
+
+### Inland shoreline stones
+
+[Shore stones v1](specs/INLAND_SHORE_STONES_V1.md) is a bounded decorative view layer.
+A setup-only spatial index queries actual emitted water triangles, and wet-bank
+attributes gate a deterministic sparse scatter. Canonical rock/tree envelopes and
+accepted stones share a bounded obstacle index. Two instanced Lambert batches reuse
+shared atmosphere and existing illumination; neither casts shadows. Camera-distance
+fade runs in the shader. Core rock placement, water geometry and versions stay fixed.
+Shared presentation hashing is extracted without changing existing grass results.

@@ -4,6 +4,9 @@ const assert = require("node:assert/strict"),
 const { build } = require("../../src/client/node_modules/esbuild");
 const { base, launchBrowser } = require("./support/browser.cjs");
 const { artifactPath } = require("./support/editor.cjs");
+const banks = process.argv.includes("--banks");
+const stones = process.argv.includes("--stones");
+const prefix = stones ? "shore-stones" : banks ? "banks" : "channels";
 (async () => {
   const built = await build({
     entryPoints: [path.resolve(__dirname, "inland/entry.ts")],
@@ -43,9 +46,49 @@ const { artifactPath } = require("./support/editor.cjs");
     await page.evaluate(async () => {
       window.inland = await import("/__inland_test__.js");
     });
+    if (banks) {
+      const materialChecks = await page.evaluate(() =>
+        window.inland.verifyBankMaterials(),
+      );
+      for (const row of materialChecks) {
+        assert.deepEqual(row.dry, row.reset);
+        assert.deepEqual(row.dark, [0, 0, 0]);
+        if (row.channel === 4)
+          assert.deepEqual(row.dry, row.damp); // full snow
+        else
+          assert.ok(
+            row.damp.reduce((a, b) => a + b, 0) <
+              row.dry.reduce((a, b) => a + b, 0),
+          );
+      }
+      const linear = (value) => {
+        const s = value / 255;
+        return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      const soil = materialChecks.find((r) => r.channel === 1),
+        partialSnow = materialChecks.find((r) => r.channel === 5);
+      for (let c = 0; c < 3; c++) {
+        const soilDelta = linear(soil.dry[c]) - linear(soil.damp[c]);
+        const partialDelta =
+          linear(partialSnow.dry[c]) - linear(partialSnow.damp[c]);
+        assert.ok(
+          Math.abs(partialDelta - 0.5 * soilDelta) < 0.006,
+          "partial snow contribution changed",
+        );
+      }
+      await fs.writeFile(
+        artifactPath("banks-material-browser.json"),
+        JSON.stringify(materialChecks, null, 2),
+      );
+    }
+    if (banks && process.argv.includes("--materials-only")) {
+      assert.deepEqual(errors, []);
+      console.log("Inland bank material checks passed.");
+      return;
+    }
     const rows = [];
     const baseline = await fs
-      .readFile(artifactPath("channels-before-browser.json"), "utf8")
+      .readFile(artifactPath(`${prefix}-before-browser.json`), "utf8")
       .then(JSON.parse)
       .catch(() => []);
     for (const item of [
@@ -83,10 +126,21 @@ const { artifactPath } = require("./support/editor.cjs");
         };
       }, item.fields);
       assert.equal(data.hash, data.localHash);
+      if (banks || stones) {
+        const before = baseline.find((r) => r.name === item.name);
+        if (before)
+          assert.equal(data.hash, before.hash, "canonical result changed");
+      }
       const row = { name: item.name, ...data, views: [] };
       for (const focus of item.name === "maximum"
         ? ["map", "lake"]
-        : ["map", "lake", "river", "confluence"]) {
+        : [
+            "map",
+            "lake",
+            "river",
+            "confluence",
+            ...(stones ? ["stones"] : []),
+          ]) {
         let result = await page.evaluate((focus) => {
           window.view.focus(focus);
           return window.view.draw();
@@ -95,10 +149,54 @@ const { artifactPath } = require("./support/editor.cjs");
           .find((r) => r.name === item.name)
           ?.views.find((v) => v.focus === focus);
         if (prior) {
-          result=await page.evaluate((prior) => {
+          result = await page.evaluate((prior) => {
             window.view.pose(prior.camera, prior.target);
             return window.view.draw();
           }, prior);
+        }
+        let stonePixels;
+        if (stones) {
+          stonePixels = await page.evaluate(() => window.view.measureStones());
+          assert.ok(stonePixels.stoneCalls <= 2);
+          assert.ok(stonePixels.onCalls - stonePixels.offCalls <= 2);
+          assert.equal(result.stoneShadowCasters, 0);
+          assert.ok(result.shoreStones.count <= 4096);
+          assert.ok(result.shoreStones.large <= 64);
+          assert.equal(
+            result.shoreStones.instanceBytes,
+            result.shoreStones.count * 76,
+          );
+          assert.ok(result.shoreStones.geometryBytes <= 16384);
+          await page.evaluate(() => {
+            window.view.setStones(false);
+            window.view.draw();
+          });
+          await page.locator("#view").screenshot({
+            path: artifactPath(`shore-stones-off-${item.name}-${focus}.png`),
+          });
+          await page.evaluate(() => {
+            window.view.setStones(true);
+            window.view.draw();
+          });
+        }
+        let bankPixels;
+        if (banks) {
+          bankPixels = await page.evaluate(() => window.view.measureBanks());
+          assert.equal(bankPixels.outsideChanged, 0);
+          assert.ok(bankPixels.farPixels > 100);
+          assert.equal(bankPixels.offCalls, bankPixels.onCalls);
+          assert.equal(bankPixels.bytes, 4 * bankPixels.vertices);
+          await page.evaluate(() => {
+            window.view.setWetness(false);
+            window.view.draw();
+          });
+          await page.locator("#view").screenshot({
+            path: artifactPath(`banks-off-${item.name}-${focus}.png`),
+          });
+          await page.evaluate(() => {
+            window.view.setWetness(true);
+            window.view.draw();
+          });
         }
         const visiblePixels =
           focus === "lake" || focus === "river"
@@ -108,13 +206,27 @@ const { artifactPath } = require("./support/editor.cjs");
           focus,
           ...result,
           visiblePixels,
+          bankPixels,
+          stonePixels,
           pairedCamera: !!prior,
         });
         assert.ok(result.waterCalls <= 2);
         assert.equal(result.waterShadowCasters, 0);
         await page.locator("#view").screenshot({
-          path: artifactPath(`channels-after-${item.name}-${focus}.png`),
+          path: artifactPath(`${prefix}-after-${item.name}-${focus}.png`),
         });
+      }
+      if (stones && item.name === "mixed") {
+        await page.evaluate(() => window.view.focus("stones"));
+        const night = await page.evaluate(() =>
+          window.view.measureStones({ hour: 0, mode: "reference" }),
+        );
+        const day = await page.evaluate(() =>
+          window.view.measureStones({ hour: 12, mode: "reference" }),
+        );
+        assert.ok(night.difference < day.difference * 0.6);
+        row.nightStones = night;
+        row.dayStones = day;
       }
       if (item.name === "mixed") {
         for (const options of [
@@ -156,9 +268,30 @@ const { artifactPath } = require("./support/editor.cjs");
         await page.evaluate(() => window.view.digest()),
         data.before,
       );
-      await page.evaluate(() => window.view.dispose());
+      const remaining = await page.evaluate(() => window.view.dispose());
+      assert.equal(remaining.geometries, 0);
+      assert.equal(remaining.textures, 0);
       rows.push(row);
     }
+    if (stones) {
+      assert.ok(
+        rows.some((r) =>
+          r.views.some(
+            (v) => v.focus === "stones" && v.stonePixels.changed > 100,
+          ),
+        ),
+      );
+      assert.equal(
+        rows
+          .find((r) => r.name === "maximum")
+          .views.find((v) => v.focus === "map").stonePixels.changed,
+        0,
+      );
+    }
+    if (banks)
+      assert.ok(
+        rows.some((r) => r.views.some((v) => v.bankPixels.changed > 100)),
+      );
     assert.ok(rows.some((r) => r.lakes > 0));
     assert.ok(
       rows.some((r) =>
@@ -182,7 +315,7 @@ const { artifactPath } = require("./support/editor.cjs");
     );
     assert.deepEqual(errors, []);
     await fs.writeFile(
-      artifactPath("channels-water-browser.json"),
+      artifactPath(`${prefix}-water-browser.json`),
       JSON.stringify(rows, null, 2),
     );
     console.log(JSON.stringify(rows));

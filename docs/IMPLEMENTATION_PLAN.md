@@ -1387,3 +1387,57 @@ and HDR/Bloom pass. Final PWA update/offline regression passes with Bloom and in
 shader execution for new seeds; temporary deployment files restore. In the bounded-
 work 512x512 fixture 4025 edges are exposed; 1486 remain explicit unsupported barriers.
 These are correctness/resource observations, not a controlled performance campaign.
+
+### Hydrology Stage 6A — inland shoreline materials
+
+Presentation-only [inland bank materials v1](specs/INLAND_BANK_MATERIALS_V1.md):
+actual emitted inland water triangles seed a narrow damp-bank attribute with local
+horizontal, vertical and slope falloffs. Maximum overlap avoids dark seams at
+confluences. Lambert albedo changes before lighting/fog; snow and Ocean terms remain.
+No new controls, dependencies, instances, water geometry or canonical identities.
+One extra float per vertex; no extra draws, textures, shadows or frame-loop work.
+
+Next shoreline substep: separately bounded gravel/small stones and reeds, after
+material acceptance. Dynamic hydrology, unsupported-barrier repair and performance
+instrumentation/progress remain separate tasks. README stays empty.
+
+Stage 6A verification passes: 442 Angular, 282 Core and 47 API tests, 13 packaging
+checks and worker RPC; locked production publication succeeds. Four real WASM/API
+cases retain complete canonical hashes and source immutability. Fourteen fixed
+camera pairs show bank changes with zero changed pixels outside the conservative
+screen-space support mask; disabled-effect screenshots match pre-change pixels.
+Draw counts are unchanged, and disposal leaves zero owned GPU geometries/textures.
+The maximum fixture adds exactly 1 MiB per CPU/GPU attribute copy. Isolated actual
+Lambert draws preserve full/partial snow, restore dry colors and emit no light.
+Night/moon, Reference/HDR/Bloom, independent/narrow views and the final PWA update/
+offline new-seed regression pass. Browser rasterization uses SwiftShader; no new
+physical-GPU FPS or controlled performance claim is made.
+
+### Hydrology Stage 6B — scattered shoreline stones
+
+Implemented [Shore stones v1](specs/INLAND_SHORE_STONES_V1.md): exact emitted-water
+contact, wet-bank gating, irregular clusters/gaps and rare larger stones. Bounded
+spatial queries avoid canonical rocks/tree trunks and check terrain support across
+the complete small footprint. Ocean, snow, steep ledges, submerged anchors and
+unsupported routes are excluded. At most two instanced color batches and no new
+shadow casters, textures, controls, dependencies or Core/version changes.
+
+Next separate shoreline substep: sparse reeds on suitable shallow, gentle inland
+banks. No reeds or new ecological species are included here. Execution diagnostics,
+progress/cancellation and dynamic hydrology remain independent tracks. README empty.
+
+Stage 6B verification passes: 458 Angular tests, 13 packaging checks, worker RPC and
+locked production publication. Four actual published WASM/API cases retain complete
+canonical fingerprints and source immutability. Fourteen disabled-stone screenshots
+match Stage 6A pixels exactly; fixed close views prove visible stones, and distant
+maximum-map views show zero stone pixel contribution. Night illumination, Reference/
+HDR/Bloom, two/narrow previews, zero additional shadow casters and complete owned GPU
+cleanup pass. The final PWA update/offline regression executes shoreline instancing
+for a new no-Ocean seed, alongside existing Bloom and inland-water checks.
+
+Observed counts: mixed 469 stones (5 larger), no-Ocean 466 (7), coastal 43 (1),
+512x512 fixture 1666 (15). The latter uses 126616 matrix/color bytes, 11136 fixed
+geometry bytes per CPU/GPU copy and 2045116 numeric setup scratch bytes. The synthetic
+maximum-map test exercises the 4096 instance cap. These are bounded resource/correctness
+observations under SwiftShader, not physical-GPU performance measurements. Core and
+all canonical identities remain unchanged; no native source or fixtures were edited.

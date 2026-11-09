@@ -1259,3 +1259,30 @@ HDR/Bloom, confluences, no-Ocean, narrow/two-view, night/moon and maximum-work l
 regressions pass. Two extra water color draws/no water shadows remain. Final PWA
 update/offline checks with Bloom/inland shader probes pass for new seeds and restore
 temporary deployment files. Evidence is under ignored artifacts/channels-*.
+
+### Inland wet banks (Hydrology Stage 6A)
+
+The presentation field and shader policy are in
+[Inland bank materials v1](specs/INLAND_BANK_MATERIALS_V1.md).
+`inland-bank-wetness.ts` consumes actual emitted lake/river triangles; terrain geometry
+owns its single float attribute. There is no UI control or generation parameter.
+Run `npm test -- --watch=false` from src/client for field/material coverage.
+Run `node tests/browser/inland-banks.cjs` against a matching production API/WASM
+publication using the existing PWG browser environment overrides. It bundles actual
+render factories only in memory and saves fixed-camera wet/off screenshots, pixel
+support checks and isolated snow/rock/night Lambert checks under ignored artifacts.
+Run the PWA update/offline regression last, after other browser checks.
+
+### Inland shoreline stones (Hydrology Stage 6B)
+
+See [Shore stones v1](specs/INLAND_SHORE_STONES_V1.md) for frozen placement and resource
+limits. `shore-water-index.ts` indexes emitted triangles; `shore-stone-placement.ts`
+performs setup-only scatter/support checks; `shore-stones.ts` owns two instanced
+batches. No new parameter or visual control is required. Existing Core rocks remain
+independent of this decorative layer.
+
+Run `node tests/browser/inland-shore-stones.cjs` against matching published WASM/API
+assets with the documented PWG browser overrides. The shared inland harness captures
+fixed stones/off views, near/far contribution, bounds, night/Bloom, independent views
+and ownership. It is bundled in memory and adds no shipped application test switch.
+Run PWA update/offline checks last. Numeric sizes exclude JS object/driver overhead.

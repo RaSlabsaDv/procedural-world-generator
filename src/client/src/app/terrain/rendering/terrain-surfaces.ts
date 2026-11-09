@@ -17,6 +17,7 @@ export type SurfaceTextures = Record<SurfaceName, Texture>;
 
 export { SURFACE_COLORS } from '../data/biome-presentation';
 export const BIOME_GROUND_REVISION = 'terrain-biome-ground-v1';
+export const INLAND_BANK_REVISION = 'inland-bank-materials-v1';
 const BIOME_IDS = Object.values(LANDSCAPE_BIOME);
 
 export interface TerrainSurfaces {
@@ -68,7 +69,7 @@ export function terrainSurfaceMaterial(
   microNormals?: DataArrayTexture,
 ) {
   const material = new MeshLambertMaterial();
-  material.customProgramCacheKey = () => BIOME_GROUND_REVISION;
+  material.customProgramCacheKey = () => BIOME_GROUND_REVISION + ':' + INLAND_BANK_REVISION;
   material.onBeforeCompile = (shader) => {
     for (const name of SURFACE_TEXTURE_NAMES)
       shader.uniforms[`detail_${name}`] = { value: textures[name] };
@@ -94,6 +95,8 @@ export function terrainSurfaceMaterial(
       varying vec3 vBiomeSoil;
       attribute vec4 surfaceCoverage;
       attribute float sandCoverage;
+      attribute float bankWetness;
+      varying float vBankWetness;
       uniform vec2 detailOffset;
       varying vec4 vSurfaceCoverage;
       varying float vSandCoverage;
@@ -110,6 +113,7 @@ export function terrainSurfaceMaterial(
       vBiomeSoil = biomeSoil[int(biomeId)];
       vSurfaceCoverage = surfaceCoverage;
       vSandCoverage = sandCoverage;
+      vBankWetness = bankWetness;
       vDetailPosition = position + vec3(detailOffset.x, 0.0, detailOffset.y);
       vDetailNormal = normal;
     `,
@@ -125,6 +129,7 @@ export function terrainSurfaceMaterial(
       uniform sampler2D detail_rock;
       uniform sampler2D detail_snow;
       uniform float detailRepeat;
+      varying float vBankWetness;
       varying vec3 vBiomeGrass;
       varying vec3 vBiomeSoil;
       uniform vec3 surface_sand;
@@ -155,6 +160,19 @@ export function terrainSurfaceMaterial(
       if (vSurfaceCoverage.z > 0.0) ground += vSurfaceCoverage.z * surface_rock * (0.7 + 0.6 * projectedDetail(detail_rock, detailPoint, detailAxis));
       if (vSurfaceCoverage.w > 0.0) ground += vSurfaceCoverage.w * surface_snow * (0.7 + 0.6 * projectedDetail(detail_snow, detailPoint, detailAxis));
       if (vSandCoverage > 0.0) ground += vSandCoverage * surface_sand * (0.7 + 0.6 * projectedDetail(detail_sand, detailPoint, detailAxis));
+      // Modify only non-snow land albedo, before lighting and atmosphere.
+      float wet = clamp(vBankWetness, 0.0, 1.0);
+      if (wet > 0.0) {
+        vec3 snow = vSurfaceCoverage.w * surface_snow * (0.7 + 0.6 * projectedDetail(detail_snow, detailPoint, detailAxis));
+        vec3 ocean = max(0.0, 1.0-land) * surface_ocean;
+        vec3 dryLand = ground - snow - ocean;
+        vec3 soil = vBiomeSoil * (0.7 + 0.6 * projectedDetail(detail_soil, detailPoint, detailAxis));
+        vec3 damp = mix(dryLand, dryLand + (soil - vBiomeGrass * (0.7 + 0.6 * projectedDetail(detail_grass, detailPoint, detailAxis))) * vSurfaceCoverage.x, 0.16 * wet);
+        float rockShare = vSurfaceCoverage.z / max(land - vSurfaceCoverage.w, 0.0001);
+        damp *= 1.0 - 0.22 * wet * (1.0 - 0.55 * rockShare);
+        damp = mix(damp, vec3(dot(damp, vec3(0.2126, 0.7152, 0.0722))), 0.04 * wet);
+        ground = snow + ocean + damp;
+      }
       diffuseColor.rgb *= ground;
     `,
       );

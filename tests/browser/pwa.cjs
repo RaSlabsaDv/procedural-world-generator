@@ -33,9 +33,11 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
   const observe = (page) =>
     page.on("pageerror", (error) => errors.push(error.message));
   const inlandSmoke = process.argv.includes("--inland");
-  if (inlandSmoke)
+  const shoreSmoke = process.argv.includes("--shore-stones");
+  if (inlandSmoke || shoreSmoke)
     await context.addInitScript(() => {
       window.__inlandDraws = 0;
+      window.__shoreStoneDraws = 0;
       const get = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function (...args) {
         const gl = get.apply(this, args);
@@ -48,6 +50,18 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
             window.__inlandDraws++;
           return draw.apply(this, values);
         };
+        for (const method of ["drawElementsInstanced", "drawArraysInstanced"]) {
+          const submit = gl[method];
+          gl[method] = function (...values) {
+            const program = gl.getParameter(gl.CURRENT_PROGRAM);
+            if (
+              program &&
+              gl.getUniformLocation(program, "shoreFadeNear") !== null
+            )
+              window.__shoreStoneDraws++;
+            return submit.apply(this, values);
+          };
+        }
         return gl;
       };
     });
@@ -229,6 +243,11 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
         await page.evaluate(() => window.__inlandDraws > 0),
         "Updated offline no-Ocean renderer draws inland river material",
       );
+    if (shoreSmoke)
+      assert.ok(
+        await page.evaluate(() => window.__shoreStoneDraws > 0),
+        "Updated offline renderer submits shoreline stone instances",
+      );
     assert.deepEqual(errors, []);
     const result = {
       pass: true,
@@ -245,6 +264,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
       updatedVersionTerrain3d: true,
       ...(bloomSmoke ? { updatedVersionBloom: true } : {}),
       ...(inlandSmoke ? { updatedVersionInlandWater: true } : {}),
+      ...(shoreSmoke ? { updatedVersionShoreStones: true } : {}),
       firstCatalog,
       secondCatalog,
       pageErrors: errors,

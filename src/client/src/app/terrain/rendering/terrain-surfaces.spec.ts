@@ -121,7 +121,9 @@ it('looks up linear grass/soil colors at vertices and leaves protected material 
     shader as Parameters<typeof material.onBeforeCompile>[0],
     {} as WebGLRenderer,
   );
-  expect(material.customProgramCacheKey()).toBe('terrain-biome-ground-v1:terrain-microdetail-v1');
+  expect(material.customProgramCacheKey()).toBe(
+    'terrain-biome-ground-v1:inland-bank-materials-v1:terrain-microdetail-v1',
+  );
   expect(shader.vertexShader).toContain('attribute float biomeId;');
   expect(shader.vertexShader).toContain('vBiomeGrass = biomeGrass[int(biomeId)]');
   expect(shader.vertexShader).toContain('vBiomeSoil = biomeSoil[int(biomeId)]');
@@ -139,6 +141,11 @@ it('looks up linear grass/soil colors at vertices and leaves protected material 
   );
   expect(shader.fragmentShader).toContain('vec3 ground = max(0.0, 1.0-land) * surface_ocean;');
   expect(shader.fragmentShader).toContain('diffuseColor.rgb *= ground;');
+  expect(shader.vertexShader).toContain('vBankWetness = bankWetness;');
+  expect(shader.fragmentShader.indexOf('float wet =')).toBeLessThan(
+    shader.fragmentShader.indexOf('#include <lights_lambert_fragment>'),
+  );
+  expect(shader.fragmentShader).toContain('ground = snow + ocean + damp;');
   const grass = shader.uniforms['biomeGrass'].value as Color[],
     soil = shader.uniforms['biomeSoil'].value as Color[];
   expect(grass).toHaveLength(9);
