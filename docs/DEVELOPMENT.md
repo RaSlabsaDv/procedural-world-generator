@@ -879,3 +879,58 @@ under ignored `artifacts/tree-lod-*`; no controlled performance campaign was run
 Final PWA regression passes: cached offline reload/new tabs/new seeds, Remote failure
 and online recovery, deferred update during an active operation and updated-version
 offline 3D terrain. Temporary deployment changes were restored after the simulation.
+
+## Appearance: tone mapping and finishing
+
+The collapsed Appearance panel controls both previews. ACES is the default, exposure
+starts at1 (range.25..2), and grading/vignette start disabled. Reset appearance
+restores these values. For the exact preceding rendering choose Reference, exposure1,
+both effects off. This bypasses HDR composition entirely; Reference with other effects
+uses the finishing pipeline and is not a byte-exact legacy reference.
+
+[Color finishing v1](specs/COLOR_FINISHING_V1.md) freezes equations, order and budgets.
+Exposure/tone mapping run once after linear HDR water/terrain composition. Pure Three
+ACES removed dim night details during assessment; the frozen shadow toe preserves
+very dark linear input while retaining normal Three ACES for lit colors. Black stays
+black; lighting, palettes and foam energy are unchanged. Grading is restrained
+saturation/contrast, and vignette darkens corners by at most10% in linear space.
+
+Targets cap at one megapixel per view (1048576 pixels), with optional4-sample RGBA16F
+MSAA. Larger/DPR2 drawing buffers can therefore show softer finishing output than
+direct Reference. This is an explicit memory bound: at most60 MiB/view,120 MiB for
+comparison, in addition to canvas/shadow/material resources. No composer or external
+dependency is added. Unsupported float targets show a Reference fallback warning;
+choose neutral Reference to clear the warning and keep the direct terrain view.
+
+Production checks, with the documented PWG_* overrides:
+
+- `node tests/browser/atlas-materials.cjs --finish --before` against the prior publication.
+- `node tests/browser/atlas-materials.cjs --finish --finish-reference` checks18 paired camera/Core hashes and byte-exact Reference screenshots.
+- `node tests/browser/color-finishing.cjs` reads actual GPU HDR/MSAA attachments, final uniforms/pixels and water blend state.
+- `node tests/browser/night.cjs --aces` checks foam/moon with active finishing.
+- Existing materials/Sun/vegetation shader checks explicitly select neutral Reference via `useReferenceAppearance`; they retain their original resource assertions.
+- Run `node tests/browser/pwa.cjs` last against the local production bundle.
+
+Independent float64 color fixtures read through the actual final GPU program give
+ACES `[134,156,244]` and Reference/exposure.5 `[85,137,255]` for linear input
+`[.18,.5,4]`. A dim fixture preserves `[2,3,5]`, and zero input remains zero. They
+verify exposure/output encoding and night-toe behavior, not a performance result.
+Appearance edits retain static shadow/instance buffers and initial display timing.
+GPU resources belong to individual views and release in neutral Reference; narrow,
+maximum-map and offline new-seed paths remain supported. No native code or workload
+identity changes; offline catalog stays41 required assets and README stays empty.
+
+Verification: 394 Angular tests, 12 packaging/asset checks, worker RPC and production
+publication pass. Eighteen paired camera/full Core hashes and Reference PNGs remain
+exact. GPU checks include HDR activation/deactivation back to exact direct pixels,
+independent comparison targets, stable instance uploads/shadows on edits, maximum/
+narrow/offline new seeds and an actually disabled float extension with visible
+Reference fallback. Snow/coast plus noon/low/night and foam/moon checks pass, including
+active ACES. Accepted desktop target964x691 uses4 samples: conservative color/depth
+storage39967440 bytes, about38.1 MiB/view. This is attachment accounting, not measured
+process/GPU memory or a frame-rate result. Native suites were not rerun for unchanged
+native sources. Raw evidence uses ignored `artifacts/color-finishing-*`.
+
+Final PWA regression passes with default ACES: offline reload/new tabs/new seeds,
+Remote failure and recovery, deferred update during active work and updated-version
+offline 3D terrain. Simulated deployment changes were restored after the test.

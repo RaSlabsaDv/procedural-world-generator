@@ -6,6 +6,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const {
   fillParameters,
@@ -14,6 +15,8 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
+const finishStudy = process.argv.includes("--finish");
+const finishReference = process.argv.includes("--finish-reference");
 const lodStudy = process.argv.includes("--lod");
 const foliageStudy = process.argv.includes("--foliage") || lodStudy;
 const grassStudy = process.argv.includes("--grass");
@@ -47,11 +50,13 @@ const defaultStudy = grassStudy
                 : biomeStudy
                   ? "biome-readability"
                   : "atlas-materials";
-const study = lodStudy
-  ? "tree-lod"
-  : foliageStudy
-    ? "foliage-variation"
-    : defaultStudy;
+const study = finishStudy
+  ? "color-finishing"
+  : lodStudy
+    ? "tree-lod"
+    : foliageStudy
+      ? "foliage-variation"
+      : defaultStudy;
 const foliageCases = [
   ["broadleaf", { seed: 42, globalMoisture: 1 }],
   ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
@@ -74,6 +79,33 @@ const foliageCases = [
       seaLevel: 0,
     },
   ],
+];
+const finishCases = [
+  ["mixed-noon", { seed: 42, hour: 12 }],
+  ["mixed-low", { seed: 42, hour: 6.25 }],
+  ["mixed-night", { seed: 42, hour: 0 }],
+  [
+    "snow",
+    {
+      seed: 2026,
+      globalWarmth: 0.12,
+      globalMoisture: 0.8,
+      heightMultiplier: 60,
+      seaLevel: 0.3,
+      hour: 12,
+    },
+  ],
+  [
+    "coast",
+    {
+      seed: -7,
+      globalWarmth: 0.9,
+      globalMoisture: 0.45,
+      seaLevel: 0.23,
+      hour: 12,
+    },
+  ],
+  ["forest", { seed: 42, globalMoisture: 1, hour: 12 }],
 ];
 const cases = microStudy
   ? [
@@ -238,7 +270,13 @@ const cases = microStudy
       viewport: { width: 1600, height: 1050 },
       deviceScaleFactor: 1,
       reducedMotion:
-        waterStudy || atmosphereStudy || sunStudy || microStudy || foliageStudy
+        waterStudy ||
+        atmosphereStudy ||
+        sunStudy ||
+        microStudy ||
+        foliageStudy ||
+        finishStudy ||
+        finishStudy
           ? "reduce"
           : "no-preference",
     });
@@ -247,13 +285,24 @@ const cases = microStudy
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(base);
     await waitForOfflineReady(page);
+    if (!finishStudy || finishReference) await useReferenceAppearance(page);
     if (reference) {
       await page.locator("#atmosphere-settings summary").click();
       await page.locator("#atmosphere-enabled").uncheck();
     }
     const captures = [],
       diagnostics = [];
-    for (const [label, values] of foliageStudy ? foliageCases : cases) {
+    for (const [label, rawValues] of finishStudy
+      ? finishCases
+      : foliageStudy
+        ? foliageCases
+        : cases) {
+      const { hour, ...values } = rawValues;
+      if (finishStudy) {
+        if (!(await page.locator("#sun-settings").evaluate((el) => el.open)))
+          await page.locator("#sun-settings summary").click();
+        await page.locator("#sun-time").fill(String(hour));
+      }
       await page.locator("#reset-parameters").click();
       await fillParameters(page, {
         width: 129,
@@ -323,7 +372,7 @@ const cases = microStudy
         ["overview", 0],
         [
           "close",
-          microStudy || foliageStudy
+          microStudy || foliageStudy || finishStudy
             ? label === "maximum"
               ? -6000
               : label === "rock"
@@ -331,14 +380,14 @@ const cases = microStudy
                 : -4400
             : -650,
         ],
-        ["detail", microStudy || foliageStudy ? 0 : -700],
+        ["detail", microStudy || foliageStudy || finishStudy ? 0 : -700],
       ]) {
         if (wheel) {
           const box = await canvas.boundingBox();
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.mouse.wheel(0, wheel);
         }
-        if ((microStudy || foliageStudy) && view === "detail") {
+        if ((microStudy || foliageStudy || finishStudy) && view === "detail") {
           const box = await canvas.boundingBox();
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.mouse.down();
@@ -373,7 +422,7 @@ const cases = microStudy
         const screenshot = await canvas.screenshot({
           path: artifactPath(`${study}-${phase}-${label}-${view}.png`),
         });
-        if ((reference || sunStudy) && !before) {
+        if ((reference || sunStudy || finishReference) && !before) {
           assert.deepEqual(
             screenshot,
             await fs.readFile(

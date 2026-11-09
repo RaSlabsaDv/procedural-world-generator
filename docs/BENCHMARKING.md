@@ -445,3 +445,23 @@ This does not establish faster generation, lower frame time or improved FPS. Ext
 buffer capacity (3.375 MiB/view) and mixed-LOD color batches (whole-scene ceiling34)
 may offset savings on some hardware. Software WebGL checks establish correctness,
 not optimization benefits. No controlled hardware performance campaign was run.
+
+## Color finishing
+
+Color-finishing-v1 adds optional HDR scene rendering and a final color pass. All
+allocation, MSAA resolve, resizing and submission are display work outside computeMs/
+requestMs. They pause under OperationLock, including controlled collection; queued
+settings apply after release. Initial display timing includes first allocation and
+submission, while later edits do not overwrite it. Submission is not GPU completion.
+
+Freeze tone mode, exposure, grading/vignette, drawing-buffer size/DPR, actual target
+size/MSAA and camera/LOD history alongside lighting/wave phase. Existing experiment
+exports do not automatically capture appearance state; record it with campaign
+conditions. Exact historical reference is Reference/exposure1/effects-off. Other
+Reference combinations use linear HDR compositing and are not pixel-identical.
+
+One capped RGBA16F target plus final triangle adds GPU work and up to60 MiB/view,
+120 MiB for two views. Bloom/SSAO remain absent. These are resource bounds, not RSS
+measurements or FPS claims; driver/default-canvas/shadow storage is additional.
+Software WebGL pixel/pass assertions establish correctness only. No controlled
+hardware performance campaign or native algorithm optimization was performed.

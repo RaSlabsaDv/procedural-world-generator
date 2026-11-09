@@ -5,6 +5,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const {
   fillParameters,
@@ -58,6 +59,7 @@ const {
     });
     await page.goto(base);
     await waitForOfflineReady(page);
+    if (!process.argv.includes("--aces")) await useReferenceAppearance(page);
     await fillParameters(page, {
       width: 129,
       height: 97,
@@ -201,6 +203,7 @@ const {
     await context.setOffline(true);
     await page.reload();
     await waitForOfflineReady(page);
+    if (!process.argv.includes("--aces")) await useReferenceAppearance(page);
     await page.locator("#sun-settings summary").click();
     await page.locator("#sun-time").fill("0");
     await fillParameters(page, {

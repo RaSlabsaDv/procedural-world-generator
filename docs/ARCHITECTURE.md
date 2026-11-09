@@ -597,3 +597,38 @@ as detailed in the specification. These explicit costs buy fewer color triangles
 controlled hardware measurements are still needed to assess the net performance.
 All LOD preparation, camera classification, uploads and submission are display work,
 outside computeMs/requestMs. No Core/request/workload/PWA-asset identity changes.
+
+## Color finishing
+
+[Color finishing v1](specs/COLOR_FINISHING_V1.md) adds a shared immutable appearance
+snapshot with ACES/Reference, exposure and independent grading/vignette toggles.
+Controls/settings import no Three code; visualization remains lazy. Default ACES
+uses a documented linear shadow toe to preserve the existing dim night fill without
+adding emission or changing lights/palettes. Grading and vignette default off.
+
+`colorFinishing` owns an optional RGBA16F linear-sRGB scene target and one fullscreen
+triangle. The scene renderer stays NoToneMapping/exposure1. Installed Three render-
+target variants output linear values; water therefore blends with terrain before
+exposure/tone mapping. The final shader uses installed Three ACES with a private
+exposure uniform, then grading, vignette and exactly one sRGB output encoding.
+Reference/exposure1/effects-off bypasses the entire target/pass and preserves prior
+encoded blending/fog/antialiasing exactly. Other Reference combinations use HDR
+composition without ACES and are not the historical pixel reference.
+
+Targets never upscale, preserve drawing-buffer aspect and cap at1048576 pixels/view,
+subject to hardware limits. Four-sample MSAA is enabled only when RGBA16F advertises
+support; otherwise single-sample. Depth is not sampled/resolved. Conservative target
+storage is at most60 MiB/view or120 MiB for comparison, including resolved depth and
+MSAA color/depth, plus existing canvas/shadows/textures and driver overhead. One final
+triangle adds one color call: at most35 color/19 shadow calls per view, versus34/19
+in direct Reference. Disabled optional grading/vignette use uniform branches, not
+additional passes; neutral Reference releases all finishing resources.
+
+Uniform edits retain scene geometry, tree/grass buffers and static shadow maps.
+Each view owns targets/material/geometry; resize, failure and destruction release
+attachments through Three ownership. Unsupported/incomplete float targets fall back
+to a visible Reference warning. Preparation/application/resize/submission respect
+OperationLock and use the latest snapshot after waits. Initial display CPU timing
+includes finishing allocation/submission, outside computeMs/requestMs; later edits
+do not rewrite it. Core, transport, workload identities and PWA asset count remain
+unchanged. Bloom/SSAO are separate future stages.

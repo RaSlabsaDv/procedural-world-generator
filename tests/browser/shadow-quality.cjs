@@ -6,6 +6,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const {
   fillParameters,
@@ -141,6 +142,7 @@ const cases = [
     });
     await page.goto(base);
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     await page.locator("#sun-settings summary").click();
     await page.locator("#sun-time").waitFor();
     const captures = [];

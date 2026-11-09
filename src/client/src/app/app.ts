@@ -1,3 +1,4 @@
+import { AppearanceControls } from './terrain/editor/appearance-controls';
 import { SunControls } from './terrain/editor/sun-controls';
 import { AtmosphereControls } from './terrain/editor/atmosphere-controls';
 import { OceanControls } from './terrain/editor/ocean-controls';
@@ -27,6 +28,7 @@ import { OperationLock } from './platform/operation-lock.service';
     OceanControls,
     AtmosphereControls,
     SunControls,
+    AppearanceControls,
   ],
   templateUrl: './app.html',
   styleUrls: ['./shared/panel.css', './app.css'],

@@ -5,6 +5,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const {
   fillParameters,
@@ -99,6 +100,7 @@ const {
       );
     await page.goto(base);
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     assert.equal(
       await page.locator("#sun-settings").getAttribute("open"),
       null,
@@ -268,6 +270,7 @@ const {
     await context.setOffline(true);
     await page.reload();
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     await page.locator("#sun-settings summary").click();
     await page.locator("#sun-time").fill("9");
     await fillParameters(page, {
@@ -308,6 +311,7 @@ const {
     deferredPage.on("pageerror", (e) => errors.push(e.message));
     await deferredPage.goto(base);
     await waitForOfflineReady(deferredPage);
+    await useReferenceAppearance(deferredPage);
     await fillParameters(deferredPage, {
       width: 33,
       height: 25,

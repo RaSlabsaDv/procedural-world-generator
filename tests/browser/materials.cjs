@@ -8,6 +8,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const assert = require("node:assert/strict");
 const {
@@ -277,6 +278,7 @@ const artifact = artifactPath;
     });
     await page.goto(base);
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     const complete = () => waitForTerrain(page, 30000);
     const resources = async () =>
       page.evaluate(() =>
@@ -563,6 +565,7 @@ const artifact = artifactPath;
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     await page.locator("#seed").fill("-8812");
     await page.locator("#generate-local").click();
     await complete();

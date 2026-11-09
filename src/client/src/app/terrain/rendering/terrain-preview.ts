@@ -1,3 +1,5 @@
+import { colorFinishing } from './color-finishing';
+import { AppearanceSettings, AppearanceSettingsService } from './appearance-settings.service';
 import { loadTerrainMicroNormals } from './terrain-micro-normals';
 import { AtmosphereSettings, AtmosphereSettingsService } from './atmosphere-settings.service';
 import { OceanSettings, OceanSettingsService } from './ocean-settings.service';
@@ -57,6 +59,9 @@ export const TERRAIN_RENDERER_FACTORY = new InjectionToken<
 export class TerrainPreview {
   readonly run = input.required<TerrainRun>();
   readonly paused = input(false);
+  private readonly appearance = inject(AppearanceSettingsService);
+  private applyAppearance: ((settings: AppearanceSettings) => void) | undefined;
+  protected readonly finishingWarning = signal<string | null>(null);
   private readonly operations = inject(OperationLock);
   private readonly environment = inject(SceneEnvironmentService);
   private readonly atmosphere = inject(AtmosphereSettingsService);
@@ -106,11 +111,13 @@ export class TerrainPreview {
       const canvas = this.canvas().nativeElement;
       const container = this.container().nativeElement;
       this.problem.set(null);
+      this.finishingWarning.set(null);
       this.displayMs.set(null);
       this.textureWaitMs.set(null);
       const cameraKey = `${run.request.width}:${run.request.height}:${run.request.heightMultiplier}`;
       // Register cleanup before allocating: failures also release partially built scenes.
       let renderer: WebGLRenderer | undefined;
+      let finishing: ReturnType<typeof colorFinishing> | undefined;
       let shaderFailed = false;
       let controls: OrbitControls | undefined;
       let camera: PerspectiveCamera | undefined;
@@ -128,6 +135,7 @@ export class TerrainPreview {
         if (disposed) return;
         disposed = true;
         this.draw = undefined;
+        this.applyAppearance = undefined;
         this.applyEnvironment = undefined;
         this.applyWater = undefined;
         this.applyAtmosphere = undefined;
@@ -144,6 +152,7 @@ export class TerrainPreview {
           };
         controls?.dispose();
         content?.dispose();
+        finishing?.dispose();
         renderer?.dispose();
         this.controls = undefined;
       };
@@ -162,6 +171,8 @@ export class TerrainPreview {
           try {
             renderer = this.createRenderer(canvas);
             this.releaseContext = () => renderer?.forceContextLoss();
+            finishing = colorFinishing(renderer, untracked(this.appearance.settings));
+            this.applyAppearance = finishing.update;
             renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio || 1, 2));
             if (renderer.debug)
               renderer.debug.onShaderError = () => {
@@ -203,6 +214,7 @@ export class TerrainPreview {
               if (disposed) return;
               try {
                 const resumed = performance.now();
+                finishing!.update(untracked(this.appearance.settings));
                 const scene = new Scene();
                 camera = new PerspectiveCamera(45, 1, 0.01, 10000);
                 content = terrainScene(
@@ -259,7 +271,7 @@ export class TerrainPreview {
                   try {
                     content!.updateTreeLod(camera!.position);
                     content!.waterTime(this.animation.time);
-                    renderer!.render(scene, camera!);
+                    this.finishingWarning.set(finishing!.render(scene, camera!));
                     if (shaderFailed) throw new Error('Surface shader compilation failed.');
                     if (!submitted) {
                       submitted = true;
@@ -339,6 +351,7 @@ export class TerrainPreview {
       const environment = this.environment.snapshot();
       const water = this.water.settings();
       const atmosphere = this.atmosphere.settings();
+      const appearance = this.appearance.settings();
       if (this.controls) this.controls.enabled = !paused;
       if (!paused) {
         const setup = this.resumeSetup;
@@ -347,6 +360,7 @@ export class TerrainPreview {
         this.applyEnvironment?.(environment);
         this.applyWater?.(water);
         this.applyAtmosphere?.(atmosphere);
+        this.applyAppearance?.(appearance);
         this.draw?.();
       }
       this.animation.refresh();

@@ -11,6 +11,9 @@
     [attr.aria-label]="'3D terrain for seed ' + run().request.seed"
   ></canvas>
 </div>
+@if (finishingWarning()) {
+  <p role="status" class="finishing-warning">{{ finishingWarning() }}</p>
+}
 @if (problem()) {
   <p role="alert">{{ problem() }} Numerical results remain available.</p>
 }

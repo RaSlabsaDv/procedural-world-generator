@@ -25,6 +25,7 @@ Current behavior composes the policies below; a historical version label does no
 - [Coastal surfaces v2](specs/COASTAL_SURFACES_V2.md): current wider, context-sensitive post-placement coverage.
 - [Coastal surfaces v1](specs/COASTAL_SURFACES_V1.md): historical coastal equations and reference fixtures.
 - [Night sky and foam v1](specs/NIGHT_SKY_V1.md): illuminated foam and a shared illustrative full moon.
+- [Color finishing v1](specs/COLOR_FINISHING_V1.md): linear HDR composition, ACES shadow toe, exact Reference, exposure and bounded final-pass resources.
 - [Tree LOD v1](specs/TREE_LOD_V1.md): two-level geometry, hysteresis, static caster layer and bounded buffer/pass tradeoffs.
 - [Foliage variation v1](specs/FOLIAGE_VARIATION_V1.md): stable per-tree linear crown colors, identity/hash policy and resource bounds.
 - [Grass presentation v1](specs/GRASS_PRESENTATION_V1.md): bounded deterministic tufts, exact triangle grounding, exclusions, fade and ownership.

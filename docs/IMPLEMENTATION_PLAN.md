@@ -452,8 +452,8 @@ configuration and workload identities are frozen. README remains empty.
 
 ## Next roadmap: visual realism and execution feedback
 
-Status: shared environment foundation, Visual Stages 1–4 and Stage 5A decorative grass complete; tree variation/LOD and later stages remain planned.
-Sun controls, shadow assessment, microdetail and decorative grass are complete; tree foliage variation/LOD is next.
+Status: shared environment, Visual Stages 1–5 and Stage 6A color finishing are complete.
+Verification is recorded below. Bloom/SSAO and execution tracks remain separate.
 Implement incremental, independently reviewable stages, freezing each stage's
 policy, resource budget, acceptance scenes and verification before changing code.
 
@@ -645,7 +645,7 @@ Specify assets/provenance, repetition scale, sampler/attribute/pass/memory budge
 and compatibility with sun/shadows. Check steep faces, transitions and grazing
 views; preserve exact generation hashes and biome distinctions.
 
-### Visual Stage 5 — decorative grass complete; tree variation and LOD pending
+### Visual Stage 5 — decorative grass, foliage variation and geometry LOD complete
 
 Build on existing Core species, size/yaw, variants and clustered placement.
 
@@ -657,20 +657,20 @@ Build on existing Core species, size/yaw, variants and clustered placement.
   only under a versioned Core change, rather than duplicating clustering in JS.
   Keep broadleaf/conifer/savanna context, edges and dense patches. New dry-zone shrubs
   require a separate Core contract; do not silently repurpose a tree ID.
-- Retain instancing through full geometry -> simplified geometry -> billboard LOD,
-  using explicit distance thresholds and dithered transitions. Budget overlap draws,
-  transparency/shadow interaction and conservative bounds. Current cap is 16384 trees,
-  not an assumed 9000; assess the real maximum and two comparison views.
+- The completed assessment selected two opaque3D geometry levels, with scaled
+  distance/hysteresis and immutable full-detail shadow sources. Existing geometry
+  is already low-poly; no intermediate level, billboard or dither transition was
+  justified in v1. See [Tree LOD v1](specs/TREE_LOD_V1.md) for bounds and limitations.
 
 LOD is visualization only and must not change returned records or numerical
 comparison. Budget extra meshes/materials/textures and switching CPU work; prevent
 popping, missing trees, shadow inconsistencies and resource leaks in two views.
 New ecological placement or species advance affected workload identities.
 
-### Visual Stage 6 — restrained postprocessing
+### Visual Stage 6 — color finishing complete; bloom/SSAO pending
 
-- Establish a coherent tone-mapping/exposure policy, evaluating ACES with existing
-  linear material colors, sky, water and snow.
+- Stage 6A establishes tone mapping/exposure and restrained optional grading/vignette
+  across materials, sky, water and snow; completion evidence follows below.
 - Add subtle bloom where useful; preserve highlights and biome readability.
 - Add SSAO only after measuring scene/render-target costs on supported devices.
 - Finish with restrained vignette and color grading rather than hiding material
@@ -688,7 +688,7 @@ collection. CPU first submission is not GPU completion or an FPS measurement.
 
 ### Execution track 1 — detailed timing diagnostics
 
-The shared foundation, water, atmosphere, sun controls, shadow assessment, microdetail and decorative grass are complete; tree variation/LOD is next. Timing diagnostics precede WASM
+The shared foundation and visual vegetation stages are complete. Timing diagnostics precede WASM
 optimization decisions and the next controlled performance campaign.
 
 Break down height composition, erosion, final conversion/ocean/environment/biome
@@ -783,7 +783,7 @@ Implementation sequence:
 1. Shared sun/fog/visual-time foundation — complete.
 2. Water and sun-dependent sky/fog integration — complete.
 3. Sun controls and shadow assessment — complete; CSM/AO require a separate policy if justified.
-4. Material normals and decorative grass — complete; tree variation/LOD next, then postprocessing.
+4. Material normals, grass, foliage variation and tree LOD — complete; Stage6A finishing follows below, with bloom/SSAO separate.
 5. Shared Core river/lake hydrology, after the water system is established.
 
 Timing, worker progress/cancellation and optimization diagnostics form an independent
@@ -1112,3 +1112,40 @@ Native sources are unchanged, so native suites were not rerun; no FPS claim is m
 
 Final PWA regression passes as well, including busy-update deferral and updated-version
 offline 3D terrain. Deployment assets were restored after the update simulation.
+
+### Visual Stage 6A — color finishing (complete)
+
+Implemented [Color finishing v1](specs/COLOR_FINISHING_V1.md): shared collapsed
+Appearance controls for ACES/Reference, exposure and independent grading/vignette,
+with reset. Settings stay outside generator inputs and preserve the lazy Three
+boundary. Default ACES uses a fixed shadow toe after assessment showed pure ACES
+removed dim night details; zero input remains zero and no lighting/palette retint
+was needed. Bloom, SSAO, LUTs and automatic exposure remain excluded.
+
+One capped linear RGBA16F scene target composites terrain/water/sky before a final
+triangle applies exposure/tone mapping, grading, vignette and one sRGB encoding.
+Neutral Reference bypasses it entirely and releases resources, retaining exact
+preceding pixels. Targets are independent per view, bounded to1048576 pixels and
+optional4-sample MSAA: at most60 MiB/view,120 MiB for comparison plus existing scene
+resources. Color ceiling is35 with finishing,34 in direct Reference; casters stay19.
+Unsupported/incomplete float targets show a visible Reference fallback warning.
+
+OperationLock defers allocation, updates and draws; first setup after waits uses
+the latest snapshot. Scene/instance/shadow resources remain stable on uniform edits.
+Initial display timing includes finishing setup/submission; later edits leave it
+unchanged. Core, contracts, workload identities, asset catalog count41 and empty
+README are preserved. Subsequent visual substeps are bloom and cost-gated SSAO;
+execution diagnostics/progress/cancellation remain independent.
+
+Verification: 394 Angular tests, 12 packaging/asset checks, worker RPC and production
+publication pass. All 18 paired camera/full Core hashes and neutral Reference PNGs
+are exact. Actual GPU fixtures validate exposure/ACES/sRGB and dark/zero inputs,
+RGBA16F with4-sample color/depth and linear water blending. Uniform edits do not
+upload geometry or refresh shadows. Local/Remote settings, HDR activation/deactivation,
+maximum/narrow/offline scenes and unsupported-device fallback pass. Materials/Sun
+regressions pass in Reference; foam/moon pass in Reference and active ACES. Native
+sources are unchanged, so native suites were not rerun. No FPS campaign was run.
+
+Final PWA regression passes with default ACES, including busy-update deferral,
+new offline seeds/tabs and updated-version offline 3D terrain. Deployment files were
+restored after the simulation.

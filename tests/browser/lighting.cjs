@@ -4,6 +4,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const {
   instrumentLighting,
@@ -27,6 +28,7 @@ const assert = require("node:assert/strict"),
     });
     await page.goto(base);
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     const complete = () => waitForTerrain(page, 120000);
     const current = async () => {
       const rows = await lightingResources(page),

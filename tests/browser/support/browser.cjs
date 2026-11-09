@@ -24,4 +24,21 @@ async function waitForOfflineReady(page) {
     throw new Error("Offline preparation failed: " + detail, { cause });
   }
 }
-module.exports = { base, launchBrowser, waitForOfflineReady };
+// Existing shader/resource regressions explicitly retain the preceding direct pipeline.
+async function useReferenceAppearance(page) {
+  if (!(await page.locator("#appearance-settings").count())) return;
+  const panel = page.locator("#appearance-settings");
+  const open = await panel.evaluate((el) => el.open);
+  if (!open) await panel.locator("summary").click();
+  await page.locator("#appearance-tone").selectOption("reference");
+  await page.locator("#appearance-exposure").fill("1");
+  await page.locator("#appearance-grading").uncheck();
+  await page.locator("#appearance-vignette").uncheck();
+  if (!open) await panel.locator("summary").click();
+}
+module.exports = {
+  base,
+  launchBrowser,
+  waitForOfflineReady,
+  useReferenceAppearance,
+};

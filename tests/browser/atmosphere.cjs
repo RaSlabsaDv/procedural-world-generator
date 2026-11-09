@@ -5,6 +5,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const {
   fillParameters,
@@ -137,6 +138,7 @@ const {
       }));
     await page.goto(base);
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     assert.equal(
       await page.locator("#atmosphere-settings").getAttribute("open"),
       null,
@@ -240,6 +242,7 @@ const {
     await context.setOffline(true);
     await page.reload();
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     await fillParameters(page, {
       seed: 98765,
       width: 33,

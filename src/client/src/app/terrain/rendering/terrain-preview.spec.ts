@@ -1,3 +1,4 @@
+import { AppearanceSettingsService, REFERENCE_APPEARANCE } from './appearance-settings.service';
 import { AtmosphereSettingsService } from './atmosphere-settings.service';
 import { OceanSettingsService } from './ocean-settings.service';
 import { SceneEnvironmentService } from './scene-environment.service';
@@ -129,6 +130,8 @@ describe('terrain preview lifecycle', () => {
             state.create();
             if (state.fail) throw new Error('No WebGL');
             return {
+              extensions: { has: () => false },
+              getContext: () => ({}),
               shadowMap: { enabled: false, autoUpdate: true, needsUpdate: false },
               setPixelRatio() {},
               setSize() {},
@@ -140,6 +143,9 @@ describe('terrain preview lifecycle', () => {
         },
       ],
     });
+    const appearance = new AppearanceSettingsService();
+    appearance.set(REFERENCE_APPEARANCE);
+    TestBed.overrideProvider(AppearanceSettingsService, { useValue: appearance });
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -401,6 +407,79 @@ describe('terrain preview lifecycle', () => {
     } finally {
       release();
     }
+  });
+
+  it('defers appearance changes under the lock and reports unsupported HDR without rebuilding', async () => {
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    const scene = state.render.mock.calls.at(-1)![0] as Scene;
+    const sun = scene.children.find((o) => o instanceof DirectionalLight) as DirectionalLight;
+    sun.shadow.needsUpdate = false;
+    const measured = fixture.nativeElement.querySelector('.display-time').textContent;
+    const count = state.create.mock.calls.length;
+    const release = TestBed.inject(OperationLock).tryAcquire()!;
+    const appearance = TestBed.inject(AppearanceSettingsService);
+    appearance.set({ ...REFERENCE_APPEARANCE, tone: 'aces', exposure: 0.5 });
+    appearance.set({ ...REFERENCE_APPEARANCE, tone: 'aces', exposure: 1.25, grading: true });
+    state.render.mockClear();
+    await settlePreview(fixture);
+    expect(state.render).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.finishing-warning')).toBeNull();
+    release();
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.querySelector('.finishing-warning').textContent).toContain(
+      'Showing Reference',
+    );
+    expect(state.render.mock.calls.at(-1)![0]).toBe(scene);
+    expect(state.create).toHaveBeenCalledTimes(count);
+    expect(sun.shadow.needsUpdate).toBe(false);
+    expect(fixture.nativeElement.querySelector('.display-time').textContent).toBe(measured);
+    appearance.set(REFERENCE_APPEARANCE);
+    await settlePreview(fixture);
+    expect(fixture.nativeElement.querySelector('.finishing-warning')).toBeNull();
+  });
+
+  it('uses the latest appearance before first submission after an asset/pause wait', async () => {
+    let resolve!: (textures: Record<'grass' | 'soil' | 'sand' | 'rock' | 'snow', Texture>) => void;
+    TestBed.overrideProvider(TERRAIN_SURFACES_FACTORY, {
+      useValue: () => ({ ready: new Promise((yes) => (resolve = yes)), dispose: vi.fn() }),
+    });
+    const context = vi.fn(() => {
+      throw Error('Stale HDR setup');
+    });
+    TestBed.overrideProvider(TERRAIN_RENDERER_FACTORY, {
+      useValue: () => ({
+        shadowMap: { enabled: false, autoUpdate: true, needsUpdate: false },
+        setPixelRatio() {},
+        setSize() {},
+        render: state.render,
+        dispose: state.dispose,
+        forceContextLoss: state.lose,
+        getContext: context,
+      }),
+    });
+    const appearance = TestBed.inject(AppearanceSettingsService);
+    appearance.set({ ...REFERENCE_APPEARANCE, tone: 'aces' });
+    const fixture = TestBed.createComponent(TerrainPreview);
+    fixture.componentRef.setInput('run', run());
+    await settlePreview(fixture);
+    fixture.componentRef.setInput('paused', true);
+    appearance.set(REFERENCE_APPEARANCE);
+    resolve({
+      grass: new Texture(),
+      soil: new Texture(),
+      sand: new Texture(),
+      rock: new Texture(),
+      snow: new Texture(),
+    });
+    await settlePreview(fixture);
+    expect(state.render).not.toHaveBeenCalled();
+    fixture.componentRef.setInput('paused', false);
+    await settlePreview(fixture);
+    expect(context).not.toHaveBeenCalled();
+    expect(state.render).toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('[role=alert]')).toBeNull();
   });
 
   it('defers scene preparation while paused and excludes texture/pause wait from CPU timing', async () => {

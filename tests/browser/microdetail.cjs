@@ -6,6 +6,7 @@ const {
   base,
   launchBrowser,
   waitForOfflineReady,
+  useReferenceAppearance,
 } = require("./support/browser.cjs");
 const {
   fillParameters,
@@ -131,6 +132,7 @@ const {
     });
     await page.goto(base);
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     await fillParameters(page, {
       width: 129,
       height: 97,
@@ -258,6 +260,7 @@ const {
     await context.setOffline(true);
     await page.reload();
     await waitForOfflineReady(page);
+    await useReferenceAppearance(page);
     await fillParameters(page, {
       width: 33,
       height: 25,
