@@ -15,7 +15,8 @@ const {
 } = require("./support/editor.cjs");
 const before = process.argv.includes("--before");
 const phase = before ? "before" : "after";
-const finishStudy = process.argv.includes("--finish");
+const bloomStudy = process.argv.includes("--bloom");
+const finishStudy = process.argv.includes("--finish") || bloomStudy;
 const finishReference = process.argv.includes("--finish-reference");
 const lodStudy = process.argv.includes("--lod");
 const foliageStudy = process.argv.includes("--foliage") || lodStudy;
@@ -50,13 +51,15 @@ const defaultStudy = grassStudy
                 : biomeStudy
                   ? "biome-readability"
                   : "atlas-materials";
-const study = finishStudy
-  ? "color-finishing"
-  : lodStudy
-    ? "tree-lod"
-    : foliageStudy
-      ? "foliage-variation"
-      : defaultStudy;
+const study = bloomStudy
+  ? "bloom-off"
+  : finishStudy
+    ? "color-finishing"
+    : lodStudy
+      ? "tree-lod"
+      : foliageStudy
+        ? "foliage-variation"
+        : defaultStudy;
 const foliageCases = [
   ["broadleaf", { seed: 42, globalMoisture: 1 }],
   ["conifer", { seed: 2026, globalWarmth: 0.38, globalMoisture: 0.8 }],
@@ -280,6 +283,32 @@ const cases = microStudy
           ? "reduce"
           : "no-preference",
     });
+    if (bloomStudy)
+      await context.addInitScript(() => {
+        const get = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function (...args) {
+          const gl = get.apply(this, args);
+          if (!gl || args[0] !== "webgl2" || gl.__atlasCapture) return gl;
+          gl.__atlasCapture = true;
+          const canvas = this;
+          for (const name of ["drawElements", "drawArrays"]) {
+            const draw = gl[name];
+            gl[name] = function (...args) {
+              const p = gl.getParameter(gl.CURRENT_PROGRAM);
+              if (gl.getAttribLocation(p, "biomeId") >= 0) {
+                const read = (n) =>
+                  Array.from(gl.getUniform(p, gl.getUniformLocation(p, n)));
+                canvas.__atlasCamera = {
+                  projection: read("projectionMatrix"),
+                  modelView: read("modelViewMatrix"),
+                };
+              }
+              return draw.apply(this, args);
+            };
+          }
+          return gl;
+        };
+      });
     const page = await context.newPage(),
       errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -333,14 +362,15 @@ const cases = microStudy
         algorithmVersion: rockStudy
           ? before
             ? "diverse-landscape-v9"
-            : "diverse-landscape-v10"
+            : "diverse-landscape-v11"
           : climateStudy && before
             ? "diverse-landscape-v7"
-            : "diverse-landscape-v10",
+            : "diverse-landscape-v11",
       };
       await page
         .locator(
-          (foliageStudy ||
+          (finishStudy ||
+            foliageStudy ||
             climateStudy ||
             rockStudy ||
             waterStudy ||
@@ -353,7 +383,8 @@ const cases = microStudy
         .click();
       await waitForTerrain(page);
       if (
-        (foliageStudy ||
+        (finishStudy ||
+          foliageStudy ||
           climateStudy ||
           rockStudy ||
           waterStudy ||
@@ -411,8 +442,10 @@ const cases = microStudy
           return {
             width: canvas.width,
             height: canvas.height,
-            projection: read("projectionMatrix"),
-            modelView: read("modelViewMatrix"),
+            projection:
+              canvas.__atlasCamera?.projection ?? read("projectionMatrix"),
+            modelView:
+              canvas.__atlasCamera?.modelView ?? read("modelViewMatrix"),
           };
         });
         assert.ok(
@@ -422,7 +455,10 @@ const cases = microStudy
         const screenshot = await canvas.screenshot({
           path: artifactPath(`${study}-${phase}-${label}-${view}.png`),
         });
-        if ((reference || sunStudy || finishReference) && !before) {
+        if (
+          (reference || sunStudy || finishReference || bloomStudy) &&
+          !before
+        ) {
           assert.deepEqual(
             screenshot,
             await fs.readFile(

@@ -34,6 +34,8 @@ async function useReferenceAppearance(page) {
   await page.locator("#appearance-exposure").fill("1");
   await page.locator("#appearance-grading").uncheck();
   await page.locator("#appearance-vignette").uncheck();
+  if (await page.locator("#appearance-bloom").count())
+    await page.locator("#appearance-bloom").uncheck();
   if (!open) await panel.locator("summary").click();
 }
 module.exports = {

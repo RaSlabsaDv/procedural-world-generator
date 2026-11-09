@@ -1,4 +1,10 @@
-import { TerrainRun, TerrainError, HeightMapRequest, SURFACE_CHANNELS } from './terrain.models';
+import {
+  TerrainRun,
+  TerrainError,
+  HeightMapRequest,
+  SURFACE_CHANNELS,
+  HYDROLOGY_VERSION,
+} from './terrain.models';
 import { sameObject } from './contract-utils';
 
 export interface TerrainComparison {
@@ -12,6 +18,7 @@ export interface TerrainComparison {
   readonly vegetationMismatchCount: number;
   readonly coverageMismatchCount: number;
   readonly rockMismatchCount: number;
+  readonly hydrologyMismatchCount: number;
   readonly identity: 'compatible' | 'different' | 'unverifiable';
 }
 
@@ -124,6 +131,27 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
     )
       rockMismatchCount++;
   }
+  const ha = a.result.hydrology,
+    hb = b.result.hydrology;
+  if (
+    ha.algorithmVersion !== HYDROLOGY_VERSION ||
+    hb.algorithmVersion !== HYDROLOGY_VERSION ||
+    [ha, hb].some(
+      (h) =>
+        h.receiverIndex.length !== a.result.values.length ||
+        h.flowAccumulation.length !== a.result.values.length ||
+        h.depressionDepth.length !== a.result.values.length,
+    )
+  )
+    throw new TerrainError('protocol', 'Incompatible hydrology contract.');
+  let hydrologyMismatchCount = 0;
+  for (let i = 0; i < a.result.values.length; i++)
+    if (
+      ha.receiverIndex[i] !== hb.receiverIndex[i] ||
+      ha.flowAccumulation[i] !== hb.flowAccumulation[i] ||
+      !close(ha.depressionDepth[i], hb.depressionDepth[i])
+    )
+      hydrologyMismatchCount++;
   const verifiable = (id: string) =>
     id.trim().length > 0 && id.trim() !== 'unversioned' && !id.trim().endsWith('-dirty');
   const identity =
@@ -141,11 +169,13 @@ export function compareTerrains(local: TerrainRun, remote: TerrainRun): TerrainC
       environmentMismatchCount === 0 &&
       vegetationMismatchCount === 0 &&
       coverageMismatchCount === 0 &&
-      rockMismatchCount === 0,
+      rockMismatchCount === 0 &&
+      hydrologyMismatchCount === 0,
     environmentMismatchCount,
     vegetationMismatchCount,
     coverageMismatchCount,
     rockMismatchCount,
+    hydrologyMismatchCount,
     biomeMismatchCount,
     biomesMatch: biomeMismatchCount === 0,
     identity,

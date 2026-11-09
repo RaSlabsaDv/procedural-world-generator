@@ -34,6 +34,7 @@ internal static class LandscapeEcology
         // Placement consumes frozen base coverage; coastal appearance must not change rocks.
         CoastalSurfaces.Apply(surfaceWeights, values, ocean, moisture, temperature, slope, map.Width, map.Height, bound, request.SeaLevel);
         return new(map.Width, map.Height, values, request.AlgorithmVersion, biomes, TerrainLimits.ResultVersion,
-            moisture, temperature, slope, density, trees, surfaceWeights, rocks);
+            moisture, temperature, slope, density, trees, surfaceWeights, rocks,
+            HydrologyAnalyzer.Analyze(values, biomes, map.Width, map.Height));
     }
 }

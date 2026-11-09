@@ -1,3 +1,4 @@
+import { testHydrology } from '../testing/terrain-test-fixture';
 import { AppearanceSettingsService, REFERENCE_APPEARANCE } from './appearance-settings.service';
 import { AtmosphereSettingsService } from './atmosphere-settings.service';
 import { OceanSettingsService } from './ocean-settings.service';
@@ -65,9 +66,15 @@ function run(): TerrainRun {
         width: 2,
         height: 2,
         values: new Float32Array([0, 10, 20, 30]),
+        hydrology: testHydrology({
+          width: 2,
+          height: 2,
+          values: [0, 10, 20, 30],
+          biomes: [0, 1, 2, 3],
+        }),
         biomes: new Uint8Array([0, 1, 2, 3]),
         surfaceWeights: Float32Array.from(testSurfaceWeights([0, 1, 2, 3])),
-        resultVersion: 'landscape-ecology-v11',
+        resultVersion: 'landscape-ecology-v12',
         algorithmVersion: 'warped-ridged-hydraulic-v1',
       },
     },
@@ -460,7 +467,7 @@ describe('terrain preview lifecycle', () => {
       }),
     });
     const appearance = TestBed.inject(AppearanceSettingsService);
-    appearance.set({ ...REFERENCE_APPEARANCE, tone: 'aces' });
+    appearance.set({ ...REFERENCE_APPEARANCE, tone: 'aces', bloom: true });
     const fixture = TestBed.createComponent(TerrainPreview);
     fixture.componentRef.setInput('run', run());
     await settlePreview(fixture);

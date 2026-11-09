@@ -3,7 +3,7 @@ namespace WorldGenerator.Core.Tests.Historical.V8;
 
 internal static class LandscapeEcology
 {
-    internal static TerrainMap Derive(float[] values, TerrainRequest request)
+    internal static global::WorldGenerator.Core.Tests.Historical.PreHydrologyMap Derive(float[] values, TerrainRequest request)
     {
         var map = request.HeightMap;
         var count = values.Length;

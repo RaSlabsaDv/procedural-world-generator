@@ -1,3 +1,4 @@
+import { testWireHydrology } from '../testing/terrain-test-fixture';
 import { compareTerrains, decodeTerrain } from './terrain.contract';
 import { testTerrain, testWire, testSurfaceWeights } from '../testing/terrain-test-fixture';
 
@@ -6,6 +7,7 @@ function fixture() {
     wire = testWire(terrain);
   wire.result.biomes = [0, 1, 1, 1, 1, 1];
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
+  wire.result.hydrology = testWireHydrology(wire.result);
   return { terrain, wire };
 }
 

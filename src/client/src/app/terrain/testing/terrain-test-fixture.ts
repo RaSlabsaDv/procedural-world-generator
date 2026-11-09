@@ -4,6 +4,8 @@ import {
   TERRAIN_WORKLOAD,
   SIMULATION_VERSION,
   RESULT_VERSION,
+  HYDROLOGY_VERSION,
+  HydrologyResult,
   HeightMapRequest,
   TerrainRequest,
 } from '../data/terrain.models';
@@ -49,13 +51,19 @@ export function testWire(terrain = testTerrain()) {
       vegetationDensity: Array(map.width * map.height).fill(0),
       trees: [],
       rocks: [],
+      hydrology: testWireHydrology({
+        width: map.width,
+        height: map.height,
+        biomes: Array(map.width * map.height).fill(0),
+        values: Array(map.width * map.height).fill(0),
+      }),
       resultVersion: RESULT_VERSION,
       algorithmVersion: TERRAIN_ALGORITHM,
     },
     parameters: terrain,
     workload: TERRAIN_WORKLOAD as typeof TERRAIN_WORKLOAD,
     simulationVersion: SIMULATION_VERSION as typeof SIMULATION_VERSION,
-    executionProfile: 'landscape-worker-json-v11' as const,
+    executionProfile: 'landscape-worker-json-v12' as const,
     computeMs: 1,
     coreBuildId: 'git:123456789abc',
     simulation: {
@@ -74,4 +82,40 @@ export function testWire(terrain = testTerrain()) {
 /** Synthetic valid vectors for contract tests, not a copy of Core coverage rules. */
 export function testSurfaceWeights(biomes: ArrayLike<number>): number[] {
   return Array.from(biomes).flatMap((id) => (id === 0 ? [0, 0, 0, 0, 0] : [0.5, 0.5, 0, 0, 0]));
+}
+
+/** Synthetic west-routed graph for client contract tests; not a hydrology oracle. */
+export function testHydrology(map: {
+  width: number;
+  height: number;
+  biomes: ArrayLike<number>;
+  values: ArrayLike<number>;
+}): HydrologyResult {
+  const count = map.width * map.height,
+    receiverIndex = new Int32Array(count),
+    flowAccumulation = new Uint32Array(count),
+    depressionDepth = new Float32Array(count),
+    levels = new Float32Array(count);
+  for (let i = 0; i < count; i++) {
+    const x = i % map.width,
+      y = Math.floor(i / map.width),
+      outlet =
+        map.biomes[i] === 0 || x === 0 || x === map.width - 1 || y === 0 || y === map.height - 1;
+    receiverIndex[i] = outlet ? -1 : i - 1;
+    flowAccumulation[i] = map.biomes[i] === 0 ? 0 : 1;
+    levels[i] = outlet ? map.values[i] : Math.max(map.values[i], levels[i - 1]);
+    depressionDepth[i] = Math.max(0, levels[i] - Math.fround(map.values[i]));
+  }
+  for (let i = count - 1; i >= 0; i--)
+    if (receiverIndex[i] >= 0) flowAccumulation[receiverIndex[i]] += flowAccumulation[i];
+  return { algorithmVersion: HYDROLOGY_VERSION, receiverIndex, flowAccumulation, depressionDepth };
+}
+export function testWireHydrology(map: Parameters<typeof testHydrology>[0]) {
+  const h = testHydrology(map);
+  return {
+    algorithmVersion: h.algorithmVersion,
+    receiverIndex: Array.from(h.receiverIndex),
+    flowAccumulation: Array.from(h.flowAccumulation),
+    depressionDepth: Array.from(h.depressionDepth),
+  };
 }

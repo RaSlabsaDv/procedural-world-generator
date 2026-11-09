@@ -2,6 +2,10 @@
 
 Policy frozen before production implementation. Visual Stage6A; presentation only.
 
+Stage6B adds default-off [Bloom](BLOOM_V1.md) before final exposure/tone mapping.
+The equations and bloom-off resource/reference bounds below remain unchanged;
+exact legacy Reference additionally requires Bloom off.
+
 ## Pipeline and reference
 
 The preceding renderer uses NoToneMapping, exposure1 and sRGB output. Palette

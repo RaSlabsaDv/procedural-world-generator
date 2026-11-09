@@ -3,7 +3,7 @@ namespace WorldGenerator.Core.Tests.Historical.V10;
 internal static class TerrainGenerator
 {
     // Test-only frozen pipeline: production validation intentionally rejects old versions.
-    internal static WorldGenerator.Core.TerrainResult Generate(TerrainRequest input)
+    internal static WorldGenerator.Core.Tests.Historical.PreHydrologyResult Generate(TerrainRequest input)
     {
         var map = input.HeightMap;
         var seed = unchecked((uint)map.Seed);

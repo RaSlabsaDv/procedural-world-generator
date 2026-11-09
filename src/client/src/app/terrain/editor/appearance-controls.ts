@@ -47,10 +47,17 @@ import {
           [checked]="appearance.settings().vignette"
           (change)="change('vignette', $event)"
       /></label>
+      <label for="appearance-bloom"
+        >Bloom<input
+          id="appearance-bloom"
+          type="checkbox"
+          [checked]="appearance.settings().bloom"
+          (change)="change('bloom', $event)"
+      /></label>
       <button id="reset-appearance" class="secondary" type="button" (click)="reset()">
         Reset appearance
       </button>
-      <p>Updates both views. Exact Reference: exposure 1, both effects off.</p>
+      <p>Updates both views. Exact Reference: exposure 1, all three effects off.</p>
       @if (problem()) {
         <p role="alert">{{ problem() }}</p>
       }
@@ -112,7 +119,10 @@ export class AppearanceControls {
   protected readonly busy = inject(OperationLock).busy;
   protected readonly limits = APPEARANCE_LIMITS;
   protected readonly problem = signal('');
-  protected change(key: 'tone' | 'exposure' | 'grading' | 'vignette', event: Event): void {
+  protected change(
+    key: 'tone' | 'exposure' | 'grading' | 'vignette' | 'bloom',
+    event: Event,
+  ): void {
     if (this.busy()) return;
     const input = event.target as HTMLInputElement;
     try {

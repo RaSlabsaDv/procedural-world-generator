@@ -73,10 +73,10 @@ The API exposes POST /api/v1/terrains and GET /api/health. Removed probe/region/
 
 Current identities:
 
-- Algorithm: diverse-landscape-v10; nested noise: value-noise-fbm-v1.
-- Result: landscape-ecology-v11.
-- Workload: landscape-ecology-hydraulic-v11.
-- Execution profile: landscape-worker-json-v11; RPC: worker-rpc-v1.
+- Algorithm: diverse-landscape-v11; nested noise: value-noise-fbm-v1.
+- Result: landscape-ecology-v12.
+- Workload: landscape-ecology-hydraulic-v12.
+- Execution profile: landscape-worker-json-v12; RPC: worker-rpc-v1.
 - Simulation: hydraulic-grid-v1.
 
 Both hosts time the same GenerateValidated call after parsing/preparation. computeMs includes complete generation and allocations, including environment, instances and coastal distance/blending. JSON, RPC/HTTP, normalization, comparison and rendering stay outside. requestMs ends at validated data; subtracting computeMs yields combined overhead, not pure network latency.
@@ -885,7 +885,7 @@ offline 3D terrain. Temporary deployment changes were restored after the simulat
 The collapsed Appearance panel controls both previews. ACES is the default, exposure
 starts at1 (range.25..2), and grading/vignette start disabled. Reset appearance
 restores these values. For the exact preceding rendering choose Reference, exposure1,
-both effects off. This bypasses HDR composition entirely; Reference with other effects
+all three effects off, including Bloom. This bypasses HDR composition entirely; Reference with other effects
 uses the finishing pipeline and is not a byte-exact legacy reference.
 
 [Color finishing v1](specs/COLOR_FINISHING_V1.md) freezes equations, order and budgets.
@@ -934,3 +934,122 @@ native sources. Raw evidence uses ignored `artifacts/color-finishing-*`.
 Final PWA regression passes with default ACES: offline reload/new tabs/new seeds,
 Remote failure and recovery, deferred update during active work and updated-version
 offline 3D terrain. Simulated deployment changes were restored after the test.
+
+## Optional bloom
+
+Open Appearance and enable Bloom for restrained halos around eligible HDR highlights.
+The checkbox is off by default and on reset. Most diffuse terrain and night fill
+are below threshold, so an ordinary overview may show little difference. Sky sun
+discs and sufficiently bright water reflections are the intended inputs; bloom does
+not manufacture highlights or make dark foam/trees emissive. Snow retains detail.
+Exposure changes scene and halo together, without changing extraction eligibility.
+Exact legacy Reference now requires exposure1, grading/vignette/Bloom all off.
+
+[Bloom v1](specs/BLOOM_V1.md) freezes extraction, knee, kernel, intensity and ownership.
+Three extra fullscreen draws use two capped quarter-resolution RGBA16F targets,
+without depth/stencil/MSAA. Final composition reuses the existing finishing pass.
+The additional target ceiling is1 MiB/view,2 MiB for comparison; at the accepted
+964x691 HDR size, two241x172 targets use663232 numeric bytes/view. Target attachment
+accounting excludes driver overhead and other scene/canvas/shadow storage. No FPS
+benefit is claimed: bloom adds rendering work, and disabled bloom owns no targets.
+No dependencies or bundled assets were added; offline catalog remains41 entries.
+
+Using the documented PWG_* production-browser overrides:
+
+- `node tests/browser/atlas-materials.cjs --bloom --before` against Stage6A.
+- `node tests/browser/atlas-materials.cjs --bloom` verifies18 exact camera/Core hashes and bloom-off PNGs with active default ACES.
+- `node tests/browser/bloom.cjs` verifies GPU extraction, normalized blur, exposure, edge behavior, resource lifetime and failure fallbacks.
+- `node tests/browser/night.cjs --bloom` verifies night foam/moon and an actual sky sun-disc on/off pair.
+- Existing `color-finishing.cjs` and `materials.cjs` retain Stage6A/Reference regressions.
+- Run `node tests/browser/pwa.cjs` last against the local production bundle.
+
+Actual GPU fixtures produce .75 extracted radiance from constant linear2, .0625
+at the knee center1.25, and zero from subthreshold/black input. The normalized blur
+spreads a centered pulse from2 to90 nonzero pixels with energy ratio1.000081 in the
+accepted software-WebGL run. Reference/exposure.25 outputs191 from bloom-composited
+linear2.09, versus188 without bloom: exposure/output encoding occur once. A left-edge
+pulse leaves the opposite edge zero. These are correctness checks, not hardware
+performance measurements. Pixel-space halo radius, replicated screen edges and
+possible subpixel/temporal shimmer are known v1 limits.
+
+Verification: 399 Angular tests, 12 packaging/asset checks, worker RPC and production
+publication pass. All 18 paired bloom-off camera/full Core hashes and PNGs remain exact.
+Actual solar-disc on/off captures change3439 pixels with restrained positive intensity;
+night foam/moon remain controlled, with zero positive foam contribution under zero
+illumination. GPU checks prove three extra passes, two independent reduced targets,
+no feedback, unchanged scene uploads/static shadows, exact off-after-on, incomplete-
+attachment fallback/retry and unsupported HDR fallback. Maximum/narrow/offline cases,
+Stage6A color fixtures and materials regressions pass. Native sources are unchanged,
+so native suites were not rerun. SSAO assessment remains separate; README stays empty.
+Use `node tests/browser/pwa.cjs --bloom` last to exercise the updated offline renderer
+with the effect explicitly enabled.
+
+Final `pwa.cjs --bloom` regression passes: offline reload/new tabs/new seeds, Remote
+failure/recovery, deferred update during active work and updated-version offline
+terrain with the actual bloom final shader. Deployment files were restored after
+the simulation.
+
+## SSAO assessment — no production effect added
+
+The installed stock SSAOPass candidate was assessed and rejected. The application
+keeps the preceding Bloom renderer and has no SSAO control. Existing uncommitted
+Bloom work is retained. Findings and frozen acceptance criteria are in
+[SSAO assessment v1](specs/SSAO_ASSESSMENT_V1.md).
+
+Run `node tests/browser/ssao-assessment.cjs` with the documented PWG_BASE_URL,
+PWG_PLAYWRIGHT_MODULE and PWG_BROWSER_EXECUTABLE overrides. A matching local API/WASM
+publication must already be running. The runner uses the already installed esbuild;
+there is no package installation. Its in-memory bundle imports actual rendering
+factories, the production strict decoder/comparison and the installed Three pass.
+Temporary HTML/JS are served only through test routes, never public/PWA directories.
+
+Eight fixed scenes have16 overview/close pairs. Additional low/night/Bloom, motion/
+LOD, resize, independent two-view, direct-light-only contact and partial-failure
+checks retain evidence under ignored `artifacts/ssao-*`. The report includes requests,
+Core identities/hashes, camera matrices, source/policy/bundle metadata, actual GL
+formats/draw counts and cleanup. Raw float data is read from half-float buffers using
+explicit GL FLOAT readback; geometric diagnostic masks are not final image coverage.
+
+The candidate improves some contacts but also shades sky/water and phantom faded
+grass, and changes direct-only contact lighting. Actual400x300 allocation is3360064
+bytes/view; observed additional calls4..23, with structural maximum35. These are
+resource/correctness findings, not hardware performance: Chromium used SwiftShader,
+so the physical-GPU timing gate remains unresolved. No GPU milliseconds or FPS gains
+are fabricated. See the specification for measured mask counts and limitations.
+
+No SSAO runtime code shipped; its PWA update regression is inapplicable. The existing
+Bloom publication/offline verification remains the production baseline. Native code
+is unchanged. Next: detailed generation-stage timings, then progress/cancellation.
+README remains empty.
+
+## Hydrology Stage 1
+
+See [HYDROLOGY_V1.md](specs/HYDROLOGY_V1.md) before changing drainage rules.
+`TerrainMap.Hydrology` is always present: `receiverIndex` (int32),
+`flowAccumulation` (uint32 land-cell counts) and `depressionDepth` (float32), all
+row-major and exactly width*height long, plus `algorithmVersion`.
+Analysis uses finalized terrain and Ocean biomes; it does not fill the displayed
+terrain or introduce rivers/lakes. No new UI settings are needed for this stage.
+
+Tests cover literal slopes, tied flats, a basin with a lower spill rim (independent
+Python heapq reference), Ocean/islands, no-Ocean, 2x512 rectangles and the maximum
+512x512 grid. Graph tests check termination and land-area conservation. Decoder
+corruption tests check stale/missing fields, outlets, cyclic routing, accumulation
+and spill levels; comparison tests exercise all three vectors. Historical test
+pipelines use a frozen pre-hydrology DTO to preserve their original fingerprints.
+
+Run against a published matching API/WASM application:
+
+```bash
+PWG_BASE_URL=http://127.0.0.1:8080 python3 tests/reference/hydrology_preservation.py
+PWG_BASE_URL=http://127.0.0.1:8080 node tests/browser/hydrology.cjs
+```
+
+Use the existing `PWG_PLAYWRIGHT_MODULE` / `PWG_BROWSER_EXECUTABLE` overrides if
+Playwright or Chromium is outside the default installation. The preservation fixture
+was captured from the pre-change v10 API before this implementation; it hashes every
+old result field and hydraulic summary for six scenarios, including maximum size.
+The browser test uses real WASM/API output and checks graph invariants and full
+hydrology parity, with payload evidence under ignored artifacts/. These checks do
+not replace a controlled performance campaign. Whole-call Core timing includes
+hydrology; transport, typed-array decoding and rendering remain outside it.

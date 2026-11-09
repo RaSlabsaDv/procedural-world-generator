@@ -30,7 +30,7 @@ Generation preserves prior successful maps during work or errors. Display labels
 
 One primary result is visible by default; Local/Remote selection and Compare views are explicit. Comparison views can retain results from different requests, which are labelled and flagged; numerical verification is shown only for a verified identical request. Build identity remains separate from numeric agreement. Captured parameters, versions, simulation totals and startup/display details are expandable. Individual runs are not a benchmark campaign.
 
-Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v11 result semantics are specified below.
+Camera pose survives same-scale result replacement within a preview. Changing dimensions/height scale or recreating a preview resets framing; Reset camera restores the default request-based framing. Both comparison views use the same scale rule. Rendering and interaction pause during operations; cleanup releases observers, controls, meshes and renderer resources. Readiness is compact in the header, with visible recovery/update state and a discoverable update check. Safe reload and complete-version cache verification remain unchanged. No new frontend dependencies are introduced; the v12 result semantics are specified below.
 
 Playback and brush editing are not implemented. Lighting, shadows and atmosphere are implemented as a presentation layer; bounded evolution capture remains later work.
 
@@ -38,9 +38,9 @@ Playback and brush editing are not implemented. Lighting, shadows and atmosphere
 
 The sole generation endpoint is `POST /api/v1/terrains`; `GET /api/health` reports availability. Unknown `/api` routes return 404 rather than the Angular shell. The sole WASM export is `GenerateTerrainJson`, exposed as the asynchronous `generateTerrainJson` worker proxy. See [development](DEVELOPMENT.md) for a complete request.
 
-`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v10`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
+`TerrainRequest` contains required `heightMap`, `mountainStrength`, `warpStrength`, `iterations`, `rainfall`, `evaporation`, `plainsCoverage`, `mountainCoverage`, `globalMoisture`, `seaLevel`, `globalWarmth`, `vegetationDensity`, `landformRegionScale` and `algorithmVersion`. Coverage tendencies must sum to at most 1; coverage, moisture, sea level, warmth and vegetation density range 0..1; region scale ranges .25..4. `heightMap` remains the nested composition settings contract, not a second generation mode. Its `value-noise-fbm-v1` tag identifies the noise primitive; the top-level algorithm is `diverse-landscape-v11`. Dimensions, scales, seeds, and all simulation settings must be identical for a Local/Remote comparison. Historical height/climate equations are in [LANDSCAPE_V3.md](specs/LANDSCAPE_V3.md), current climate and snow in [REGIONAL_CLIMATE_V1.md](specs/REGIONAL_CLIMATE_V1.md), vegetation in [VEGETATION_STRUCTURE_V1.md](specs/VEGETATION_STRUCTURE_V1.md), and coverage in [SURFACE_TRANSITIONS_V1.md](specs/SURFACE_TRANSITIONS_V1.md); [TERRAIN_WORKLOAD.md](specs/TERRAIN_WORKLOAD.md) preserves historical v1.
 
-The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v11`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v11`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights and rocks. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v11`. The new result/workload identities distinguish ecology from historical v1.
+The host envelope contains `result`, `simulation`, exact `parameters`, `computeMs`, `coreBuildId`, `workload = landscape-ecology-hydraulic-v12`, and `simulationVersion = hydraulic-grid-v1`, plus `executionProfile = landscape-worker-json-v12`. The result additionally contains moisture, temperature, slope, vegetationDensity, trees and required surfaceWeights, rocks and hydrology. The result has width, height, row-major float32 `values[y * width + x]`, numeric `biomes`, algorithm version, and `resultVersion = landscape-ecology-v12`. The new result/workload identities distinguish ecology from historical v1.
 
 All wire members are required. Nullable wire records distinguish missing fields from zero. JSON is camelCase and case-sensitive; unknown members, numeric strings, comments, trailing commas, malformed JSON, and overflowing/non-finite numbers are rejected. Both hosts return the same `{ error, fields }` shape: `invalid_json` for transport failures or `validation` with field errors. Canonical numeric limits live only in Core. API failures return 400; all terrain responses use `Cache-Control: no-store`.
 
@@ -632,3 +632,81 @@ OperationLock and use the latest snapshot after waits. Initial display CPU timin
 includes finishing allocation/submission, outside computeMs/requestMs; later edits
 do not rewrite it. Core, transport, workload identities and PWA asset count remain
 unchanged. Bloom/SSAO are separate future stages.
+
+## Restrained HDR bloom
+
+[Bloom v1](specs/BLOOM_V1.md) extends Appearance with one independent checkbox,
+default/reset off. It reuses the completed linear scene target and fullscreen
+geometry. Unexposed Rec.709 luminance selects only HDR highlights with threshold
+1.25 and soft knee .25; extraction averages a4x4 source footprint per reduced pixel.
+Two normalized binomial9-tap blur passes run at quarter dimensions, capped65536 pixels.
+Two RGBA16F ping-pong targets have no depth/stencil/MSAA/mipmaps. The final pass adds
+.12 of the blurred radiance before exposure/ACES/toe, grading, vignette and one output
+encoding. There is no extra composition pass or ecological classification.
+
+Bloom adds three fullscreen calls (extraction, horizontal, vertical), up to1 MiB
+of target storage/view,2 MiB for comparison, and one final-pass sampler. Maximum
+whole-scene color calls38, shadow19; HDR finishing plus bloom target ceiling61 MiB/
+view,122 MiB for comparison. Existing canvas/shadow/material storage and driver
+program/framebuffer overhead are additional. Disabled bloom releases its two targets
+and two materials and compiles out the extra sample; Stage6A math/pixels remain exact.
+Exact legacy Reference requires exposure1 and all three effects off.
+
+Each view owns independent mutable resources. No source geometry/instances/shadows
+change on toggles. Existing OperationLock and latest-state setup boundary cover all
+allocation, resize, updates and draws; first display submission includes active bloom
+without rewriting that metric later. Render targets restore on failure; incomplete
+bloom attachments release and show an explicit finishing-without-bloom warning, with
+a toggle retry. Unsupported HDR retains the existing visible Reference fallback.
+No animation loop, asset, dependency, native/contract/workload change or FPS claim.
+Pixel-space halo size, clamped screen edges and absent temporal stabilization remain
+limits. SSAO is the next separately assessed visual feature.
+
+## SSAO assessment: stock candidate rejected
+
+[SSAO assessment v1](specs/SSAO_ASSESSMENT_V1.md) evaluated the installed Three.js
+SSAOPass with 16 seeded samples and half-resolution normal/depth/AO/blur buffers.
+It failed background/water isolation, faded-grass visibility and ambient-only shading.
+Its MeshNormalMaterial override omits grass clipping/Bayer behavior; its 5x5 box blur
+crosses depth edges, and final-color multiplication affects direct light and already-
+composited water. Active layer0 tree LOD and hidden layer1 shadow separation remained
+correct. These findings reject this integration, not all future AO algorithms.
+
+The test-only bundle imports actual terrainScene factories and compares Local/Remote
+Core output. It is compiled in memory and served through isolated Playwright routes;
+there is no production import, control, pass, texture, build dependency or asset.
+A packaging boundary test prevents accidentally shipping the rejected stock pass.
+Production resource ceilings and Reference pixels remain those of the Bloom stage.
+
+Prototype resources at the frozen cap would add 7 MiB+64 bytes/view, twice that for
+comparison, and up to 35 extra draw calls. Hardware cost remains unresolved because
+only software WebGL was available, despite timer-extension support. Reconsideration
+requires material-compatible G-buffer output, edge-aware filtering, ambient-only
+integration before fog/water/bloom and physical-GPU evidence. Generation timing
+instrumentation is the next independent implementation track.
+
+## Hydrology Stage 1 — shared drainage analysis
+
+[Hydrology v1](specs/HYDROLOGY_V1.md) defines the required `result.hydrology`
+record. After final erosion and ecology, Core derives deterministic D8 receivers,
+land-cell flow accumulation and potential depression fill using priority-flood.
+All Ocean cells and boundary land cells are terminal outlets. A fixed-capacity
+index heap orders `(float32 spill elevation, cell index)`; discovery-on-enqueue
+and already-processed parents make flat routing deterministic and acyclic.
+
+This analysis leaves original elevations, authoritative Ocean classification,
+coverage, trees, rocks and hydraulic conservation summaries untouched. Depression
+depth describes an analysis surface, not a lake or visible water mask. No hydrology
+buffer is uploaded to the GPU and no river/lake control or rendering is added.
+
+`HydrologyResult` is a required positional C# record. Hosts serialize the same
+Core data through their existing source-generated envelope and whole-call timer;
+no host-side routing exists. Strict client decoding checks graph shape, adjacent
+receivers, outlets, acyclicity, accumulation recurrence, land-area conservation and
+spill consistency before copying to typed arrays. Comparison checks every receiver
+and accumulation exactly, and every depth with the established float tolerance.
+
+Generation identity is now `diverse-landscape-v11`; result/workload/profile are
+v12. Noise and hydraulic simulation identities remain unchanged. The new generation
+identity covers additional output semantics, not altered height arithmetic. Benchmark
+records from v11 workloads retain their original identity and cannot form v12 pairs.

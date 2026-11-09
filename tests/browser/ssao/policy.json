@@ -1,0 +1,78 @@
+{
+  "revision": "ssao-assessment-v1",
+  "samples": 16,
+  "radius": 1.5,
+  "biasWorld": 0.02,
+  "maxDistanceWorld": 2,
+  "strength": 0.35,
+  "scale": 0.5,
+  "maxPixels": 262144,
+  "randomSeed": 12648430,
+  "maxExtraBytesPerView": 7340096,
+  "maxExtraSceneCalls": 35,
+  "hardwareBudgetMs": 2,
+  "cases": [
+    {
+      "name": "valleys",
+      "fields": {
+        "seed": 42,
+        "plainsCoverage": 0,
+        "mountainCoverage": 1,
+        "heightMultiplier": 60
+      }
+    },
+    {
+      "name": "rocks",
+      "fields": {
+        "seed": -7,
+        "globalWarmth": 0.6,
+        "globalMoisture": 0.45,
+        "seaLevel": 0.1
+      }
+    },
+    { "name": "forest", "fields": { "seed": 42, "globalMoisture": 1 } },
+    { "name": "sparse", "fields": { "seed": 42, "vegetationDensity": 0.1 } },
+    {
+      "name": "grass",
+      "fields": {
+        "seed": 42,
+        "vegetationDensity": 0,
+        "plainsCoverage": 1,
+        "mountainCoverage": 0,
+        "seaLevel": 0,
+        "globalMoisture": 0.85
+      }
+    },
+    {
+      "name": "coast",
+      "fields": {
+        "seed": -7,
+        "globalWarmth": 0.9,
+        "globalMoisture": 0.45,
+        "seaLevel": 0.23
+      }
+    },
+    {
+      "name": "snow",
+      "fields": {
+        "seed": 2026,
+        "globalWarmth": 0.12,
+        "globalMoisture": 0.8,
+        "heightMultiplier": 60,
+        "seaLevel": 0.3
+      }
+    },
+    {
+      "name": "maximum",
+      "fields": {
+        "width": 512,
+        "height": 512,
+        "iterations": 0,
+        "plainsCoverage": 1,
+        "mountainCoverage": 0,
+        "seaLevel": 0,
+        "globalMoisture": 1
+      }
+    }
+  ]
+}

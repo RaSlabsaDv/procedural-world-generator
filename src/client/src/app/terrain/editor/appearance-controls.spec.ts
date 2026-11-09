@@ -30,8 +30,15 @@ it('shares compact collapsed controls, independent toggles, bounds, reset and bu
     exposure: 1.25,
     grading: true,
     vignette: false,
+    bloom: false,
   });
+  const bloom = root.querySelector<HTMLInputElement>('#appearance-bloom')!;
+  bloom.checked = true;
+  bloom.dispatchEvent(new Event('change'));
+  expect(state.settings().bloom).toBe(true);
+  expect(state.settings().grading).toBe(true);
   await b.whenStable();
+  expect(b.nativeElement.querySelector('#appearance-bloom').checked).toBe(true);
   expect(b.nativeElement.querySelector('#appearance-grading').checked).toBe(true);
   const release = TestBed.inject(OperationLock).tryAcquire()!;
   await a.whenStable();

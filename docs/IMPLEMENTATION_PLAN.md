@@ -452,8 +452,8 @@ configuration and workload identities are frozen. README remains empty.
 
 ## Next roadmap: visual realism and execution feedback
 
-Status: shared environment, Visual Stages 1–5 and Stage 6A color finishing are complete.
-Verification is recorded below. Bloom/SSAO and execution tracks remain separate.
+Status: shared environment, Visual Stages 1–5 and Stage6A/6B color finishing and bloom are complete.
+Verification is recorded below. SSAO assessment and execution tracks remain separate.
 Implement incremental, independently reviewable stages, freezing each stage's
 policy, resource budget, acceptance scenes and verification before changing code.
 
@@ -667,11 +667,11 @@ comparison. Budget extra meshes/materials/textures and switching CPU work; preve
 popping, missing trees, shadow inconsistencies and resource leaks in two views.
 New ecological placement or species advance affected workload identities.
 
-### Visual Stage 6 — color finishing complete; bloom/SSAO pending
+### Visual Stage 6 — color finishing, bloom and SSAO assessment complete
 
 - Stage 6A establishes tone mapping/exposure and restrained optional grading/vignette
   across materials, sky, water and snow; completion evidence follows below.
-- Add subtle bloom where useful; preserve highlights and biome readability.
+- Stage6B adds optional restrained bloom; completion evidence follows below. Preserve highlights and biome readability.
 - Add SSAO only after measuring scene/render-target costs on supported devices.
 - Finish with restrained vignette and color grading rather than hiding material
   problems behind filters.
@@ -1149,3 +1149,107 @@ sources are unchanged, so native suites were not rerun. No FPS campaign was run.
 Final PWA regression passes with default ACES, including busy-update deferral,
 new offline seeds/tabs and updated-version offline 3D terrain. Deployment files were
 restored after the simulation.
+
+### Visual Stage 6B — restrained HDR bloom (complete)
+
+Implemented [Bloom v1](specs/BLOOM_V1.md): independent default/reset-off Appearance
+checkbox, unexposed luminance threshold1.25 with soft knee .25,4x4 extraction and
+normalized separable9-tap blur. Two quarter-size RGBA16F targets cap65536 pixels
+without depth/MSAA. The existing final pass adds .12 of blurred radiance before
+exposure/ACES/toe, grading, vignette and one sRGB encoding. No dependency, asset,
+composer, clock, palette/light change or native/contract/workload change.
+
+Three extra fullscreen calls and at most1 MiB target storage/view (2 MiB comparison)
+raise the active color ceiling to38; shadow ceiling19 remains. Bloom-off compiles
+out the extra sample, releases owned targets/materials and preserves Stage6A pixels.
+Existing fullscreen geometry is reused. OperationLock/latest-state setup, independent
+views, resize/replacement/failure ownership and original display-time boundaries are
+retained. Unsupported HDR shows Reference; incomplete bloom shows finishing without
+bloom and permits an explicit off/on retry.
+
+Verification: 399 Angular tests, 12 packaging/asset checks, worker RPC and production
+publication pass. All 18 paired bloom-off camera/full Core hashes and PNGs are exact.
+GPU fixtures validate the soft knee, constant normalization, a spread pulse with
+energy ratio1.000081, dark/zero rejection, one exposure/output encoding and no opposite-
+edge wrap. Actual solar-disc bloom changes3439 pixels subtly; night foam/moon remain
+controlled and snow retains detail. Three passes/two reduced targets, no feedback,
+unchanged scene uploads/shadows, exact off-after-on, independent comparison views,
+incomplete-target retry, unsupported HDR and maximum/narrow/offline new seeds pass.
+Stage6A finishing and materials regressions pass. Native sources are unchanged, so
+native suites were not rerun. No controlled performance/FPS campaign was run.
+
+Next visual substep: assess SSAO benefit versus pass/target cost on supported devices;
+do not add it automatically. Pixel-space halo radius, clamped screen edges and lack
+of temporal stabilization remain v1 limits. Execution diagnostics/progress/cancellation
+remain independent. README stays empty; evidence is under ignored artifacts/bloom-*.
+
+Final PWA regression with Bloom enabled passes, including busy-update deferral,
+offline new seeds/tabs and updated-version offline terrain executing the bloom final
+shader. Temporary deployment changes were restored after the simulation.
+
+
+### Visual Stage 6C — SSAO assessment complete; production SSAO deferred
+
+[SSAO assessment v1](specs/SSAO_ASSESSMENT_V1.md) freezes the stock Three.js candidate,
+criteria and resource/hardware budgets before execution. The isolated in-memory test
+bundle uses actual terrainScene factories and Local/Remote Core data. No production
+SSAO import, public control, placeholder pass or GPU allocation was introduced;
+existing uncommitted Bloom work is preserved.
+
+The candidate fails four critical gates: box-blur AO leaks into sky, final multiplication
+changes water/direct light, and normal override includes fully faded grass. Active
+near/far tree meshes and layer1 caster exclusion remain correct. Sixteen paired base
+views retain exact disabled pixels/cameras/full Core and canonical instance hashes.
+Low/night/Bloom, camera/LOD motion, two views, resize, contact and override-failure
+checks retain evidence. Candidate targets dispose without leaks and renderer state
+restores on failure.
+
+Observed extra calls4..23 and400x300 AO storage3360064 bytes/view are correctness/
+resource evidence. Worst-case policy adds7 MiB+64 per view and35 extra calls. The
+physical-GPU2 ms/4 ms timing criterion is unresolved: only SwiftShader was available,
+even though timer queries exist. No FPS or hardware-performance result is claimed.
+
+Decision: reject the stock integration and defer SSAO until compatible cutout/LOD
+G-buffer output, edge-aware filtering, ambient-only composition and physical-device
+measurements are justified under a new policy. Production rendering remains Bloom;
+no SSAO-specific PWA update or native suite is required for unchanged runtime/native
+sources. Next implementation track: detailed generation timing, then progress and
+cancellation. README stays empty.
+
+Assessment verification passes:399 Angular tests, 13 packaging/asset checks and worker
+RPC remain green. Eight Local/Remote result/simulation hashes and Core build IDs match;
+all16 disabled-state base PNGs/cameras and normalized Core/canonical source hashes
+are preserved. Actual GL formats, ownership/disposal and partial normal-override
+failure restoration pass. No production/native code was changed for SSAO; no new
+publication, native suite or PWA run was required. The prior Bloom verification stays
+valid. The hardware timing gate remains unresolved, not a measured cost failure.
+
+### Hydrology Stage 1 — deterministic drainage foundation
+
+Implemented [Hydrology v1](specs/HYDROLOGY_V1.md) in the shared Core, after finalized
+erosion/ecology. Required output contains receivers, land-cell accumulation and
+potential depression fill. Fixed heap ordering and discovery rules resolve flat
+terrain without epsilon or cycles. All Ocean and boundary cells are terminals;
+reverse processing conserves total contributing land area. Retained output/scratch
+each cost 3 MiB at 512x512. No original field or hydraulic summary changes.
+
+Both hosts expose the same result through existing transport/timing boundaries.
+Client strictly validates the graph and includes every vector in equivalence.
+Generation identity advances to v11 and result/workload/profile to v12; old experiment
+records keep their original identities. Rendering, ocean water, tree LOD and Bloom
+remain independent; no diagnostic water/river UI or new dependency is added.
+
+Next hydrology step: extract a deterministic river network/channel policy from
+receivers and accumulation. Then define lake basin/retention/spill semantics before
+adding separate 3D river and lake surfaces. Potential depression fill must never be
+used directly to flood all low land. Detailed timing and worker progress/cancellation
+remain an independent execution track; stock SSAO stays deferred.
+
+Stage 1 verification: locked restore, Release build (zero warnings/errors), 241 Core
+and 43 API tests, 404 Angular tests, 13 packaging/asset checks and worker RPC pass.
+Production publication succeeds. Real browser WASM/API drainage parity and conservation
+pass six cases including 512x512; all six pre-change full-field/summary fingerprints
+remain exact. Existing landscape browser regression passes maximum configured work,
+3D Local/Remote and offline generation. The final PWA update/offline regression
+passes with Bloom enabled and restored deployment files. README remains empty.
+No physical-device performance claim or river/lake rendering is made.

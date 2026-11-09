@@ -1,4 +1,4 @@
-import { testSurfaceWeights } from '../testing/terrain-test-fixture';
+import { testWireHydrology, testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
@@ -52,6 +52,12 @@ function wire() {
       trees: [],
       rocks: [],
       biomes: [1, 0, 1, 0, 1, 2],
+      hydrology: testWireHydrology({
+        width: 3,
+        height: 2,
+        biomes: [1, 0, 1, 0, 1, 2],
+        values: [9.2, 6.8, 8.3, 6.7, 12.3, 15.7],
+      }),
       surfaceWeights: testSurfaceWeights([1, 0, 1, 0, 1, 2]),
       algorithmVersion: TERRAIN_ALGORITHM,
       resultVersion: RESULT_VERSION,
@@ -59,7 +65,7 @@ function wire() {
     parameters: terrain,
     simulationVersion: SIMULATION_VERSION,
     workload: TERRAIN_WORKLOAD,
-    executionProfile: 'landscape-worker-json-v11',
+    executionProfile: 'landscape-worker-json-v12',
     computeMs: 2,
     coreBuildId: 'test',
     simulation: {
@@ -87,6 +93,10 @@ describe('terrain transport and adapters', () => {
       { workload: 'landscape-ecology-hydraulic-v8' },
       { workload: 'landscape-ecology-hydraulic-v9' },
       { workload: 'landscape-ecology-hydraulic-v10' },
+      { workload: 'landscape-ecology-hydraulic-v11' },
+      { executionProfile: 'landscape-worker-json-v11' },
+      { result: { ...wire().result, resultVersion: 'landscape-ecology-v11' } },
+      { result: { ...wire().result, algorithmVersion: 'diverse-landscape-v10' } },
       { executionProfile: 'landscape-worker-json-v10' },
       { result: { ...wire().result, resultVersion: 'landscape-ecology-v10' } },
       { result: { ...wire().result, algorithmVersion: 'diverse-landscape-v9' } },

@@ -59,7 +59,13 @@ const {
     });
     await page.goto(base);
     await waitForOfflineReady(page);
-    if (!process.argv.includes("--aces")) await useReferenceAppearance(page);
+    if (!process.argv.includes("--aces") && !process.argv.includes("--bloom"))
+      await useReferenceAppearance(page);
+    if (process.argv.includes("--bloom")) {
+      await page.locator("#appearance-settings summary").click();
+      await page.locator("#appearance-bloom").check();
+      await page.locator("#appearance-settings summary").click();
+    }
     await fillParameters(page, {
       width: 129,
       height: 97,
@@ -200,10 +206,61 @@ const {
       Math.abs(moon.day.center - moon.day.background) < 0.08,
       "No opposite-sun moon disk at noon",
     );
+    let solarBloom = null;
+    if (process.argv.includes("--bloom")) {
+      await page.locator("#sun-direction").fill("225");
+      const sunOn = await canvas.screenshot({
+        path: artifactPath("bloom-sun-on.png"),
+      });
+      await page.locator("#appearance-settings summary").click();
+      await page.locator("#appearance-bloom").uncheck();
+      const sunOff = await canvas.screenshot({
+        path: artifactPath("bloom-sun-off.png"),
+      });
+      solarBloom = await page.evaluate(
+        async (data) => {
+          async function pixels(s) {
+            const image = await createImageBitmap(
+                await (await fetch("data:image/png;base64," + s)).blob(),
+              ),
+              c = document.createElement("canvas");
+            c.width = image.width;
+            c.height = image.height;
+            const ctx = c.getContext("2d");
+            ctx.drawImage(image, 0, 0);
+            return ctx.getImageData(0, 0, c.width, c.height).data;
+          }
+          const a = await pixels(data.a),
+            b = await pixels(data.b);
+          let changed = 0,
+            positive = 0;
+          for (let i = 0; i < a.length; i += 4) {
+            if (a[i] !== b[i] || a[i + 1] !== b[i + 1] || a[i + 2] !== b[i + 2])
+              changed++;
+            positive +=
+              Math.max(0, a[i] - b[i]) +
+              Math.max(0, a[i + 1] - b[i + 1]) +
+              Math.max(0, a[i + 2] - b[i + 2]);
+          }
+          return { changed, positive };
+        },
+        { a: sunOn.toString("base64"), b: sunOff.toString("base64") },
+      );
+      assert.ok(
+        solarBloom.changed > 100 && solarBloom.positive > 100,
+        "Visible restrained bloom from the actual sky sun disk",
+      );
+    }
     await context.setOffline(true);
     await page.reload();
     await waitForOfflineReady(page);
-    if (!process.argv.includes("--aces")) await useReferenceAppearance(page);
+    if (!process.argv.includes("--aces") && !process.argv.includes("--bloom"))
+      await useReferenceAppearance(page);
+    if (process.argv.includes("--bloom")) {
+      await page.locator("#appearance-settings summary").click();
+      await page.locator("#appearance-bloom").check();
+      await page.locator("#appearance-settings summary").click();
+    }
     await page.locator("#sun-settings summary").click();
     await page.locator("#sun-time").fill("0");
     await fillParameters(page, {
@@ -220,6 +277,7 @@ const {
       browser: browser.version(),
       differences,
       moon,
+      solarBloom,
       offline: true,
       errors,
     };

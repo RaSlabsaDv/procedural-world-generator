@@ -15,6 +15,7 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
 } from 'three';
+import { BLOOM, bloomPasses } from './bloom-passes';
 import { AppearanceSettings, needsFinishing } from './appearance-settings.service';
 
 export const COLOR_FINISHING = Object.freeze({
@@ -39,6 +40,7 @@ export function finishingMaterial() {
     toneMapped: false,
     uniforms: {
       finishColor: { value: null },
+      finishBloom: { value: null },
       finishExposure: { value: 1 },
       finishACES: { value: 1 },
       finishGrading: { value: 0 },
@@ -48,9 +50,15 @@ export function finishingMaterial() {
     vertexShader: `varying vec2 vFinishUv;void main(){vFinishUv=position.xy*.5+.5;gl_Position=vec4(position,1.0);}`,
     fragmentShader: `${ShaderChunk.tonemapping_pars_fragment.replaceAll('toneMappingExposure', 'finishExposure')}
       uniform sampler2D finishColor;uniform float finishACES,finishGrading,finishVignette,finishAspect;
+      #ifdef USE_BLOOM
+        uniform sampler2D finishBloom;
+      #endif
       varying vec2 vFinishUv;
       void main(){
         vec3 color=max(texture2D(finishColor,vFinishUv).rgb,vec3(0.0));
+        #ifdef USE_BLOOM
+          color+=texture2D(finishBloom,vFinishUv).rgb*${BLOOM.intensity};
+        #endif
         vec3 exposed=color*finishExposure;
         float toe=smoothstep(.002,.025,dot(exposed,vec3(.2126,.7152,.0722)));
         color=finishACES>.5?mix(exposed,ACESFilmicToneMapping(color),toe):exposed;
@@ -71,9 +79,27 @@ export function colorFinishing(renderer: WebGLRenderer, initial: AppearanceSetti
     geometry: BufferGeometry | undefined,
     material: ShaderMaterial | undefined;
   let output: Scene | undefined;
+  let bloom: ReturnType<typeof bloomPasses> | undefined,
+    bloomUnavailable = false;
+  const enableBloom = (enabled: boolean) => {
+    if (!material) return;
+    const active = material.defines['USE_BLOOM'] !== undefined;
+    if (active !== enabled) {
+      if (enabled) material.defines['USE_BLOOM'] = 1;
+      else delete material.defines['USE_BLOOM'];
+      material.needsUpdate = true;
+    }
+    if (!enabled) material.uniforms['finishBloom'].value = null;
+  };
+  const releaseBloom = () => {
+    bloom?.dispose();
+    bloom = undefined;
+    enableBloom(false);
+  };
   const camera = new Camera(),
     size = new Vector2();
   const release = () => {
+    releaseBloom();
     target?.dispose();
     geometry?.dispose();
     material?.dispose();
@@ -96,6 +122,10 @@ export function colorFinishing(renderer: WebGLRenderer, initial: AppearanceSetti
     update: (value: AppearanceSettings) => {
       if (disposed) return;
       settings = value;
+      if (!value.bloom) {
+        releaseBloom();
+        bloomUnavailable = false;
+      }
       if (!needsFinishing(value)) release();
       else apply();
     },
@@ -169,9 +199,22 @@ export function colorFinishing(renderer: WebGLRenderer, initial: AppearanceSetti
           return warning;
         }
         renderer.render(scene, sceneCamera);
+        if (settings.bloom && !bloomUnavailable) {
+          bloom ??= bloomPasses(renderer, geometry!);
+          const texture = bloom.render(target);
+          if (texture) {
+            enableBloom(true);
+            material!.uniforms['finishBloom'].value = texture;
+          } else {
+            bloomUnavailable = true;
+            releaseBloom();
+          }
+        }
         renderer.setRenderTarget(previous);
         renderer.render(output!, camera);
-        return null;
+        return settings.bloom && bloomUnavailable
+          ? 'Bloom unavailable on this device. Showing finishing without bloom.'
+          : null;
       } catch (error) {
         renderer.setRenderTarget(previous);
         release();

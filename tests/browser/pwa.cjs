@@ -34,7 +34,16 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
     page.on("pageerror", (error) => errors.push(error.message));
   const page = await context.newPage();
   observe(page);
-  const ready = waitForOfflineReady;
+  const bloomSmoke = process.argv.includes("--bloom");
+  const ready = async (target) => {
+    await waitForOfflineReady(target);
+    if (bloomSmoke) {
+      const panel = target.locator("#appearance-settings");
+      if (!(await panel.evaluate((el) => el.open)))
+        await panel.locator("summary").click();
+      await target.locator("#appearance-bloom").check();
+    }
+  };
   const generate = async (target, seed, mode = "local") => {
     await target.locator("#seed").fill(String(seed));
     await target.locator("#generate-" + mode).click();
@@ -183,6 +192,18 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
     assert.equal((await runtimeInfo(page)).initCount, 1);
     await page.locator("app-terrain-preview .display-time").first().waitFor();
     assert.equal((await runtimeInfo(page)).initCount, 1);
+    if (bloomSmoke)
+      assert.ok(
+        await page
+          .locator("app-terrain-preview canvas")
+          .first()
+          .evaluate((canvas) => {
+            const gl = canvas.getContext("webgl2"),
+              program = gl.getParameter(gl.CURRENT_PROGRAM);
+            return gl.getUniformLocation(program, "finishBloom") !== null;
+          }),
+        "Updated offline renderer executes the bloom final shader",
+      );
     assert.deepEqual(errors, []);
     const result = {
       pass: true,
@@ -197,6 +218,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
       updateDeferredWhileBusy: true,
       updatedVersionOffline: true,
       updatedVersionTerrain3d: true,
+      ...(bloomSmoke ? { updatedVersionBloom: true } : {}),
       firstCatalog,
       secondCatalog,
       pageErrors: errors,

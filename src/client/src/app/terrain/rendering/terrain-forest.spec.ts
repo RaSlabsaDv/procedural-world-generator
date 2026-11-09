@@ -1,3 +1,4 @@
+import { testWireHydrology } from '../testing/terrain-test-fixture';
 import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { Matrix4 } from 'three';
 import { decodeTerrain, compareTerrains } from '../data/terrain.contract';
@@ -12,6 +13,7 @@ function fixture() {
   wire.result.values = [1, 2, 3, 4];
   wire.result.biomes.fill(2);
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
+  wire.result.hydrology = testWireHydrology(wire.result);
   wire.result.vegetationDensity.fill(1);
   const tree = {
     cellIndex: 0,
@@ -52,6 +54,7 @@ describe('landscape forest contract and instancing', () => {
       (w: ReturnType<typeof fixture>['wire']) => {
         w.result.biomes[0] = 0;
         w.result.surfaceWeights = testSurfaceWeights(w.result.biomes);
+        w.result.hydrology = testWireHydrology(w.result);
       },
       (w: ReturnType<typeof fixture>['wire']) => {
         w.result.trees[0].y = 9;

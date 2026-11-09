@@ -10,8 +10,9 @@
 
 ## Frozen policies and specifications
 
-Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v10, landscape-ecology-v11, landscape-ecology-hydraulic-v11 and landscape-worker-json-v11.
+Current behavior composes the policies below; a historical version label does not mean its equations or reference fixtures can be removed. Current identities are diverse-landscape-v11, landscape-ecology-v12, landscape-ecology-hydraulic-v12 and landscape-worker-json-v12.
 
+- [Hydrology v1](specs/HYDROLOGY_V1.md): deterministic drainage foundation, graph/area/depression contracts and v12 workload isolation.
 - [Architecture Race v1](specs/ARCHITECTURE_RACE_V1.md): experiment protocol, readonly records and immutable configuration, sequential runner and editor UI, summary inclusion/count rules and versioned JSON/CSV export.
 - [Landscape/climate v3](specs/LANDSCAPE_V3.md): base environment and ecological rules; original height composition is historical.
 - [Regional climate v1](specs/REGIONAL_CLIMATE_V1.md): current world-grid climate, elevation cooling and highland snow.
@@ -25,6 +26,8 @@ Current behavior composes the policies below; a historical version label does no
 - [Coastal surfaces v2](specs/COASTAL_SURFACES_V2.md): current wider, context-sensitive post-placement coverage.
 - [Coastal surfaces v1](specs/COASTAL_SURFACES_V1.md): historical coastal equations and reference fixtures.
 - [Night sky and foam v1](specs/NIGHT_SKY_V1.md): illuminated foam and a shared illustrative full moon.
+- [SSAO assessment v1](specs/SSAO_ASSESSMENT_V1.md): rejected stock candidate, visual/resource evidence and unresolved physical-GPU cost; no runtime SSAO.
+- [Bloom v1](specs/BLOOM_V1.md): unexposed HDR extraction, normalized quarter-resolution blur, disabled-path guarantees and target budgets.
 - [Color finishing v1](specs/COLOR_FINISHING_V1.md): linear HDR composition, ACES shadow toe, exact Reference, exposure and bounded final-pass resources.
 - [Tree LOD v1](specs/TREE_LOD_V1.md): two-level geometry, hysteresis, static caster layer and bounded buffer/pass tradeoffs.
 - [Foliage variation v1](specs/FOLIAGE_VARIATION_V1.md): stable per-tree linear crown colors, identity/hash policy and resource bounds.

@@ -3,7 +3,7 @@ namespace WorldGenerator.Core.Tests.Historical.V5;
 
 internal static class TerrainGenerator
 {
-    public static WorldGenerator.Core.TerrainResult Generate(TerrainRequest request)
+    public static WorldGenerator.Core.Tests.Historical.PreHydrologyResult Generate(TerrainRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         var preparation = TerrainValidator.Prepare(request);
@@ -12,7 +12,7 @@ internal static class TerrainGenerator
         return GenerateValidated(preparation.ValidatedRequest!);
     }
 
-    public static WorldGenerator.Core.TerrainResult GenerateValidated(ValidatedTerrainRequest request)
+    public static WorldGenerator.Core.Tests.Historical.PreHydrologyResult GenerateValidated(ValidatedTerrainRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
         var input = request.Request;

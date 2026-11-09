@@ -1,3 +1,4 @@
+import { testWireHydrology } from '../testing/terrain-test-fixture';
 import { Matrix4, Scene, Mesh, BoxGeometry, MeshLambertMaterial, Raycaster, Vector3 } from 'three';
 import { decodeTerrain, compareTerrains } from '../data/terrain.contract';
 import { MAX_ROCKS, RockInstance, RockKindId, RockVariantId } from '../data/terrain.models';
@@ -17,6 +18,7 @@ function fixture() {
   wire.result.values.fill(1);
   wire.result.biomes.fill(1);
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
+  wire.result.hydrology = testWireHydrology(wire.result);
   const rock: RockInstance = {
     cellIndex: 0,
     x: 0.5,
@@ -68,6 +70,7 @@ it('requires rocks, exact members, valid finite transforms, support, IDs and bud
   ).toThrow();
   wire.result.biomes[1] = 0;
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
+  wire.result.hydrology = testWireHydrology(wire.result);
   expect(() => decodeTerrain(wire, request, terrain)).toThrow();
 });
 
@@ -196,6 +199,7 @@ it('checks multi-cell footprints including interior peaks and distant Ocean corn
   wire.result.values.fill(1);
   wire.result.biomes.fill(1);
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
+  wire.result.hydrology = testWireHydrology(wire.result);
   const rock: RockInstance = {
     cellIndex: 24,
     x: 3.5,
@@ -217,9 +221,11 @@ it('checks multi-cell footprints including interior peaks and distant Ocean corn
   wire.result.values.fill(1);
   wire.result.biomes[2 * 7 + 2] = 0;
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
+  wire.result.hydrology = testWireHydrology(wire.result);
   expect(() => decodeTerrain(wire, request, terrain)).toThrow();
   wire.result.biomes.fill(1);
   wire.result.surfaceWeights = testSurfaceWeights(wire.result.biomes);
+  wire.result.hydrology = testWireHydrology(wire.result);
   wire.result.rocks = [{ ...rock, kind: 2 }];
   expect(() => decodeTerrain(wire, request, terrain)).toThrow();
   const scree: RockInstance = {

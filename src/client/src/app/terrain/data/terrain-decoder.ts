@@ -1,3 +1,4 @@
+import { decodeHydrology } from './hydrology-decoder';
 import { sameObject, object } from './contract-utils';
 import { decodeRocks } from './rock-decoder';
 import {
@@ -203,7 +204,14 @@ export function decodeTerrain(
       return fail();
     previous = i;
   }
-  const rocks = decodeRocks(result['rocks'], request.width, request.height, normalized, biomeIds, fail);
+  const rocks = decodeRocks(
+    result['rocks'],
+    request.width,
+    request.height,
+    normalized,
+    biomeIds,
+    fail,
+  );
   let simulation: SimulationSummary;
   {
     if (
@@ -248,6 +256,15 @@ export function decodeTerrain(
       surfaceWeights,
       trees: Object.freeze(trees),
       rocks,
+      hydrology: decodeHydrology(
+        result['hydrology'],
+        normalized,
+        biomeIds,
+        request.width,
+        request.height,
+        upper,
+        fail,
+      ),
       resultVersion: RESULT_VERSION,
       algorithmVersion: terrain.algorithmVersion,
     },

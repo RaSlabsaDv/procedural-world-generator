@@ -55,6 +55,7 @@ export function experimentFixture(): ExperimentResult {
         vegetationMismatchCount: 0,
         coverageMismatchCount: 0,
         rockMismatchCount: 0,
+        hydrologyMismatchCount: 0,
         identity: 'compatible',
       },
     });

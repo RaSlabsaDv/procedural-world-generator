@@ -7,6 +7,7 @@ import {
   WebGLRenderer,
   WebGLRenderTarget,
 } from 'three';
+import { BLOOM, bloomSize } from './bloom-passes';
 import { colorFinishing, COLOR_FINISHING, finishingSize } from './color-finishing';
 import {
   AppearanceSettingsService,
@@ -63,6 +64,8 @@ it('validates immutable shared settings, no-op identity and neutral reference', 
     { tone: 'film' },
     { grading: 1 },
     { vignette: null },
+    { bloom: null },
+    { bloom: 1 },
     { extra: true },
   ])
     expect(() => service.set({ ...DEFAULT_APPEARANCE, ...invalid } as never)).toThrow(RangeError);
@@ -169,4 +172,135 @@ it('falls back visibly for unsupported or incomplete float targets without losin
     expect(owner.render(scene, camera)).toBeNull();
     owner.dispose();
   }
+});
+
+it('normalizes the blur and caps bloom targets including thin/minimum dimensions', () => {
+  expect(BLOOM.weights[0] + 2 * BLOOM.weights.slice(1).reduce((a, b) => a + b, 0)).toBe(1);
+  expect(bloomSize(964, 691)).toEqual([241, 172]);
+  for (const [w, h] of [
+    [1, 1],
+    [512, 512],
+    [2048, 2048],
+    [1, 1048576],
+    [1048576, 1],
+    [512, 2],
+  ]) {
+    const [x, y] = bloomSize(w, h);
+    expect(x * y).toBeLessThanOrEqual(BLOOM.maxPixels);
+    expect(x).toBeGreaterThan(0);
+    expect(y).toBeGreaterThan(0);
+    expect(x).toBeLessThanOrEqual(w);
+    expect(y).toBeLessThanOrEqual(h);
+  }
+});
+it('adds exactly three passes and independent capped targets only while bloom is enabled', () => {
+  const r = renderer(),
+    owner = colorFinishing(r.value, { ...DEFAULT_APPEARANCE, bloom: true }),
+    scene = new Scene(),
+    camera = new Camera();
+  const passNames: string[] = [];
+  r.fake.render.mockImplementation((s) =>
+    passNames.push(
+      (s.children[0] as Mesh)?.material instanceof ShaderMaterial
+        ? ((s.children[0] as Mesh).material as ShaderMaterial).name
+        : 'scene',
+    ),
+  );
+  owner.render(scene, camera);
+  expect(passNames).toEqual([
+    'scene',
+    'bloom-extract-v1',
+    'bloom-blur-v1',
+    'bloom-blur-v1',
+    'color-finishing-v1',
+  ]);
+  const [hdr, a, b] = [...r.targets];
+  expect(a).not.toBe(b);
+  for (const t of [a, b]) {
+    expect(t.depthBuffer).toBe(false);
+    expect(t.samples).toBe(0);
+    expect(t.width * t.height).toBeLessThanOrEqual(BLOOM.maxPixels);
+  }
+  const output = r.fake.render.mock.calls.at(-1)![0] as Scene,
+    quad = output.children[0] as Mesh,
+    material = quad.material as ShaderMaterial;
+  expect(material.defines['USE_BLOOM']).toBe(1);
+  expect(material.uniforms['finishBloom'].value).toBe(a.texture);
+  const geometry = vi.spyOn(quad.geometry, 'dispose'),
+    disposeA = vi.spyOn(a, 'dispose'),
+    disposeB = vi.spyOn(b, 'dispose'),
+    disposeHdr = vi.spyOn(hdr, 'dispose');
+  owner.update(DEFAULT_APPEARANCE);
+  r.fake.render.mockClear();
+  owner.render(scene, camera);
+  expect(r.fake.render).toHaveBeenCalledTimes(2);
+  expect(r.targets.size).toBe(3);
+  expect(material.defines['USE_BLOOM']).toBeUndefined();
+  expect(material.uniforms['finishBloom'].value).toBeNull();
+  expect(disposeA).toHaveBeenCalledTimes(1);
+  expect(disposeB).toHaveBeenCalledTimes(1);
+  expect(disposeHdr).not.toHaveBeenCalled();
+  expect(geometry).not.toHaveBeenCalled();
+  owner.dispose();
+  owner.dispose();
+  expect(disposeHdr).toHaveBeenCalledTimes(1);
+  expect(geometry).toHaveBeenCalledTimes(1);
+});
+it('keeps bloom resources independent between views and enables finishing in Reference', () => {
+  const a = renderer(),
+    b = renderer(),
+    settings = { ...REFERENCE_APPEARANCE, bloom: true };
+  expect(needsFinishing(settings)).toBe(true);
+  const x = colorFinishing(a.value, settings),
+    y = colorFinishing(b.value, settings),
+    scene = new Scene(),
+    camera = new Camera();
+  x.render(scene, camera);
+  y.render(scene, camera);
+  expect(a.targets.size).toBe(3);
+  expect(b.targets.size).toBe(3);
+  for (const t of a.targets) expect(b.targets.has(t)).toBe(false);
+  x.update(REFERENCE_APPEARANCE);
+  y.render(scene, camera);
+  expect(b.fake.render).toHaveBeenCalledTimes(10);
+  x.dispose();
+  y.dispose();
+});
+it('falls back from incomplete bloom only, restores targets and supports a toggle retry', () => {
+  const r = renderer();
+  r.gl.checkFramebufferStatus.mockReturnValueOnce(7).mockReturnValueOnce(7).mockReturnValueOnce(0);
+  const settings = { ...DEFAULT_APPEARANCE, bloom: true },
+    owner = colorFinishing(r.value, settings),
+    scene = new Scene(),
+    camera = new Camera();
+  expect(owner.render(scene, camera)).toContain('without bloom');
+  expect(r.fake.getRenderTarget()).toBeNull();
+  const allocations = r.targets.size;
+  owner.render(scene, camera);
+  expect(r.targets.size).toBe(allocations);
+  owner.update(DEFAULT_APPEARANCE);
+  owner.update(settings);
+  expect(owner.render(scene, camera)).toBeNull();
+  expect(r.targets.size).toBe(5);
+  owner.dispose();
+});
+it('releases shared fullscreen geometry once after a bloom submission failure', () => {
+  const r = renderer(),
+    owner = colorFinishing(r.value, { ...DEFAULT_APPEARANCE, bloom: true }),
+    scene = new Scene(),
+    camera = new Camera();
+  owner.render(scene, camera);
+  const quad = (r.fake.render.mock.calls.at(-1)![0] as Scene).children[0] as Mesh;
+  const geometry = vi.spyOn(quad.geometry, 'dispose'),
+    spies = [...r.targets].map((t) => vi.spyOn(t, 'dispose'));
+  r.fake.render
+    .mockImplementationOnce(() => {})
+    .mockImplementationOnce(() => {
+      throw Error('bloom submission');
+    });
+  expect(() => owner.render(scene, camera)).toThrow('bloom submission');
+  expect(r.fake.getRenderTarget()).toBeNull();
+  owner.dispose();
+  for (const spy of spies) expect(spy).toHaveBeenCalledTimes(1);
+  expect(geometry).toHaveBeenCalledTimes(1);
 });

@@ -1,3 +1,4 @@
+import { testWireHydrology } from '../testing/terrain-test-fixture';
 import { testSurfaceWeights } from '../testing/terrain-test-fixture';
 import { compareTerrains, decodeTerrain } from './terrain.contract';
 import { ALGORITHM_VERSION, TerrainError, HeightMapRequest, TerrainRun } from './terrain.models';
@@ -19,6 +20,7 @@ function wire() {
   value.result.values = [0, 5, 10, 15, 20, 30];
   value.result.biomes = [0, 0, 1, 2, 2, 3];
   value.result.surfaceWeights = testSurfaceWeights(value.result.biomes);
+  value.result.hydrology = testWireHydrology(value.result);
   return value;
 }
 

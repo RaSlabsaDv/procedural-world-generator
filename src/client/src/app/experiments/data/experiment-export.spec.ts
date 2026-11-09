@@ -123,7 +123,7 @@ it('uses the exact stable CSV header and an independently specified complete war
     'schemaVersion,experimentId,pairId,trialId,phase,pairIndex,position,mode,status,computeMs,requestMs,coreBuildId,workload,algorithmVersion,resultVersion,simulationVersion,executionProfile,width,height,treeCount,rockCount,errorKind,errorMessage,pairVerificationStatus,exclusionReasons';
   expect(text.split('\r\n')[0]).toBe(expectedHeader);
   expect(text.split('\r\n')[1]).toBe(
-    'architecture-race-v1,fixture,warmup,warmup:local,warmup,,0,local,success,10000,10100,git:fixture,landscape-ecology-hydraulic-v11,diverse-landscape-v10,landscape-ecology-v11,hydraulic-grid-v1,landscape-worker-json-v11,3,2,0,0,,,compared,[]',
+    'architecture-race-v1,fixture,warmup,warmup:local,warmup,,0,local,success,10000,10100,git:fixture,landscape-ecology-hydraulic-v12,diverse-landscape-v11,landscape-ecology-v12,hydraulic-grid-v1,landscape-worker-json-v12,3,2,0,0,,,compared,[]',
   );
   const rows = readCsv(text);
   expect(rows).toHaveLength(11);

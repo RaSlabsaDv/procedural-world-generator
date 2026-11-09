@@ -10,7 +10,7 @@ The primary outcomes are computation time and the time until the client receives
 
 ## 2. Baseline configuration
 
-- Primary profile: `landscape-worker-json-v11`, algorithm `diverse-landscape-v10`, result `landscape-ecology-v11`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v11`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
+- Primary profile: `landscape-worker-json-v12`, algorithm `diverse-landscape-v11`, result `landscape-ecology-v12`, simulation `hydraulic-grid-v1`, workload `landscape-ecology-hydraulic-v12`. Preserve the complete nested terrain request. Do not pool old workload or main-thread samples with this profile.
 - Production Angular and Release .NET builds, without explicitly enabled WASM AOT. Record the actual execution mode, publish settings, and runtime versions.
 - One sequential generator in Core per mode. Local uses one dedicated worker/runtime, with no parallel C# generation or computed-map caching. Worker messaging belongs to adapter overhead.
 - Identical parameters, operation order, and validation rules on both paths. Freeze parameters before starting a pair.
@@ -298,7 +298,7 @@ and do not infer performance gains from old/new smoke timings. See
 
 ## Sparse rock workload v11
 
-Current algorithm v10 and result/workload/profile v11 change rocks only. Core time
+The rock step introduced algorithm v10 and result/workload/profile v11, changing rocks only. Core time
 includes world-grid patches, multiple size ranges, full triangle-footprint support,
 crown exclusion, bounded neighbor indexing and priority selection. The 8192 cap is
 a ceiling, not a target. All non-rock data remain exact. Fewer records can reduce
@@ -461,7 +461,62 @@ conditions. Exact historical reference is Reference/exposure1/effects-off. Other
 Reference combinations use linear HDR compositing and are not pixel-identical.
 
 One capped RGBA16F target plus final triangle adds GPU work and up to60 MiB/view,
-120 MiB for two views. Bloom/SSAO remain absent. These are resource bounds, not RSS
+120 MiB for two views. These are bloom-off Stage6A bounds; bloom is accounted for below and SSAO remains absent. These are resource bounds, not RSS
 measurements or FPS claims; driver/default-canvas/shadow storage is additional.
 Software WebGL pixel/pass assertions establish correctness only. No controlled
 hardware performance campaign or native algorithm optimization was performed.
+
+## Bloom presentation
+
+Bloom-v1 is an optional display-only effect, default off. Freeze its enabled state
+and policy/application revision alongside exposure, tone mode, camera/LOD history,
+HDR/reduced-target sizes, sun, atmosphere and wave phase. Appearance state is still
+recorded manually with campaign conditions; existing Core/request exports do not
+capture these visual controls. Bloom eligibility uses unexposed luminance; final
+exposure applies once to the composed scene plus halo.
+
+Extraction and two blur passes add GPU work; two no-depth/no-MSAA RGBA16F targets
+add at most1 MiB/view,2 MiB for comparison. Rendering may reach38 color calls/view;
+shadow ceiling19 and Core work remain unchanged. Disabled bloom executes no extra
+passes and releases its targets/materials. This is resource accounting, not measured
+GPU memory, completion time or FPS. Preparation/resize/submission remain outside
+computeMs/requestMs and pause under OperationLock. No controlled campaign was run.
+
+## Rejected SSAO candidate assessment
+
+SSAO-assessment-v1 is isolated test tooling, not a supported runtime mode or benchmark
+workload. It uses the same native Core through Local/Remote and actual renderer
+factories; complete data/canonical matrices remain unchanged. It never runs inside
+production experiment collection, and its rendering/diagnostic readback is outside
+computeMs/requestMs. Recorded CPU submission costs are diagnostic, not GPU completion.
+
+The dirty source revision, frozen policy and bundle hashes, actual cameras/LOD
+history, appearance and GL resource data are recorded with raw assessment evidence.
+Physical-GPU timing is explicitly unresolved: SwiftShader with an available timer
+extension does not satisfy the 2 ms/4 ms hardware budget. No disjoint/hardware timing
+samples or general optimization claims are inferred. Prototype target accounting
+excludes diagnostic mask/readback scratch, existing finishing/shadow buffers and driver
+overhead. Production remains Bloom v1, with no SSAO passes/resources/control added.
+
+## Drainage workload v12
+
+Hydrology Stage 1 adds Core priority-flood routing and accumulation to the existing
+whole-call `computeMs`. Algorithm is `diverse-landscape-v11`, hydrology is
+`d8-priority-flood-v1`, result/workload/profile are v12. Include all hydrology arrays
+in equivalence: receiver indices and accumulation use exact equality; depression
+depths use `1e-6 + 1e-5 * max(abs(a), abs(b))`. A per-cell hydrology mismatch makes
+numeric equivalence fail. Existing experiment export containers retain their outer
+schema; current comparison diagnostics additionally contain `hydrologyMismatchCount`.
+This additive field does not make old and new workloads comparable.
+
+Hydrology costs O(N log N) and has 12N output bytes plus 12N scratch bytes. At
+512x512 this is 3 MiB retained numeric output and 3 MiB scratch, excluding headers,
+existing terrain storage, JSON strings and transport/parser allocations. Client graph
+validation temporarily uses three additional 4N arrays. No GPU allocation is added.
+
+The real WASM/API smoke fixture (seed -7, 512x512, zero erosion iterations, no sea,
+height 80) returned 21942523 UTF-8 JSON bytes; the nested hydrology object accounts
+for 3575388 bytes including its field names. This is an observed payload, not a
+worst-case JSON bound or a throughput measurement. Serialization/transfer/decoding
+stay outside `computeMs`, with no new per-stage timing claim. Keep previous v11
+measurements separate; rerun matching v12 builds for controlled experiments.
