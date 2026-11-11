@@ -29,6 +29,17 @@
         </button>
       }
     </fieldset>
+    <button
+      [disabled]="busy()"
+      id="toggle-inspector"
+      class="secondary inspector-toggle"
+      type="button"
+      aria-controls="measurement-sidebar"
+      [attr.aria-expanded]="inspectorVisible()"
+      (click)="inspectorVisible.set(!inspectorVisible())"
+    >
+      {{ inspectorVisible() ? 'Hide results' : 'Show results' }}
+    </button>
   </header>
   @if (comparing() && !sameResults()) {
     <p class="comparison-warning">
@@ -74,7 +85,12 @@
     </p>
   }
 </section>
-<aside class="results-panel" aria-label="Results and measurements">
+<aside
+  id="measurement-sidebar"
+  class="results-panel"
+  aria-label="Results and measurements"
+  [hidden]="!inspectorVisible()"
+>
   <ng-content select="app-experiment-panel" />
   <p class="eyebrow">Execution</p>
   <h2>Results &amp; measurements</h2>
@@ -84,18 +100,9 @@
       <p id="numeric-match">
         {{
           check.numericMatch
-            ? 'All heights match within tolerance, including environment, vegetation, surface coverage, rocks, drainage and channel profiles.'
+            ? 'All heights match within tolerance.'
             : 'Numeric data differences exceed tolerance.'
         }}
-      </p>
-      <p>
-        Environment mismatches: {{ check.environmentMismatchCount }} · Vegetation mismatches:
-        {{ check.vegetationMismatchCount }} · Surface coverage mismatches:
-        {{ check.coverageMismatchCount }} · Rock mismatches: {{ check.rockMismatchCount }} ·
-        Hydrology mismatches: {{ check.hydrologyMismatchCount }} ·
-        River mismatches: {{ check.riverMismatchCount }} ·
-        Lake mismatches: {{ check.lakeMismatchCount }} ·
-        Channel mismatches: {{ check.channelMismatchCount }}
       </p>
       <p id="biome-match">
         {{ check.biomesMatch ? 'All biome IDs match exactly.' : 'Biome IDs differ.' }} Mismatches:
@@ -115,11 +122,22 @@
           }
         }
       </p>
-      <p>
-        Height maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Height mean error:
-        {{ check.meanAbsoluteError.toExponential(3) }} · Outside tolerance:
-        {{ check.mismatchCount }}
-      </p>
+      <details class="comparison-details">
+        <summary>Verification details</summary>
+        <p>
+          Environment mismatches: {{ check.environmentMismatchCount }} · Vegetation mismatches:
+          {{ check.vegetationMismatchCount }} · Surface coverage mismatches:
+          {{ check.coverageMismatchCount }} · Rock mismatches: {{ check.rockMismatchCount }} ·
+          Hydrology mismatches: {{ check.hydrologyMismatchCount }} · River mismatches:
+          {{ check.riverMismatchCount }} · Lake mismatches: {{ check.lakeMismatchCount }} · Channel
+          mismatches: {{ check.channelMismatchCount }}
+        </p>
+        <p>
+          Height maximum error: {{ check.maxAbsoluteError.toExponential(3) }} · Height mean error:
+          {{ check.meanAbsoluteError.toExponential(3) }} · Outside tolerance:
+          {{ check.mismatchCount }}
+        </p>
+      </details>
     </section>
   }
 

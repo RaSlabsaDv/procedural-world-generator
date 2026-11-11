@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, input } from '@angular/core';
 import { OperationLock } from '../../platform/operation-lock.service';
 import {
   AtmosphereSettings,
@@ -7,7 +7,7 @@ import {
 
 @Component({
   selector: 'app-atmosphere-controls',
-  template: `<details id="atmosphere-settings">
+  template: `<details [open]="expanded()" id="atmosphere-settings">
     <summary>Atmosphere <span>Appearance</span></summary>
     <fieldset [disabled]="busy()">
       <label for="atmosphere-enabled"
@@ -104,6 +104,7 @@ import {
   ],
 })
 export class AtmosphereControls {
+  readonly expanded = input(false);
   protected readonly atmosphere = inject(AtmosphereSettingsService);
   protected readonly busy = inject(OperationLock).busy;
   protected readonly problem = signal('');

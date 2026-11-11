@@ -105,3 +105,31 @@ it('keeps explanations collapsed until requested and preserves drafts when toggl
   await fixture.whenStable();
   expect(help.hidden).toBe(false);
 });
+
+it('keeps every control mounted and preserves drafts across settings tabs', async () => {
+  const { fixture, map, simulation, el } = await setup();
+  const seed = el.querySelector('#seed'),
+    before = captureTerrainRequest(map, simulation);
+  for (const tab of ['biomes', 'erosion', 'scene', 'extra', 'terrain']) {
+    fixture.componentRef.setInput('activeTab', tab);
+    await fixture.whenStable();
+    expect(el.querySelector('#settings-panel-' + tab)?.hasAttribute('hidden')).toBe(false);
+    expect(el.querySelector('#seed')).toBe(seed);
+    expect(captureTerrainRequest(map, simulation)).toEqual(before);
+  }
+  expect(el.querySelectorAll('#seed')).toHaveLength(1);
+});
+
+it('keeps Scene keyboard submission from starting generation', async () => {
+  const { fixture, el } = await setup(),
+    calls: string[] = [];
+  fixture.componentInstance.generate.subscribe((value) => calls.push(value));
+  fixture.componentRef.setInput('activeTab', 'scene');
+  await fixture.whenStable();
+  el.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  expect(calls).toEqual([]);
+  fixture.componentRef.setInput('activeTab', 'terrain');
+  await fixture.whenStable();
+  el.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  expect(calls).toEqual(['local']);
+});

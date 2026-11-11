@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Real WebGL crown colors: allocation, identity, lighting edits and replacement.
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -170,9 +172,9 @@ const {
     }
     check(first);
     const hashes = (rows) => rows.map((r) => r.groups.map((g) => g.hash));
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     for (const hour of ["7", "0", "12"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await page
         .locator("app-terrain-preview canvas")
         .first()
@@ -180,7 +182,7 @@ const {
       assert.deepEqual(hashes(await state()), hashes(first));
       assert.equal((await state())[0].uploads, first[0].uploads);
     }
-    await page.locator("#atmosphere-settings summary").click();
+    await openSettingsPanel(page, "atmosphere-settings");
     await page.locator("#atmosphere-enabled").uncheck();
     await page
       .locator("app-terrain-preview canvas")

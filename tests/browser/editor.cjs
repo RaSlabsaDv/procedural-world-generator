@@ -1,3 +1,4 @@
+const { fillControl, revealControl } = require("./support/editor.cjs");
 const { waitForGeneration } = require("./support/editor.cjs");
 // Production editor integration: real WASM/API, retained results, responsive layout and offline use.
 const {
@@ -44,7 +45,7 @@ const path = require("node:path");
       await page.locator("#plainsCoverage-slider").getAttribute("max"),
       "0.7",
     );
-    await page.locator("#mountainCoverage").fill("0.5");
+    await fillControl(page, "#mountainCoverage", "0.5");
     assert.equal(await page.locator("#plainsCoverage").inputValue(), "0.45");
     await page.locator("#plainsCoverage-slider").focus();
     await page.keyboard.press("End");
@@ -57,36 +58,32 @@ const path = require("node:path");
           .querySelector("#coverage-budget .budget-message")
           .textContent.trim() === "0% remains for hills.",
     );
-    await page.locator("#plainsCoverage").fill("0.8");
+    await fillControl(page, "#plainsCoverage", "0.8");
     await page.waitForFunction(() =>
       document
         .querySelector("#coverage-budget")
         .textContent.includes("exceed 100%"),
     );
     assert.equal(await page.locator("#mountainCoverage").inputValue(), "0.5");
-    await page
-      .locator(".coverage-group")
-      .screenshot({
-        path: path.resolve(
-          __dirname,
-          "../../artifacts/input-balance-over-budget.png",
-        ),
-      });
+    await page.locator(".coverage-group").screenshot({
+      path: path.resolve(
+        __dirname,
+        "../../artifacts/input-balance-over-budget.png",
+      ),
+    });
     await page.locator("#reset-parameters").click();
-    await page.locator("#width").fill("512");
-    await page.locator("#height").fill("512");
+    await fillControl(page, "#width", "512");
+    await fillControl(page, "#height", "512");
     await page.waitForFunction(
       () => document.querySelector("#iterations").max === "128",
     );
     await page.locator("#reset-parameters").click();
-    await page
-      .locator(".coverage-group")
-      .screenshot({
-        path: path.resolve(
-          __dirname,
-          "../../artifacts/input-balance-desktop.png",
-        ),
-      });
+    await page.locator(".coverage-group").screenshot({
+      path: path.resolve(
+        __dirname,
+        "../../artifacts/input-balance-desktop.png",
+      ),
+    });
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(
       await page.evaluate(
@@ -94,18 +91,13 @@ const path = require("node:path");
       ),
       true,
     );
-    await page
-      .locator(".coverage-group")
-      .screenshot({
-        path: path.resolve(
-          __dirname,
-          "../../artifacts/input-balance-narrow.png",
-        ),
-      });
+    await page.locator(".coverage-group").screenshot({
+      path: path.resolve(__dirname, "../../artifacts/input-balance-narrow.png"),
+    });
     await page.setViewportSize({ width: 1600, height: 1050 });
-    await page.locator("#width").fill("129");
-    await page.locator("#height").fill("97");
-    await page.locator("#iterations").fill("16");
+    await fillControl(page, "#width", "129");
+    await fillControl(page, "#height", "97");
+    await fillControl(page, "#iterations", "16");
     await page.locator("#verify-equivalence").click();
     await complete();
     await page.locator("app-terrain-preview .display-time").waitFor();
@@ -143,13 +135,14 @@ const path = require("node:path");
       path: path.resolve(__dirname, "../../artifacts/editor-desktop.png"),
       fullPage: true,
     });
+    await revealControl(page, "#mountainStrength-slider");
     await page.locator("#mountainStrength-slider").focus();
     await page.keyboard.press("End");
     await page.waitForFunction(
       () => document.querySelector("#mountainStrength").value === "1",
     );
     assert.equal(await page.locator("#mountainStrength").inputValue(), "1");
-    await page.locator("#mountainStrength").fill("0.35");
+    await fillControl(page, "#mountainStrength", "0.35");
     await page.waitForFunction(
       () => document.querySelector("#mountainStrength-slider").value === "0.35",
     );
@@ -187,7 +180,7 @@ const path = require("node:path");
         body: "{}",
       });
     });
-    await page.locator("#seed").fill("99");
+    await fillControl(page, "#seed", "99");
     await page.locator("#generate-remote").click();
     await blocked;
     assert.equal(await page.locator("#generate-local").isDisabled(), true);
@@ -208,8 +201,7 @@ const path = require("node:path");
     );
     assert.match(await page.locator(".snapshot").innerText(), /Seed 42/);
     await context.unroute("**/api/v1/terrains");
-    await page.getByText("Advanced noise", { exact: true }).click();
-    await page.locator("#noiseScale").fill("0");
+    await fillControl(page, "#noiseScale", "0");
     await page.locator("#generate-remote").click();
     await page.locator("#noiseScale[aria-invalid=true]").waitFor();
     assert.match(await page.locator("#noiseScale-error").innerText(), /0.0001/);
@@ -227,7 +219,7 @@ const path = require("node:path");
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await ready();
-    await page.locator("#seed").fill("-887");
+    await fillControl(page, "#seed", "-887");
     await page.locator("#generate-local").click();
     await complete();
     await page.locator("app-terrain-preview .display-time").waitFor();

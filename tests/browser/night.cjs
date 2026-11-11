@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Pixel-level regression: foam responds to night light and the shared sky has a moon.
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises");
@@ -62,9 +64,9 @@ const {
     if (!process.argv.includes("--aces") && !process.argv.includes("--bloom"))
       await useReferenceAppearance(page);
     if (process.argv.includes("--bloom")) {
-      await page.locator("#appearance-settings summary").click();
+      await openSettingsPanel(page, "appearance-settings");
       await page.locator("#appearance-bloom").check();
-      await page.locator("#appearance-settings summary").click();
+      await openSettingsPanel(page, "appearance-settings");
     }
     await fillParameters(page, {
       width: 129,
@@ -75,10 +77,10 @@ const {
     });
     await page.locator("#generate-local").click();
     await waitForTerrain(page);
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     await page.locator("#sun-time").waitFor();
-    await page.locator("#water-settings summary").click();
-    await page.locator("#atmosphere-settings summary").click();
+    await openSettingsPanel(page, "water-settings");
+    await openSettingsPanel(page, "atmosphere-settings");
     await page.locator("#atmosphere-enabled").uncheck();
     const canvas = page.locator("app-terrain-preview canvas");
     const captures = {};
@@ -86,9 +88,9 @@ const {
       ["day", "12"],
       ["night", "0"],
     ]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       for (const foam of ["0", "1"]) {
-        await page.locator("#water-foam").fill(foam);
+        await fillControl(page, "#water-foam", foam);
         captures[name + foam] = (
           await canvas.screenshot({
             path: artifactPath(`night-foam-${name}-${foam}.png`),
@@ -100,7 +102,7 @@ const {
       window.__waterBlackout = true;
     });
     for (const foam of ["0", "1"]) {
-      await page.locator("#water-foam").fill(foam);
+      await fillControl(page, "#water-foam", foam);
       captures["zero" + foam] = (
         await canvas.screenshot({
           path: artifactPath(`night-foam-zero-${foam}.png`),
@@ -157,8 +159,8 @@ const {
     });
     await page.locator("#generate-local").click();
     await waitForTerrain(page);
-    await page.locator("#sun-time").fill("0");
-    await page.locator("#sun-direction").fill("45");
+    await fillControl(page, "#sun-time", "0");
+    await fillControl(page, "#sun-direction", "45");
     await canvas.scrollIntoViewIfNeeded();
     const box = await canvas.boundingBox();
     // Orbit below the zero-height, back-face-culled test plane to point at the sky.
@@ -174,7 +176,7 @@ const {
     const moonNight = await canvas.screenshot({
       path: artifactPath("night-moon.png"),
     });
-    await page.locator("#sun-time").fill("12");
+    await fillControl(page, "#sun-time", "12");
     const moonDay = await canvas.screenshot({
       path: artifactPath("night-moon-day-reference.png"),
     });
@@ -216,11 +218,11 @@ const {
     );
     let solarBloom = null;
     if (process.argv.includes("--bloom")) {
-      await page.locator("#sun-direction").fill("225");
+      await fillControl(page, "#sun-direction", "225");
       const sunOn = await canvas.screenshot({
         path: artifactPath("bloom-sun-on.png"),
       });
-      await page.locator("#appearance-settings summary").click();
+      await openSettingsPanel(page, "appearance-settings");
       await page.locator("#appearance-bloom").uncheck();
       const sunOff = await canvas.screenshot({
         path: artifactPath("bloom-sun-off.png"),
@@ -265,12 +267,12 @@ const {
     if (!process.argv.includes("--aces") && !process.argv.includes("--bloom"))
       await useReferenceAppearance(page);
     if (process.argv.includes("--bloom")) {
-      await page.locator("#appearance-settings summary").click();
+      await openSettingsPanel(page, "appearance-settings");
       await page.locator("#appearance-bloom").check();
-      await page.locator("#appearance-settings summary").click();
+      await openSettingsPanel(page, "appearance-settings");
     }
-    await page.locator("#sun-settings summary").click();
-    await page.locator("#sun-time").fill("0");
+    await openSettingsPanel(page, "sun-settings");
+    await fillControl(page, "#sun-time", "0");
     await fillParameters(page, {
       width: 33,
       height: 25,

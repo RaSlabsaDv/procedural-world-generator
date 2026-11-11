@@ -1518,3 +1518,24 @@ controlled performance or physical-GPU measurements.
 The final PWA update/offline new-seed regression passes with Bloom, inland water,
 shore-stone and reed-instancing checks. Deployment simulation files are restored;
 README remains empty. No Core source, historical fixture or canonical version changed.
+
+### Compact editor layout and tabbed settings
+
+Tighter header, numeric/slider rows and paired dimensions increase useful map space.
+Terrain, Biomes, Erosion and Scene collect the main controls; Extra separates noise,
+regional scale and postprocessing. All panels stay mounted, preserving drafts and
+scene settings. Accessible roving keyboard tabs support arrows/Home/End. Structured
+validation reveals the affected tab; Scene controls apply live without generation.
+
+View-owned controls/results visibility preserves forms and preview context. Desktop
+sidebars scroll independently; narrow screens stack panels. Detailed verification
+and display diagnostics are disclosures; experiments stay on the results side and
+collapsed initially. Panel width toggles respect the computation lock. No new
+inputs, defaults, dependencies, Core semantics or renderer algorithms. README empty.
+
+Verification passes: 488 Angular tests, 13 packaging checks and production
+publication without new style-budget warnings. Published browser checks cover tab
+keyboard access, retained drafts/WebGL context, responsive/touch layouts, actual
+Local/Remote equivalence, live scene controls, deferred Sun loading and night/moon
+rendering. Final PWA update/offline new-seed checks pass with Bloom, inland water,
+shore stones and reeds; deployment simulation files are restored.

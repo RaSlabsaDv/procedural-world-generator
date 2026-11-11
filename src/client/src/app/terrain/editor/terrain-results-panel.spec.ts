@@ -42,3 +42,18 @@ it('retains display timing for an unchanged result when the other mode changes',
   await fixture.whenStable();
   expect(component.displayTimes()['local']).toBeUndefined();
 });
+
+it('hides the inspector without destroying its content', async () => {
+  const fixture = TestBed.createComponent(TerrainResultsPanel);
+  await fixture.whenStable();
+  const el = fixture.nativeElement as HTMLElement,
+    panel = el.querySelector<HTMLElement>('#measurement-sidebar')!;
+  el.querySelector<HTMLButtonElement>('#toggle-inspector')!.click();
+  await fixture.whenStable();
+  expect(panel.hidden).toBe(true);
+  expect(el.classList.contains('inspector-hidden')).toBe(true);
+  el.querySelector<HTMLButtonElement>('#toggle-inspector')!.click();
+  await fixture.whenStable();
+  expect(panel.hidden).toBe(false);
+  expect(el.querySelector('#measurement-sidebar')).toBe(panel);
+});

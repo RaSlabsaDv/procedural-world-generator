@@ -1,3 +1,4 @@
+import { SETTINGS_TABS, SettingsTab } from './terrain/editor/settings-tabs';
 import { AppearanceControls } from './terrain/editor/appearance-controls';
 import { SunControls } from './terrain/editor/sun-controls';
 import { AtmosphereControls } from './terrain/editor/atmosphere-controls';
@@ -34,7 +35,25 @@ import { OperationLock } from './platform/operation-lock.service';
   styleUrls: ['./shared/panel.css', './app.css'],
 })
 export class App {
-  protected readonly sunRequested = signal(false);
+  protected readonly settingsTabs = SETTINGS_TABS;
+  protected readonly settingsTab = signal<SettingsTab>('terrain');
+  protected settingsTabKey(event: KeyboardEvent, index: number): void {
+    const key = event.key;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(key)) return;
+    event.preventDefault();
+    const next =
+      key === 'Home'
+        ? 0
+        : key === 'End'
+          ? this.settingsTabs.length - 1
+          : (index + (['ArrowLeft', 'ArrowUp'].includes(key) ? -1 : 1) + this.settingsTabs.length) %
+            this.settingsTabs.length;
+    this.settingsTab.set(this.settingsTabs[next].id);
+    (event.currentTarget as HTMLElement).parentElement
+      ?.querySelector<HTMLButtonElement>('#settings-tab-' + this.settingsTabs[next].id)
+      ?.focus();
+  }
+  protected readonly controlsVisible = signal(true);
   protected readonly experiments = inject(ExperimentRunner);
   protected readonly experimentRunning = signal(false);
   protected readonly experimentPairs = signal(DEFAULT_MEASURED_PAIRS);

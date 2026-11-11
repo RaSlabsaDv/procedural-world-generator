@@ -1,3 +1,4 @@
+const { fillControl } = require("./support/editor.cjs");
 const {
   waitForGeneration,
   fillParameters,
@@ -383,11 +384,11 @@ const assert = require("node:assert/strict"),
       [2026, 0.8, 0.16, 0.25],
       [-7, 0.45, 0, 0.9],
     ]) {
-      await page.locator("#seed").fill(String(seed));
-      await page.locator("#globalMoisture").fill(String(moisture));
-      await page.locator("#seaLevel").fill(String(sea));
-      await page.locator("#globalWarmth").fill(String(warmth));
-      await page.locator("#iterations").fill("16");
+      await fillControl(page, "#seed", String(seed));
+      await fillControl(page, "#globalMoisture", String(moisture));
+      await fillControl(page, "#seaLevel", String(sea));
+      await fillControl(page, "#globalWarmth", String(warmth));
+      await fillControl(page, "#iterations", "16");
       await page.locator("#generate-local").click();
       await complete();
       await page.locator("app-terrain-preview .display-time").waitFor();
@@ -431,7 +432,7 @@ const assert = require("node:assert/strict"),
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await ready();
-    await page.locator("#seed").fill("-9401");
+    await fillControl(page, "#seed", "-9401");
     await page.locator("#generate-local").click();
     await complete();
     await page.locator("app-terrain-preview .display-time").waitFor();

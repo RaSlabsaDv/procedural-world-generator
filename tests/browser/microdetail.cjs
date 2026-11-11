@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Real WebGL array/normal orientation and production shader/fade/ownership checks.
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises"),
@@ -169,10 +171,10 @@ const {
     assert.ok(baseline[0].terrain.samplers <= baseline[0].terrain.maxSamplers);
     assert.equal(baseline[0].terrain.attributes, 5);
     const canvas = page.locator("app-terrain-preview canvas").first();
-    await page.locator("#water-settings summary").click();
+    await openSettingsPanel(page, "water-settings");
     const snapshot = async (off, value) => {
       await page.evaluate((v) => (window.__microOff = v), off);
-      await page.locator("#water-foam").fill(value);
+      await fillControl(page, "#water-foam", value);
       return canvas.screenshot();
     };
     const overviewOn = await snapshot(false, "0.44"),
@@ -228,9 +230,9 @@ const {
     );
     assert.equal(lights[0].activeShadowUpdates, 1);
     await snapshot(false, "0.44");
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     for (const hour of ["7", "0", "12"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await canvas.screenshot({
         path: artifactPath(`microdetail-hour-${hour}.png`),
       });

@@ -644,4 +644,47 @@ describe('App terrain workflow', () => {
     );
     expect(fixture.nativeElement.querySelector('#race-outcome').textContent).toContain('Excluded');
   });
+  it('hides controls without destroying drafts or accordion state', async () => {
+    const seed = fixture.nativeElement.querySelector('#seed') as HTMLInputElement;
+    seed.value = '123';
+    seed.dispatchEvent(new Event('input', { bubbles: true }));
+    const group = fixture.nativeElement.querySelector('.parameter-group') as HTMLDetailsElement;
+    group.open = false;
+    button('toggle-controls').click();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#parameter-sidebar').hidden).toBe(true);
+    button('toggle-controls').click();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('#seed')).toBe(seed);
+    expect(seed.value).toBe('123');
+    expect(group.open).toBe(false);
+    expect(button('toggle-controls').getAttribute('aria-expanded')).toBe('true');
+  });
+  it('switches settings with roving keyboard tabs and retains drafts', async () => {
+    button('settings-tab-terrain').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+    );
+    await fixture.whenStable();
+    expect(button('settings-tab-biomes').getAttribute('aria-selected')).toBe('true');
+    expect(fixture.nativeElement.querySelector('#settings-panel-terrain').hidden).toBe(true);
+    expect(fixture.nativeElement.querySelector('#settings-panel-biomes').hidden).toBe(false);
+    button('settings-tab-biomes').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'End', bubbles: true }),
+    );
+    await fixture.whenStable();
+    expect(button('settings-tab-extra').getAttribute('tabindex')).toBe('0');
+    expect(fixture.nativeElement.querySelector('#seed').value).toBe('42');
+  });
+  it('reveals the settings tab containing a structured validation error', async () => {
+    button('settings-tab-terrain').click();
+    await fixture.whenStable();
+    fixture.componentInstance['error'].set(
+      new TerrainError('validation', 'Invalid setting', { octaves: 'Invalid octaves.' }),
+    );
+    await fixture.whenStable();
+    expect(button('settings-tab-extra').getAttribute('aria-selected')).toBe('true');
+    expect(fixture.nativeElement.querySelector('#octaves-error').textContent).toContain(
+      'Invalid octaves',
+    );
+  });
 });

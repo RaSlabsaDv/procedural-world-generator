@@ -1,3 +1,4 @@
+const { fillControl } = require("./support/editor.cjs");
 const { waitForTerrain, fillParameters } = require("./support/editor.cjs");
 // Static shadow reuse, paused work, minimum terrain and cleanup in real WebGL.
 const {
@@ -89,7 +90,7 @@ const assert = require("node:assert/strict"),
     const reset = await current();
     assert.equal(reset.activeShadowUpdates, 1);
     // A real worker computation holds the lock: even synthetic control events must not render.
-    await page.locator("#iterations").fill("256");
+    await fillControl(page, "#iterations", "256");
     await page.locator("#generate-local").click();
     await page.waitForFunction(
       () =>

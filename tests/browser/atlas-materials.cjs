@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Identical requests and actual camera framing before/after presentation changes.
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -316,7 +318,7 @@ const cases = microStudy
     await waitForOfflineReady(page);
     if (!finishStudy || finishReference) await useReferenceAppearance(page);
     if (reference) {
-      await page.locator("#atmosphere-settings summary").click();
+      await openSettingsPanel(page, "atmosphere-settings");
       await page.locator("#atmosphere-enabled").uncheck();
     }
     const captures = [],
@@ -329,8 +331,8 @@ const cases = microStudy
       const { hour, ...values } = rawValues;
       if (finishStudy) {
         if (!(await page.locator("#sun-settings").evaluate((el) => el.open)))
-          await page.locator("#sun-settings summary").click();
-        await page.locator("#sun-time").fill(String(hour));
+          await openSettingsPanel(page, "sun-settings");
+        await fillControl(page, "#sun-time", String(hour));
       }
       await page.locator("#reset-parameters").click();
       await fillParameters(page, {

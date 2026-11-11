@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Production UI sun cycle, shared bindings, static shadow ownership and offline use.
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises");
@@ -123,7 +125,7 @@ const {
       await page.locator("#numeric-match").innerText(),
       /All heights match/,
     );
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     await page.locator("#sun-time").waitFor();
     assert.equal(await page.locator("#sun-time-value").innerText(), "12:00");
     assert.match(
@@ -139,7 +141,7 @@ const {
       lightBefore = await liveLighting();
     const times = [];
     for (const hour of ["6.25", "9", "17.75", "0", "24", "12"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await page.waitForTimeout(80);
       const current = await state();
       assert.equal(current.rpc, calls.rpc);
@@ -164,7 +166,7 @@ const {
       times.push(Number(hour));
     }
     for (const azimuth of ["0", "90", "180", "270", "359"]) {
-      await page.locator("#sun-direction").fill(azimuth);
+      await fillControl(page, "#sun-direction", azimuth);
       await page.waitForTimeout(60);
       assert.equal((await state()).views[0].uploads, initial.views[0].uploads);
     }
@@ -177,8 +179,8 @@ const {
     );
     await page.locator("#compare-views").click();
     await page.locator("app-terrain-preview .display-time").nth(1).waitFor();
-    await page.locator("#sun-direction").fill("90");
-    await page.locator("#sun-time").fill("9");
+    await fillControl(page, "#sun-direction", "90");
+    await fillControl(page, "#sun-time", "9");
     await page.waitForTimeout(80);
     let pair = await state();
     assert.equal(pair.views.length, 2);
@@ -216,26 +218,26 @@ const {
       pair.views.map((r) => r.uploads),
       beforeRapid.views.map((r) => r.uploads),
     );
-    await page.locator("#atmosphere-settings summary").click();
+    await openSettingsPanel(page, "atmosphere-settings");
     await page.locator("#atmosphere-enabled").uncheck();
     const noFog = await liveLighting();
-    await page.locator("#sun-time").fill("10");
+    await fillControl(page, "#sun-time", "10");
     await page.waitForTimeout(80);
     assert.ok(
       (await liveLighting())[0].activeShadowUpdates >
         noFog[0].activeShadowUpdates,
     );
-    await page.locator("#sun-direction").fill("45");
+    await fillControl(page, "#sun-direction", "45");
     await page.waitForTimeout(80);
     const unchanged = await liveLighting();
-    await page.locator("#atmosphere-haze").fill("0.4");
+    await fillControl(page, "#atmosphere-haze", "0.4");
     await page.waitForTimeout(80);
     assert.deepEqual(
       (await liveLighting()).map((r) => r.activeShadowUpdates),
       unchanged.map((r) => r.activeShadowUpdates),
     );
-    await page.locator("#water-settings summary").click();
-    await page.locator("#water-foam").fill("0.2");
+    await openSettingsPanel(page, "water-settings");
+    await fillControl(page, "#water-foam", "0.2");
     await page.waitForTimeout(80);
     assert.deepEqual(
       (await liveLighting()).map((r) => r.activeShadowUpdates),
@@ -271,8 +273,8 @@ const {
     await page.reload();
     await waitForOfflineReady(page);
     await useReferenceAppearance(page);
-    await page.locator("#sun-settings summary").click();
-    await page.locator("#sun-time").fill("9");
+    await openSettingsPanel(page, "sun-settings");
+    await fillControl(page, "#sun-time", "9");
     await fillParameters(page, {
       width: 33,
       height: 25,
@@ -281,7 +283,7 @@ const {
     });
     await page.locator("#generate-local").click();
     await waitForTerrain(page);
-    await page.locator("#sun-direction").fill("135");
+    await fillControl(page, "#sun-direction", "135");
     await page.setViewportSize({ width: 390, height: 844 });
     assert.ok(
       await page.evaluate(
@@ -300,7 +302,7 @@ const {
     );
     await page.mouse.up();
     for (const hour of ["6.25", "12", "17.75", "0"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await canvas.screenshot({
         path: artifactPath(`sun-horizon-${hour}.png`),
       });
@@ -338,7 +340,7 @@ const {
         ),
       ),
     ]);
-    await deferredPage.locator("#sun-settings summary").click();
+    await deferredPage.locator("#settings-tab-scene").click();
     assert.equal(
       await deferredPage.locator("#sun-time").count(),
       0,

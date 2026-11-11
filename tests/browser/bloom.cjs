@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises");
 const {
@@ -294,7 +296,7 @@ const {
       await page.locator("#numeric-match").innerText(),
       /All heights match/,
     );
-    await page.locator("#appearance-settings summary").click();
+    await openSettingsPanel(page, "appearance-settings");
     const toggle = page.locator("#appearance-bloom");
     assert.equal(await toggle.isChecked(), false);
     const canvas = page.locator("app-terrain-preview canvas").first();
@@ -320,7 +322,7 @@ const {
     }
     await canvas.screenshot({ path: artifactPath("bloom-coast-on.png") });
     await page.evaluate(() => (window.__bloomFail = true));
-    await page.locator("#appearance-exposure").fill("1.05");
+    await fillControl(page, "#appearance-exposure", "1.05");
     assert.match(
       await page.locator(".finishing-warning").innerText(),
       /without bloom/,
@@ -328,7 +330,7 @@ const {
     assert.equal((await state())[0].hdr.length, 1);
     await page.evaluate(() => (window.__bloomFail = false));
     await toggle.uncheck();
-    await page.locator("#appearance-exposure").fill("1");
+    await fillControl(page, "#appearance-exposure", "1");
     await toggle.check();
     assert.equal((await state())[0].hdr.length, 3);
 
@@ -336,7 +338,7 @@ const {
     assert.deepEqual(await canvas.screenshot(), before);
     assert.equal((await state())[0].hdr.length, 1);
     await page.locator("#appearance-tone").selectOption("reference");
-    await page.locator("#appearance-exposure").fill("0.25");
+    await fillControl(page, "#appearance-exposure", "0.25");
     await page.evaluate(
       () => (window.__bloomFixture = { pattern: "flat", value: 2 }),
     );
@@ -380,7 +382,7 @@ const {
     await page.evaluate(
       () => (window.__bloomFixture = { pattern: "pulse", value: 4 }),
     );
-    await page.locator("#appearance-exposure").fill("0.3");
+    await fillControl(page, "#appearance-exposure", "0.3");
     const pulse = (await state())[0];
     assert.ok(pulse.bright.sum > 0);
     assert.ok(pulse.blur.nonzero > pulse.bright.nonzero);
@@ -389,7 +391,7 @@ const {
     await page.evaluate(
       () => (window.__bloomFixture = { pattern: "edge", value: 4 }),
     );
-    await page.locator("#appearance-exposure").fill("0.35");
+    await fillControl(page, "#appearance-exposure", "0.35");
     const edge = (await state())[0];
     assert.ok(edge.blur.sum > 0);
     assert.equal(edge.blur.right, 0);
@@ -406,9 +408,9 @@ const {
       assert.equal(r.hdr.length, 3);
       assert.deepEqual(r.frame, ["extract", "horizontal", "vertical", "final"]);
     }
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     for (const hour of ["6.25", "0", "12"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await canvas.screenshot({ path: artifactPath(`bloom-hour-${hour}.png`) });
     }
     await page.locator("#select-local").click();
@@ -465,7 +467,7 @@ const {
     await context.setOffline(true);
     await page.reload();
     await waitForOfflineReady(page);
-    await page.locator("#appearance-settings summary").click();
+    await openSettingsPanel(page, "appearance-settings");
     await page.locator("#appearance-bloom").check();
     await fillParameters(page, {
       width: 65,
@@ -491,7 +493,7 @@ const {
     fallback.on("pageerror", (e) => errors.push(e.message));
     await fallback.goto(base);
     await waitForOfflineReady(fallback);
-    await fallback.locator("#appearance-settings summary").click();
+    await openSettingsPanel(fallback, "appearance-settings");
     await fallback.locator("#appearance-bloom").check();
     await fillParameters(fallback, { width: 33, height: 25, iterations: 0 });
     await fallback.locator("#generate-local").click();

@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Real production WebGL: shared bindings, reference restoration, budgets and offline use.
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -156,7 +158,7 @@ const {
       await page.locator("#numeric-match").innerText(),
       /All heights match/,
     );
-    await page.locator("#atmosphere-settings summary").click();
+    await openSettingsPanel(page, "atmosphere-settings");
     const baseline = await state(),
       calls = { rpc: baseline.rpc, requests };
     for (const r of baseline.views) {
@@ -164,8 +166,8 @@ const {
       assert.equal(r.skyBytes, 36);
       assert.ok(r.color <= 21);
     }
-    await page.locator("#atmosphere-haze").fill("0.8");
-    await page.locator("#atmosphere-valley-fog").fill("0.7");
+    await fillControl(page, "#atmosphere-haze", "0.8");
+    await fillControl(page, "#atmosphere-valley-fog", "0.7");
     await page.waitForTimeout(100);
     let changed = await state();
     assert.equal(changed.rpc, calls.rpc);

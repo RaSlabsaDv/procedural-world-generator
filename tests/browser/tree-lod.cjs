@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises");
 const {
@@ -89,8 +91,8 @@ const { instrumentTrees, treeState } = require("./support/trees.cjs");
       "LOD never uploads static casters",
     );
     const stable = signature(close);
-    await page.locator("#water-settings summary").click();
-    await page.locator("#water-foam").fill("0.45");
+    await openSettingsPanel(page, "water-settings");
+    await fillControl(page, "#water-foam", "0.45");
     assert.deepEqual(signature((await treeState(page))[0]), stable);
     assert.equal((await treeState(page))[0].uploads, close.uploads);
     const lightingBefore = (await lightingResources(page)).filter(
@@ -122,9 +124,9 @@ const { instrumentTrees, treeState } = require("./support/trees.cjs");
     pair.forEach(check);
     assert.deepEqual(signature(pair[0]), signature(pair[1]));
     assert.deepEqual(pair[0].shadows, pair[1].shadows);
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     for (const hour of ["7", "0", "12"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await canvas.screenshot({
         path: artifactPath(`tree-lod-hour-${hour}.png`),
       });
@@ -133,7 +135,7 @@ const { instrumentTrees, treeState } = require("./support/trees.cjs");
         signature(pair[0]),
       );
     }
-    await page.locator("#atmosphere-settings summary").click();
+    await openSettingsPanel(page, "atmosphere-settings");
     await page.locator("#atmosphere-enabled").uncheck();
     await canvas.screenshot({
       path: artifactPath("tree-lod-atmosphere-off.png"),

@@ -1,3 +1,4 @@
+const { fillControl } = require("./support/editor.cjs");
 // Real small-workload Race UI regression, not a controlled performance campaign.
 const assert = require("node:assert/strict");
 const fs = require("node:fs/promises");
@@ -185,7 +186,7 @@ function parseCsv(text) {
       .boundingBox();
     assert.ok(experiments.x > viewport.x + viewport.width - 1);
     await page.locator("#race-heading").click();
-    await page.locator("#race-pairs").fill("2");
+    await fillControl(page, "#race-pairs", "2");
     gateNext = true;
     await page.locator("#race-start").click();
     await page.waitForFunction(() =>

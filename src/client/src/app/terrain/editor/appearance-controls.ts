@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, input } from '@angular/core';
 import { OperationLock } from '../../platform/operation-lock.service';
 import {
   APPEARANCE_LIMITS,
@@ -7,7 +7,7 @@ import {
 
 @Component({
   selector: 'app-appearance-controls',
-  template: `<details id="appearance-settings">
+  template: `<details [open]="expanded()" id="appearance-settings">
     <summary>Appearance <span>Color & exposure</span></summary>
     <fieldset [disabled]="busy()">
       <label for="appearance-tone"
@@ -115,6 +115,7 @@ import {
   ],
 })
 export class AppearanceControls {
+  readonly expanded = input(false);
   protected readonly appearance = inject(AppearanceSettingsService);
   protected readonly busy = inject(OperationLock).busy;
   protected readonly limits = APPEARANCE_LIMITS;

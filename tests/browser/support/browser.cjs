@@ -26,6 +26,7 @@ async function waitForOfflineReady(page) {
 }
 // Existing shader/resource regressions explicitly retain the preceding direct pipeline.
 async function useReferenceAppearance(page) {
+  await require("./editor.cjs").showSettings(page, "extra");
   if (!(await page.locator("#appearance-settings").count())) return;
   const panel = page.locator("#appearance-settings");
   const open = await panel.evaluate((el) => el.open);

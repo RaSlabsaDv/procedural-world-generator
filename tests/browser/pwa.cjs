@@ -1,3 +1,4 @@
+const { fillControl } = require("./support/editor.cjs");
 // Optional end-to-end tool: run against the local published bundle, not ng serve.
 const {
   base,
@@ -78,6 +79,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
   const ready = async (target) => {
     await waitForOfflineReady(target);
     if (bloomSmoke) {
+      await require("./support/editor.cjs").showSettings(target, "extra");
       const panel = target.locator("#appearance-settings");
       if (!(await panel.evaluate((el) => el.open)))
         await panel.locator("summary").click();
@@ -85,7 +87,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
     }
   };
   const generate = async (target, seed, mode = "local") => {
-    await target.locator("#seed").fill(String(seed));
+    await fillControl(target, "#seed", String(seed));
     await target.locator("#generate-" + mode).click();
     await target.waitForFunction(
       () =>
@@ -222,7 +224,7 @@ const catalogPattern = /^offline-assets\.[0-9a-f]{64}\.json$/;
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
     await ready(page);
-    if (inlandSmoke) await page.locator("#seaLevel").fill("0");
+    if (inlandSmoke) await fillControl(page, "#seaLevel", "0");
     await generate(page, 1001);
     assert.equal(
       await page

@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises");
 const {
@@ -112,10 +114,10 @@ const {
     assert.ok(b.views.at(-1).frames > a.views.at(-1).frames);
     assert.ok(b.views.at(-1).time > a.views.at(-1).time);
     const beforeCalls = { requests, rpc: b.rpc };
-    await page.locator("#water-settings summary").click();
-    await page.locator("#water-color").fill("#2288aa");
-    await page.locator("#water-turbidity").fill("1.2");
-    await page.locator("#water-foam").fill("0.8");
+    await openSettingsPanel(page, "water-settings");
+    await fillControl(page, "#water-color", "#2288aa");
+    await fillControl(page, "#water-turbidity", "1.2");
+    await fillControl(page, "#water-foam", "0.8");
     await page.waitForTimeout(100);
     assert.equal(requests, beforeCalls.requests);
     assert.equal((await state()).rpc, beforeCalls.rpc);

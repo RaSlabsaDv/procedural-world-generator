@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Real decorative grass: GPU buffers, close/fade pixels, equivalence and lifecycle.
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises");
@@ -213,11 +215,11 @@ const {
     assert.equal(first[0].grass.colors.bytes, first[0].grass.count * 12);
     // Six tree groups can split into24 near/far draws; other scene draws add10.
     assert.ok(first[0].colorCalls <= 34);
-    await page.locator("#water-settings summary").click();
+    await openSettingsPanel(page, "water-settings");
     const canvas = page.locator("app-terrain-preview canvas").first();
     const snapshot = async (hide, value) => {
       await page.evaluate((v) => (window.__hideGrass = v), hide);
-      await page.locator("#water-foam").fill(value);
+      await fillControl(page, "#water-foam", value);
       return canvas.screenshot();
     };
     const farOn = await snapshot(false, "0.44"),
@@ -267,13 +269,13 @@ const {
     await snapshot(false, "0.44");
     const stable = await hashes();
     assert.equal((await state())[0].uploads, first[0].uploads);
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     for (const hour of ["7", "0", "12"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await canvas.screenshot({ path: artifactPath(`grass-hour-${hour}.png`) });
       assert.deepEqual(await hashes(), stable);
     }
-    await page.locator("#atmosphere-settings summary").click();
+    await openSettingsPanel(page, "atmosphere-settings");
     await page.locator("#atmosphere-enabled").uncheck();
     await canvas.screenshot({
       path: artifactPath("grass-reference-atmosphere.png"),

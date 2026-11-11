@@ -14,6 +14,7 @@ interface Entry {
 
 @Component({
   selector: 'app-terrain-results',
+  host: { '[class.inspector-hidden]': '!inspectorVisible()' },
   imports: [TerrainPreview],
   templateUrl: './terrain-results-panel.html',
   styleUrls: ['../../shared/panel.css', './terrain-results-panel.css'],
@@ -31,6 +32,7 @@ export class TerrainResultsPanel {
   readonly busy = input(false);
   readonly draft = input<TerrainRequest | null>(null);
   readonly preferred = input<Source>('local');
+  protected readonly inspectorVisible = signal(true);
   protected readonly selected = signal<Source>('local');
   protected readonly comparing = signal(false);
   protected readonly displayTimes = signal<Partial<Record<Source, number>>>({});

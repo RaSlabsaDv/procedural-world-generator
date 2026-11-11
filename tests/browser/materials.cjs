@@ -1,3 +1,4 @@
+const { fillControl } = require("./support/editor.cjs");
 const {
   waitForTerrain,
   fillParameters,
@@ -566,7 +567,7 @@ const artifact = artifactPath;
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForOfflineReady(page);
     await useReferenceAppearance(page);
-    await page.locator("#seed").fill("-8812");
+    await fillControl(page, "#seed", "-8812");
     await page.locator("#generate-local").click();
     await complete();
     const offline = await assertResources(1);

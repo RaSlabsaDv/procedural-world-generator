@@ -16,7 +16,20 @@
         </div>
       </div>
     </div>
-    <app-pwa-status />
+    <div class="header-tools">
+      <button
+        [disabled]="busy()"
+        id="toggle-controls"
+        class="secondary"
+        type="button"
+        aria-controls="parameter-sidebar"
+        [attr.aria-expanded]="controlsVisible()"
+        (click)="controlsVisible.set(!controlsVisible())"
+      >
+        {{ controlsVisible() ? 'Hide controls' : 'Show controls' }}
+      </button>
+      <app-pwa-status />
+    </div>
   </header>
   <div class="status-strip">
     <p class="status" role="status" aria-live="polite">{{ status() }}</p>
@@ -34,36 +47,55 @@
       }
     </div>
   }
-  <div class="workspace">
-    <aside class="parameter-sidebar" aria-label="Parameter sidebar">
-      <details open>
-        <summary class="sidebar-heading">Parameters <span>Draft settings</span></summary>
-        <app-terrain-parameters
-          [mapForm]="form"
-          [simulationForm]="terrainForm"
-          [busy]="busy()"
-          [error]="error()"
-          (generate)="generate($event)"
-        />
-      </details>
-      <app-appearance-controls />
-      <app-ocean-controls />
-      <app-atmosphere-controls />
-      <details
-        id="sun-settings"
-        class="sun-settings"
-        #sunPanel
-        (toggle)="sunRequested.set(sunPanel.open)"
-      >
-        <summary>Sun <span>Lighting</span></summary>
-        @defer (when sunRequested() && !busy()) {
-          <app-sun-controls />
-        } @placeholder {
-          <p class="sun-placeholder">
-            {{ busy() ? 'Available after computation.' : 'Open to adjust the sun.' }}
-          </p>
+  <div class="workspace" [class.controls-hidden]="!controlsVisible()">
+    <aside
+      id="parameter-sidebar"
+      class="parameter-sidebar"
+      aria-label="Parameter sidebar"
+      [hidden]="!controlsVisible()"
+    >
+      <nav class="control-nav settings-tabs" role="tablist" aria-label="Settings">
+        @for (tab of settingsTabs; track tab.id; let i = $index) {
+          <button
+            type="button"
+            role="tab"
+            [id]="'settings-tab-' + tab.id"
+            [attr.aria-selected]="settingsTab() === tab.id"
+            [attr.aria-controls]="'settings-panel-' + tab.id"
+            [attr.tabindex]="settingsTab() === tab.id ? 0 : -1"
+            (click)="settingsTab.set(tab.id)"
+            (keydown)="settingsTabKey($event, i)"
+          >
+            {{ tab.label }}
+          </button>
         }
-      </details>
+      </nav>
+      <app-terrain-parameters
+        [mapForm]="form"
+        [simulationForm]="terrainForm"
+        [activeTab]="settingsTab()"
+        (tabRequested)="settingsTab.set($event)"
+        [busy]="busy()"
+        [error]="error()"
+        (generate)="generate($event)"
+      >
+        <app-appearance-controls [expanded]="settingsTab() === 'extra'" />
+        <div sceneControls>
+          <p class="scene-heading">Live scene controls <span>No regeneration</span></p>
+          <details [open]="settingsTab() === 'scene'" id="sun-settings" class="sun-settings">
+            <summary>Sun <span>Lighting</span></summary>
+            @defer (when settingsTab() === 'scene' && !busy()) {
+              <app-sun-controls />
+            } @placeholder {
+              <p class="sun-placeholder">
+                {{ busy() ? 'Available after computation.' : 'Loading lighting controls…' }}
+              </p>
+            }
+          </details>
+          <app-ocean-controls [expanded]="settingsTab() === 'scene'" />
+          <app-atmosphere-controls [expanded]="settingsTab() === 'scene'" />
+        </div>
+      </app-terrain-parameters>
     </aside>
     <app-terrain-results
       [local]="local()"

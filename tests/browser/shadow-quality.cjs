@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 // Paired production views and GPU shadow uniforms; no app debug hooks.
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises"),
@@ -143,7 +145,7 @@ const cases = [
     await page.goto(base);
     await waitForOfflineReady(page);
     await useReferenceAppearance(page);
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     await page.locator("#sun-time").waitFor();
     const captures = [];
     for (const [label, values] of cases.filter(
@@ -200,8 +202,8 @@ const cases = [
         ["low-forward", 7, 225],
         ["low-side", 7, 135],
       ]) {
-        await page.locator("#sun-time").fill(String(hour));
-        await page.locator("#sun-direction").fill(String(azimuth));
+        await fillControl(page, "#sun-time", String(hour));
+        await fillControl(page, "#sun-direction", String(azimuth));
         await page
           .getByRole("button", { name: "Reset camera", exact: true })
           .click();

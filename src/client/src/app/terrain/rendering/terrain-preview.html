@@ -17,17 +17,23 @@
 @if (problem()) {
   <p role="alert">{{ problem() }} Numerical results remain available.</p>
 }
-@if (displayMs() !== null) {
-  <p class="display-time">
-    Textured 3D setup and first render submission (CPU): {{ displayMs()!.toFixed(2) }} ms
-  </p>
-}
 @if (displayMs() === null && !problem()) {
   <p class="surface-loading">Preparing textured surface…</p>
 }
-@if (textureWaitMs() !== null) {
-  <p class="texture-time">
-    Surface asset wait: {{ textureWaitMs()!.toFixed(2) }} ms (excluded from CPU setup).
-  </p>
-}
-<p>Drag to orbit · Scroll or pinch to zoom · Right-drag to pan.</p>
+<details class="preview-notes">
+  <summary>
+    Display details
+    @if (displayMs() !== null) {
+      <span class="display-time">{{ displayMs()!.toFixed(2) }} ms CPU setup</span>
+    }
+  </summary>
+  @if (displayMs() !== null) {
+    <p>Textured 3D setup and first render submission (CPU): {{ displayMs()!.toFixed(2) }} ms</p>
+  }
+  @if (textureWaitMs() !== null) {
+    <p class="texture-time">
+      Surface asset wait: {{ textureWaitMs()!.toFixed(2) }} ms (excluded from CPU setup).
+    </p>
+  }
+</details>
+<p class="navigation-hint">Drag to orbit · Scroll or pinch to zoom · Right-drag to pan.</p>

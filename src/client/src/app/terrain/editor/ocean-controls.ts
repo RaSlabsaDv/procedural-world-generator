@@ -1,10 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, input } from '@angular/core';
 import { OperationLock } from '../../platform/operation-lock.service';
 import { OceanSettings, OceanSettingsService } from '../rendering/ocean-settings.service';
 
 @Component({
   selector: 'app-ocean-controls',
-  template: `<details id="water-settings">
+  template: `<details [open]="expanded()" id="water-settings">
     <summary>Water <span>Appearance</span></summary>
     <fieldset [disabled]="busy()">
       <label for="water-color"
@@ -100,6 +100,7 @@ import { OceanSettings, OceanSettingsService } from '../rendering/ocean-settings
   ],
 })
 export class OceanControls {
+  readonly expanded = input(false);
   protected readonly water = inject(OceanSettingsService);
   protected readonly busy = inject(OperationLock).busy;
   protected readonly problem = signal('');

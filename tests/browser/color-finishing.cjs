@@ -1,3 +1,5 @@
+const { openSettingsPanel } = require("./support/editor.cjs");
+const { fillControl } = require("./support/editor.cjs");
 const assert = require("node:assert/strict"),
   fs = require("node:fs/promises");
 const {
@@ -291,7 +293,7 @@ const {
     await canvas.screenshot({
       path: artifactPath("color-finishing-aces-noon.png"),
     });
-    await page.locator("#appearance-settings summary").click();
+    await openSettingsPanel(page, "appearance-settings");
     const firstRequests = requests,
       firstUploads = initial.uploads,
       firstShadows = initial.shadowClears;
@@ -323,7 +325,7 @@ const {
     await page.locator("#appearance-grading").uncheck();
     await page.locator("#appearance-vignette").uncheck();
     await page.evaluate(() => (window.__finishFixture = [0.18, 0.5, 4]));
-    await page.locator("#appearance-exposure").fill("0.5");
+    await fillControl(page, "#appearance-exposure", "0.5");
     const aces = (await state())[0].pixels.center;
     // Independent Python float64 ACES+sRGB fixture, tolerating output quantization.
     [134, 156, 244].forEach((v, i) =>
@@ -335,14 +337,14 @@ const {
     await page.evaluate(
       () => (window.__finishFixture = [0.0005, 0.001, 0.0015]),
     );
-    await page.locator("#appearance-exposure").fill("1");
+    await fillControl(page, "#appearance-exposure", "1");
     const nightToe = (await state())[0].pixels.center;
     [2, 3, 5].forEach((v, i) => assert.ok(Math.abs(nightToe[i] - v) <= 1));
     await page.evaluate(() => (window.__finishFixture = [0, 0, 0]));
-    await page.locator("#appearance-exposure").fill("1.05");
+    await fillControl(page, "#appearance-exposure", "1.05");
     assert.deepEqual((await state())[0].pixels.center, [0, 0, 0, 255]);
     await page.evaluate(() => (window.__finishFixture = [0.18, 0.5, 4]));
-    await page.locator("#appearance-exposure").fill("0.5");
+    await fillControl(page, "#appearance-exposure", "0.5");
     await page.locator("#appearance-tone").selectOption("reference");
     const ref = (await state())[0].pixels.center;
     [85, 137, 255].forEach((v, i) =>
@@ -355,7 +357,7 @@ const {
     const vignette = (await state())[0].pixels;
     assert.ok(vignette.corner[0] < vignette.center[0]);
     await page.evaluate(() => (window.__finishFixture = null));
-    await page.locator("#appearance-exposure").fill("1");
+    await fillControl(page, "#appearance-exposure", "1");
     await page.locator("#appearance-vignette").uncheck();
     const referenceA = await canvas.screenshot();
     await page.locator("#appearance-tone").selectOption("aces");
@@ -373,9 +375,9 @@ const {
     assert.equal(pair.length, 2);
     assert.deepEqual(pair[0].final, pair[1].final);
     for (const row of pair) assert.equal(row.hdrTextures.length, 1);
-    await page.locator("#sun-settings summary").click();
+    await openSettingsPanel(page, "sun-settings");
     for (const hour of ["6.25", "0", "12"]) {
-      await page.locator("#sun-time").fill(hour);
+      await fillControl(page, "#sun-time", hour);
       await canvas.screenshot({
         path: artifactPath(`color-finishing-hour-${hour}.png`),
       });
@@ -384,7 +386,7 @@ const {
     const released = await state();
     for (const row of released) assert.equal(row.hdrTextures.length, 0);
     if (!(await page.locator("#appearance-settings").evaluate((el) => el.open)))
-      await page.locator("#appearance-settings summary").click();
+      await openSettingsPanel(page, "appearance-settings");
     await page.locator("#reset-appearance").click();
     await page.locator("#select-local").click();
     for (const [label, fields] of [

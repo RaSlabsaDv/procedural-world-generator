@@ -1,3 +1,4 @@
+import { SETTINGS_TABS, SettingsTab } from './settings-tabs';
 import {
   SLIDER_GUIDANCE,
   INPUT_GUIDANCE,
@@ -6,7 +7,16 @@ import {
   coverageLimit,
   iterationLimit,
 } from './parameter-guidance';
-import { Component, computed, effect, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  viewChildren,
+  ElementRef,
+} from '@angular/core';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { TerrainError } from '../data/terrain.models';
 import { MAP_PARAMETERS, SIMULATION_PARAMETERS } from './parameter-definitions';
@@ -30,6 +40,10 @@ export class TerrainParametersPanel {
   readonly busy = input(false);
   readonly error = input<TerrainError | null>(null);
   readonly generate = output<GenerationMode>();
+  readonly activeTab = input<SettingsTab>('terrain');
+  readonly tabRequested = output<SettingsTab>();
+  protected readonly tabs = SETTINGS_TABS;
+  private readonly groupPanels = viewChildren<ElementRef<HTMLDetailsElement>>('groupPanel');
   protected readonly showTips = signal(false);
   private readonly formRevision = signal(0);
   private readonly numberFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 4 });
@@ -40,6 +54,19 @@ export class TerrainParametersPanel {
   });
 
   constructor() {
+    effect(() => {
+      if (this.error()?.kind !== 'validation') return;
+      for (const group of this.groups()) {
+        const field = group.fields.find((f) => this.fieldError(f.name, f.nested));
+        if (field) {
+          this.tabRequested.emit(group.tab);
+          for (const panel of this.groupPanels())
+            if (panel.nativeElement.querySelector('#' + field.name))
+              panel.nativeElement.open = true;
+          break;
+        }
+      }
+    });
     effect((cleanup) => {
       const changed = () => this.formRevision.update((value) => value + 1);
       const map = this.mapForm().valueChanges.subscribe(changed);
@@ -71,6 +98,7 @@ export class TerrainParametersPanel {
       {
         title: 'Terrain',
         kind: 'terrain',
+        tab: 'terrain' as const,
         advanced: false,
         fields: [
           map('seed'),
@@ -79,18 +107,19 @@ export class TerrainParametersPanel {
           map('heightMultiplier'),
           simulation('mountainStrength'),
           simulation('seaLevel'),
-          simulation('landformRegionScale'),
         ],
       },
       {
         title: 'Landform balance',
         kind: 'coverage',
+        tab: 'terrain' as const,
         advanced: false,
         fields: [simulation('plainsCoverage'), simulation('mountainCoverage')],
       },
       {
         title: 'Climate & vegetation',
         kind: 'climate',
+        tab: 'biomes' as const,
         advanced: false,
         fields: [
           simulation('globalWarmth'),
@@ -101,14 +130,21 @@ export class TerrainParametersPanel {
       {
         title: 'Erosion',
         kind: 'erosion',
+        tab: 'erosion' as const,
         advanced: false,
         fields: [simulation('iterations'), simulation('rainfall'), simulation('evaporation')],
       },
       {
         title: 'Advanced noise',
         kind: 'noise',
+        tab: 'extra' as const,
         advanced: true,
-        fields: [map('noiseScale'), map('octaves'), simulation('warpStrength')],
+        fields: [
+          map('noiseScale'),
+          map('octaves'),
+          simulation('warpStrength'),
+          simulation('landformRegionScale'),
+        ],
       },
     ];
   });

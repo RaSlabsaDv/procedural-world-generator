@@ -1,3 +1,7 @@
+/* Keep live controls outside submission; generation inputs name their form owner. */
+form {
+  display: contents;
+}
 :host {
   display: block;
 }
@@ -6,6 +10,35 @@ fieldset {
   padding: 0.6rem;
   margin: 0;
 }
+.generate-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  margin: 0 0 0.4rem;
+  position: sticky;
+  top: 5.2rem;
+  z-index: 2;
+  background: var(--atlas-surface);
+  padding: 0.3rem 0;
+}
+.generate-actions button {
+  width: 100%;
+  padding: 0.4rem 0.15rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+#verify-equivalence {
+  grid-column: 1/-1;
+  --button-bg: var(--atlas-surface);
+  --button-hover: var(--atlas-soft);
+  --button-color: var(--atlas-text);
+  --button-border: var(--atlas-input-border);
+}
+#generate-remote {
+  --button-bg: var(--atlas-remote-strong);
+  --button-hover: var(--atlas-remote-hover);
+  --button-color: var(--atlas-raised);
+}
 .draft-tools {
   display: flex;
   gap: 0.35rem;
@@ -13,44 +46,29 @@ fieldset {
 }
 .draft-tools button {
   flex: 1;
-  padding: 0.35rem 0.25rem;
+  padding: 0.35rem 0.2rem;
   font-size: 0.7rem;
-}
-.generate-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.35rem;
-  margin: 0 0 0.4rem;
-}
-.generate-actions button {
-  width: 100%;
-  padding: 0.4rem 0.2rem;
-  font-size: 0.73rem;
-}
-#verify-equivalence {
-  grid-column: 1 / -1;
-}
-.tips-toggle {
-  display: block;
-  margin: 0 0 0.35rem auto;
-  padding: 0.15rem 0.35rem;
-  font-size: 0.68rem;
 }
 .parameter-group {
   border-top: 1px solid var(--atlas-rule);
 }
 .parameter-group > summary {
-  padding: 0.5rem 0;
-  color: var(--atlas-text);
+  padding: 0.45rem 0;
   font-weight: 700;
   font-size: 0.78rem;
 }
+.parameter-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 0.5rem;
+}
 .parameter {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px;
+  grid-column: 1/-1;
+  grid-template-columns: minmax(0, 1fr) 70px;
   align-items: center;
-  gap: 0.15rem 0.4rem;
-  margin-bottom: 0.55rem;
+  gap: 0.1rem 0.5rem;
+  margin-bottom: 0.4rem;
 }
 .parameter-label {
   min-width: 0;
@@ -60,9 +78,11 @@ label {
   font-weight: 600;
 }
 input[type='number'] {
-  box-sizing: border-box;
+  grid-column: 2;
+  grid-row: 1 / span 2;
   width: 100%;
   min-width: 0;
+  min-height: 32px;
   padding: 0.3rem 0.35rem;
   border: 1px solid var(--atlas-input-border);
   border-radius: var(--atlas-radius-sm);
@@ -76,75 +96,84 @@ input[aria-invalid='true'] {
 }
 .wide-input .parameter-label,
 .wide-input input[type='number'] {
-  grid-column: 1 / -1;
+  grid-column: 1/-1;
 }
 .wide-input .parameter-label {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.15rem 0.3rem;
+  gap: 0.3rem;
 }
-.slider,
-.parameter-help,
-.field-error {
-  grid-column: 1 / -1;
+.wide-input input[type='number'],
+.dimension-input input[type='number'] {
+  grid-row: 2;
+}
+.wide-input .range-hint {
+  max-width: 9rem;
+  text-align: right;
+}
+.dimension-input {
+  grid-column: auto;
+  grid-template-columns: 1fr;
+}
+.dimension-input input[type='number'] {
+  grid-column: 1;
 }
 .slider {
+  grid-column: 1;
+  grid-row: 2;
   width: 100%;
-  height: 16px;
-  margin: 0.1rem 0;
+  height: 18px;
+  margin: 0;
   accent-color: var(--atlas-primary);
 }
-.parameter-help {
-  color: var(--atlas-muted);
+.parameter-help,
+.field-error {
+  grid-column: 1/-1;
   font-size: 0.68rem;
   line-height: 1.4;
-  font-weight: 400;
 }
-[hidden] {
+.parameter-help,
+.range-hint,
+.budget-heading,
+.budget-note,
+.work-estimate {
+  color: var(--atlas-muted);
+}
+[hidden],
+.field-error:empty {
   display: none !important;
 }
-.field-error {
-  line-height: 1.35;
-  font-size: 0.68rem;
-}
-.field-error:empty {
-  display: none;
-}
 .range-hint {
-  display: block;
-  margin-top: 0.08rem;
-  font-size: 0.68rem;
-  line-height: 1.25;
-  color: var(--atlas-muted);
+  margin-left: 0.35rem;
+  font-size: 0.6rem;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
 }
 .range-hint b {
   font-weight: 400;
 }
-.range-warning {
+.range-warning,
+.over-budget .budget-message {
   color: var(--atlas-error);
 }
 .coverage-group {
-  margin-block: 0.15rem 0.5rem;
+  margin: 0.15rem 0 0.5rem;
   padding: 0 0.45rem 0.05rem;
   border: 1px solid var(--atlas-border);
   border-radius: var(--atlas-radius-sm);
   background: var(--atlas-local-soft);
 }
 .coverage-budget {
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.4rem;
 }
 .budget-heading {
   display: flex;
-  align-items: center;
   justify-content: space-between;
   font-size: 0.67rem;
-  color: var(--atlas-muted);
 }
-.budget-heading strong {
+.budget-heading strong,
+.budget-message {
   color: var(--atlas-primary);
 }
 .coverage-bar {
@@ -169,68 +198,42 @@ input[aria-invalid='true'] {
 .hills-segment {
   background: var(--atlas-hills);
 }
-label[for='plainsCoverage']::before,
-label[for='mountainCoverage']::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  margin-right: 0.3rem;
-  background: var(--atlas-plains);
-}
-label[for='mountainCoverage']::before {
-  background: var(--atlas-mountains);
-}
-.budget-message {
-  margin: 0;
+.budget-message,
+.budget-note {
+  margin: 0.2rem 0;
   font-size: 0.67rem;
   line-height: 1.4;
-  color: var(--atlas-primary);
-}
-.budget-note {
-  margin: 0.2rem 0 0;
-  font-size: 0.68rem;
-  line-height: 1.4;
-  color: var(--atlas-muted);
 }
 .over-budget {
   padding: 0.35rem;
-  border-radius: var(--atlas-radius-sm);
   background: var(--atlas-error-bg);
-}
-.over-budget .budget-message {
-  color: var(--atlas-error);
+  border-radius: var(--atlas-radius-sm);
 }
 .work-estimate {
   margin: 0.5rem 0;
   padding: 0.45rem;
   background: var(--atlas-soft);
   border-radius: var(--atlas-radius-sm);
-  color: var(--atlas-muted);
   font-size: 0.68rem;
 }
 .work-estimate > span {
   display: block;
   margin-top: 0.15rem;
 }
-.tips-toggle {
-  min-height: 24px;
-}
 @media (pointer: coarse) {
+  input[type='number'],
+  .draft-tools button,
+  .generate-actions button {
+    min-height: 40px;
+  }
   .slider {
     height: 28px;
   }
 }
 
-#generate-remote {
-  --button-bg: var(--atlas-remote-strong);
-  --button-hover: var(--atlas-remote-hover);
-  --button-color: var(--atlas-raised);
-}
-#verify-equivalence {
-  --button-bg: var(--atlas-surface);
-  --button-hover: var(--atlas-soft);
-  --button-color: var(--atlas-text);
-  --button-border: var(--atlas-input-border);
+.draft-summary {
+  margin: 0.35rem 0;
+  font-size: 0.67rem;
+  color: var(--atlas-muted);
+  font-variant-numeric: tabular-nums;
 }

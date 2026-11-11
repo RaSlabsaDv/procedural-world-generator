@@ -1314,3 +1314,28 @@ compare complete result/simulation snapshots where a before capture exists.
 `node tests/browser/inland-continuity.cjs` runs the full production-factory visual
 matrix with fixed prior cameras. PWA update/offline checks run last, using the existing
 Bloom/inland/stone/reed options. Setup observations are not controlled benchmarks.
+
+### Compact editor controls
+
+The retained left sidebar uses five accessible keyboard tabs:
+
+- Terrain: seed, dimensions, relief and shared plains/mountain balance.
+- Biomes: warmth, moisture and vegetation density.
+- Erosion: iterations, rainfall and evaporation.
+- Scene: live sun, water and atmosphere controls, without generation actions.
+- Extra: noise, regional scale and postprocessing/color settings.
+
+Forms and scene controls remain mounted across tab changes; draft values persist.
+Arrow keys and Home/End select tabs. Structured validation errors reveal the tab
+containing the invalid parameter. Busy operations disable editing; tabs remain
+available for inspection and the Sun import waits for computation to finish.
+Hide controls / Hide results preserve forms, results and WebGL previews. Experiment
+sections remain on the right and collapsed initially. Desktop panels scroll within
+their own bounds; narrow layouts stack without horizontal page overflow.
+
+Run `node tests/browser/compact-editor.cjs` with existing PWG overrides against the
+published app for tab/draft/WebGL retention, keyboard access, Local/Remote comparison,
+live controls and responsive/touch checks. Browser scenario input helpers reveal
+the owning tab before editing a field; assertions and generation fixtures remain.
+Existing editor, Sun deferred-import and final PWA/offline checks remain applicable.
+README stays empty; Core inputs/defaults and render algorithms are unchanged.

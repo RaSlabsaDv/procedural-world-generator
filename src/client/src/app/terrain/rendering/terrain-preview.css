@@ -1,6 +1,10 @@
+:host {
+  display: block;
+  position: relative;
+}
 .viewport {
   width: 100%;
-  height: clamp(400px, 66vh, 780px);
+  height: clamp(360px, calc(100dvh - 220px), 900px);
   border-radius: var(--atlas-radius-sm);
   overflow: hidden;
   background: var(--atlas-map-backdrop);
@@ -19,7 +23,11 @@ p {
 .preview-actions {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 1;
 }
 button {
   border: 1px solid var(--atlas-input-border);
@@ -44,4 +52,36 @@ button:disabled {
   .viewport {
     height: 400px;
   }
+}
+
+.preview-notes {
+  margin-top: 0.35rem;
+}
+.preview-notes > summary {
+  font-size: 0.65rem;
+  color: var(--atlas-muted);
+  cursor: pointer;
+}
+.preview-notes p {
+  margin: 0.3rem 0;
+}
+.navigation-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.65rem;
+}
+.preview-notes summary {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.display-time {
+  margin-left: auto;
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+.preview-notes summary::before {
+  content: '▸';
+}
+.preview-notes[open] summary::before {
+  transform: rotate(90deg);
 }

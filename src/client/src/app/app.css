@@ -14,7 +14,7 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: var(--atlas-space-4);
-  padding: 1.1rem 1.5rem;
+  padding: 0.65rem 1rem;
   background: var(--atlas-surface) var(--atlas-contours) center / cover no-repeat;
   border-top: 3px solid var(--atlas-primary);
   border-bottom: 1px solid var(--atlas-border);
@@ -27,8 +27,8 @@ main {
 .brand-mark {
   display: grid;
   place-items: center;
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   border: 1px solid var(--atlas-border);
   border-radius: var(--atlas-radius-sm);
   background: var(--atlas-surface);
@@ -36,7 +36,7 @@ main {
 }
 h1 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   letter-spacing: -0.04em;
 }
 .eyebrow {
@@ -51,7 +51,7 @@ h1 {
   display: flex;
   justify-content: space-between;
   gap: var(--atlas-space-4);
-  padding: 0.6rem 1.5rem;
+  padding: 0.3rem 1rem;
   color: var(--atlas-muted);
   font-size: 0.78rem;
   border-bottom: 1px solid var(--atlas-border);
@@ -64,9 +64,9 @@ h1 {
 }
 .workspace {
   display: grid;
-  grid-template-columns: 276px minmax(0, 1fr);
-  gap: var(--atlas-space-4);
-  padding: var(--atlas-space-4);
+  grid-template-columns: 268px minmax(0, 1fr);
+  gap: 0.65rem;
+  padding: 0.65rem;
   align-items: start;
 }
 .parameter-sidebar {
@@ -74,12 +74,16 @@ h1 {
   background: var(--atlas-surface);
   border: 1px solid var(--atlas-border);
   border-radius: var(--atlas-radius);
-  overflow: hidden;
+  overflow: auto;
+  position: sticky;
+  top: 0.5rem;
+  max-height: calc(100dvh - 104px);
+  scrollbar-width: thin;
   box-shadow: var(--atlas-shadow);
 }
 .sidebar-heading {
   cursor: pointer;
-  padding: var(--atlas-space-4);
+  padding: 0.65rem 0.75rem;
   font-size: 0.9rem;
   font-weight: 700;
   border-bottom: 1px solid var(--atlas-rule);
@@ -141,10 +145,10 @@ app-terrain-results {
 }
 
 .sun-settings {
-  margin-top: 0.6rem;
-  border: 1px solid var(--atlas-input-border);
-  border-radius: var(--atlas-radius-sm);
-  padding: 0.6rem;
+  margin-top: 0;
+  border: 0;
+  border-top: 1px solid var(--atlas-rule);
+  padding: 0.6rem 0.75rem;
 }
 .sun-settings summary {
   font-size: 0.8rem;
@@ -160,4 +164,93 @@ app-terrain-results {
   font-size: 0.7rem;
   opacity: 0.7;
   margin: 0.5rem 0 0;
+}
+
+.header-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+#toggle-controls {
+  white-space: nowrap;
+  padding: 0.4rem 0.6rem;
+}
+.workspace.controls-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+[hidden] {
+  display: none !important;
+}
+.control-nav {
+  display: flex;
+  gap: 0.35rem;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 0.5rem 0.65rem;
+  background: var(--atlas-surface);
+  border-bottom: 1px solid var(--atlas-border);
+}
+#terrain-controls,
+#scene-controls {
+  scroll-margin-top: 3rem;
+}
+.scene-heading {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.65rem 0.75rem;
+  border-top: 1px solid var(--atlas-border);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.scene-heading span {
+  font-weight: 400;
+  color: var(--atlas-muted);
+  font-size: 0.7rem;
+}
+@media (max-width: 800px) {
+  .parameter-sidebar {
+    position: static;
+    max-height: 45dvh;
+  }
+  .header-tools {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 480px) {
+  .app-header {
+    gap: 0.5rem;
+  }
+  .header-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .studio-tag {
+    display: none;
+  }
+}
+
+.settings-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.settings-tabs button {
+  grid-column: span 2;
+  padding: 0.35rem 0.15rem;
+  font-size: 0.73rem;
+  background: var(--atlas-soft);
+  color: var(--atlas-text);
+  min-height: 32px;
+}
+.settings-tabs button:nth-last-child(-n + 2) {
+  grid-column: span 3;
+}
+.settings-tabs button[aria-selected='true'] {
+  background: var(--atlas-primary);
+  color: var(--atlas-raised);
+}
+.scene-heading {
+  margin: 0 0 0.3rem;
+  padding: 0.35rem 0;
+  border: 0;
 }
